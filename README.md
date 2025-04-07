@@ -6,7 +6,8 @@
   - Escribir este comando para subir los containers
 
   ```bash
-  docker-compose up --build```
+  docker-compose up --build
+  ```
 
 [!NOTE]
 > El compose file esta versionado de momento, solo para mostrar que si funciona el seteo
