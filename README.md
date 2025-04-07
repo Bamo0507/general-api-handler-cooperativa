@@ -21,6 +21,12 @@ Handler principal para todo el manejo del backend de la cooperativa, desde:
   docker-compose up --build
   ```
 
+  o
+
+  ```bash
+  podman-compose up --build
+  ```
+
 [!NOTE]
 > El compose file esta versionado de momento, solo para mostrar que si funciona el seteo
 > Luego se dejara de versionar
