@@ -5,7 +5,7 @@ WORKDIR /General-Api
 # idunno how tf they expected for me to find this line
 RUN apk add --no-cache musl-dev
 
-#TODO: in production, deleate all the residual files except for the executable and it's dependencies
+#TODO: in production, delete all the residual files except for the executable and it's dependencies
 COPY . .
 
 
