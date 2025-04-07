@@ -11,7 +11,7 @@ COPY . .
 RUN cargo build --release
 
 
-EXPOSE 5000/tcp
+EXPOSE 5050/tcp
 
 
 CMD ./target/release/general-api

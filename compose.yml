@@ -1,0 +1,6 @@
+services:
+  general-api-handler:
+    build: .
+    ports: 
+      - "5050:5050"
+
