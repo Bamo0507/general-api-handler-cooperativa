@@ -1,7 +1,10 @@
 use actix_web::web;
 use juniper::{EmptyMutation, EmptySubscription, RootNode};
 
-use crate::repos::graphql::demo_repo::Demo;
+use crate::repos::graphql::{
+    loan_repo::{Loan, LoanRepo},
+    payment_repo::{Payment, PaymentRepo},
+};
 
 //* All context and repos
 
@@ -9,8 +12,12 @@ use crate::repos::graphql::demo_repo::Demo;
 pub struct Context {}
 
 impl Context {
-    fn demo_repo(&self) -> Demo {
-        return Demo::init();
+    fn payment_repo(&self) -> PaymentRepo {
+        return PaymentRepo::init();
+    }
+
+    fn loan_repo(&self) -> LoanRepo {
+        return LoanRepo::init();
     }
 }
 
@@ -19,6 +26,7 @@ impl Context {
 //I don't like this rust boilerplate, but meh, Ig rust doesn't adapt that good to abstractions
 impl juniper::Context for Context {}
 
+//TODO: see how to separate this later
 pub struct Query {}
 
 #[juniper::graphql_object(
@@ -26,8 +34,13 @@ pub struct Query {}
 )]
 impl Query {
     //TODO: add the necesary possible queries
-    pub async fn demo(context: &Context) -> Demo {
-        return context.demo_repo();
+
+    pub async fn get_history_payments(context: &Context) -> Vec<Payment> {
+        return context.payment_repo().get_history();
+    }
+
+    pub async fn get_history_loans(context: &Context) -> Vec<Loan> {
+        return context.loan_repo().get_history();
     }
 }
 
