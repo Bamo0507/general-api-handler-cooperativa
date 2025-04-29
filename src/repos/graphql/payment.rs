@@ -1,4 +1,4 @@
-use crate::models::graphql::Payment;
+use crate::models::graphql::{Aporte, Cuota, Payment, PrestamoDetalles};
 
 use super::utils::utils::return_n_dummies;
 
@@ -13,12 +13,27 @@ fn dummy_payment() -> Payment {
         comentarios: "None Comment LMAO".to_string(),
         foto: "Bucket URL".to_string(),
         estado: "None".to_string(),
+        aporte_capital: vec![Aporte { monto: 00.00 }],
+        cuotas: vec![Cuota {
+            monto_couta: 00.00,
+            fecha_vencimiento: "0-00-000".to_string(),
+            monto_pagado: 00.00,
+            multa: 00.00,
+        }],
+        prestamos: vec![PrestamoDetalles {
+            numero_cuota: 0,
+            monto_cuota: 00.00,
+            fecha_vencimiento: "0-00-0000".to_string(),
+            monto_pagado: 00.00,
+            multa: 00.00,
+        }],
     };
 }
 
 //TODO: Add respective pools
 pub struct PaymentRepo {}
 
+//TODO: add error managment for redis
 impl PaymentRepo {
     pub fn init() -> PaymentRepo {
         return PaymentRepo {};
@@ -26,7 +41,7 @@ impl PaymentRepo {
 
     //TODO: implent true logic
 
-    pub fn get_all(&self) -> Vec<Payment> {
+    pub fn get_user_payments(&self, user_id: String) -> Vec<Payment> {
         return return_n_dummies::<Payment>(&dummy_payment, 10);
     }
 }

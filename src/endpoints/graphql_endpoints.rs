@@ -1,31 +1,35 @@
-use actix_web::{web, HttpResponse};
-use juniper::{
-    http::{graphiql::graphiql_source, GraphQLRequest},
-    GraphQLType, GraphQLTypeAsync,
+use actix_web::{
+    web::{self, Json},
+    HttpResponse,
 };
+use juniper::{http::GraphQLRequest, GraphQLType, GraphQLTypeAsync};
+use serde_json::json;
+
+use crate::models::general::GeneralInfo;
 
 use super::handlers::{
-    configs::schema_configs::{GeneralContext, GeneralSchema},
-    graphql::payment::{create_payment_schema, PaymentQuery},
+    configs::schema_configs::{create_schema, GeneralContext, GeneralSchema},
+    graphql::{loan::LoanQuery, payment::PaymentQuery},
 };
 
 //This is pretty much boilerplate for any Graphql api
 
 pub fn graphql_config(config: &mut web::ServiceConfig) {
-    let payment_schema = create_payment_schema();
+    let graphql_info = Json(GeneralInfo {
+        api_version: "v 0.0.1".to_string(),
+    });
+
+    //Instance of Schemas with generic function
+    let payment_schema = create_schema(PaymentQuery {});
+    let loan_schema = create_schema(LoanQuery {});
+
     config
         .app_data(payment_schema)
-        .service(web::resource("/graphql").route(web::post().to(graphql::<PaymentQuery>)))
-        .service(web::resource("/graphiql").route(web::get().to(graphiql)));
-}
-
-//For displaying the grapiql page (for trying queries)
-async fn graphiql() -> HttpResponse {
-    let html = graphiql_source("/graphql", None);
-
-    return HttpResponse::Ok()
-        .content_type("text/html; charset=utf-8")
-        .body(html);
+        .app_data(loan_schema)
+        .app_data(graphql_info)
+        .service(web::resource("/graphql/health").route(web::post().to(general_endpoint_info)))
+        .service(web::resource("/graphql/payment").route(web::post().to(graphql::<PaymentQuery>)))
+        .service(web::resource("/graphql/loan").route(web::post().to(graphql::<LoanQuery>)));
 }
 
 async fn graphql<GenericQuery>(
@@ -59,4 +63,8 @@ where
     let res = data.execute(&schema, &context).await;
 
     return HttpResponse::Ok().json(res);
+}
+
+async fn general_endpoint_info(general_info: web::Json<GeneralInfo>) -> HttpResponse {
+    return HttpResponse::Ok().json(Json(json!(general_info)));
 }
