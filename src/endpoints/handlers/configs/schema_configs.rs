@@ -1,3 +1,20 @@
 use juniper::{EmptyMutation, EmptySubscription, RootNode};
 
-pub type GeneralSchema<T> = RootNode<'static, T, EmptyMutation<T>, EmptySubscription<T>>;
+use crate::repos::graphql::payment::PaymentRepo;
+
+#[derive(Clone)]
+pub struct GeneralContext {}
+
+impl GeneralContext {
+    pub fn payment_repo(&self) -> PaymentRepo {
+        return PaymentRepo::init();
+    }
+}
+
+//* Queries
+
+//I don't like this rust boilerplate, but meh, Ig rust doesn't adapt that good to abstractions
+impl juniper::Context for GeneralContext {}
+
+pub type GeneralSchema<T> =
+    RootNode<'static, T, EmptyMutation<GeneralContext>, EmptySubscription<GeneralContext>>;
