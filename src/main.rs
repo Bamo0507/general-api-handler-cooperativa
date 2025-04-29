@@ -1,4 +1,5 @@
 mod endpoints;
+mod models;
 mod repos;
 
 use actix_cors::Cors;

@@ -1,26 +1,9 @@
-use super::utils::utils::return_n_dummies;
-use juniper::GraphQLObject;
-use serde::{Deserialize, Serialize};
+use crate::models::graphql::Loan;
 
-//Fields are in spanish, for easier parsing in bryan's side
-#[derive(Clone, Serialize, Deserialize, GraphQLObject, Debug)]
-pub struct Loan {
-    solicitante_id: i32,
-    nombre: String,
-    monto_total: f64,
-    monto_cancelado: f64,
-    motivo: String,
-    tasa_interes: f64,
-    fecha_solicitud: String, //For parsing purposes
-    plazo_meses: i32,
-    meses_cancelados: i32,
-    //codeudores: Vec<Codeudor>> TODO: add when codeudores
-    //mensualidad_prestamo: Vec<PrestamoDetalles> TODO: add PrestamoDetalles
-    //pagare: Vec<Pagare> TODO: add Pagares
-}
+use super::utils::utils::return_n_dummies;
 
 //it is use, but by referencing it, not directly
-fn DummyLoan() -> Loan {
+fn dummy_loan() -> Loan {
     return Loan {
         solicitante_id: 0000000,
         nombre: "John".to_string(),
@@ -46,7 +29,7 @@ impl LoanRepo {
     }
 
     //TODO: implent true logic
-    pub fn get_history(&self) -> Vec<Loan> {
-        return return_n_dummies::<Loan>(&DummyLoan, 10);
+    pub fn get_all(&self) -> Vec<Loan> {
+        return return_n_dummies::<Loan>(&dummy_loan, 10);
     }
 }

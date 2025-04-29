@@ -1,6 +1,6 @@
 use juniper::{EmptyMutation, EmptySubscription, RootNode};
 
-use crate::repos::graphql::payment::PaymentRepo;
+use crate::repos::graphql::{loan::LoanRepo, payment::PaymentRepo};
 
 #[derive(Clone)]
 pub struct GeneralContext {}
@@ -8,6 +8,9 @@ pub struct GeneralContext {}
 impl GeneralContext {
     pub fn payment_repo(&self) -> PaymentRepo {
         return PaymentRepo::init();
+    }
+    pub fn loan_repo(&self) -> LoanRepo {
+        return LoanRepo::init();
     }
 }
 

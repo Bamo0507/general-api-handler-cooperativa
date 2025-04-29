@@ -1,9 +1,10 @@
-use crate::{
-    endpoints::handlers::configs::schema_configs::{GeneralContext, GeneralSchema},
-    repos::graphql::payment::Payment,
-};
 use actix_web::web;
 use juniper::{EmptyMutation, EmptySubscription, RootNode};
+
+use crate::{
+    endpoints::handlers::configs::schema_configs::{GeneralContext, GeneralSchema},
+    models::graphql::Payment,
+};
 
 pub struct PaymentQuery {}
 
@@ -14,7 +15,7 @@ impl PaymentQuery {
     //TODO: add the necesary possible queries
 
     pub async fn get_history(context: &GeneralContext) -> Vec<Payment> {
-        return context.payment_repo().get_history();
+        return context.payment_repo().get_all();
     }
 }
 

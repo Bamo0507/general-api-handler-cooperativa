@@ -1,37 +1,25 @@
-use crate::{
-    endpoints::handlers::configs::schema_configs::GeneralSchema,
-    repos::graphql::loan::{Loan, LoanRepo},
-};
 use actix_web::web;
 use juniper::{EmptyMutation, EmptySubscription, RootNode};
 
-// Fucking all context
-
-#[derive(Clone)]
-pub struct LoanContext {}
-
-impl LoanContext {
-    fn payment_repo(&self) -> LoanRepo {
-        return LoanRepo::init();
-    }
-}
+use crate::{
+    endpoints::handlers::configs::schema_configs::{GeneralContext, GeneralSchema},
+    models::graphql::Loan,
+};
 
 //* Queries
 
 //I don't like this rust boilerplate, but meh, Ig rust doesn't adapt that good to abstractions
-impl juniper::Context for LoanContext {}
 
-//TODO: see how to separate this later
 pub struct LoanQuery {}
 
 #[juniper::graphql_object(
-    Context = LoanContext,
+    Context = GeneralContext,
 )]
 impl LoanQuery {
     //TODO: add the necesary possible queries
 
-    pub async fn get_history(context: &LoanContext) -> Vec<Loan> {
-        return context.payment_repo().get_history();
+    pub async fn get_all(context: &GeneralContext) -> Vec<Loan> {
+        return context.loan_repo().get_all();
     }
 }
 
