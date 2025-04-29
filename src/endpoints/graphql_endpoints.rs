@@ -31,27 +31,5 @@ async fn graphiql() -> HttpResponse {
         .body(html);
 }
 
-//Fucking hate the dependecy on llms
-//TODO: Make this to accept Generic Schemas
-async fn graphql<GenericQuery, GenericContext>(
-    data: web::Json<GraphQLRequest>,
-    schema: web::Data<GeneralSchema<GenericQuery, GenericContext>>,
-    context: GenericContext,
-) -> HttpResponse
-//TODO: comment all this typing later
-where
-    GenericQuery: GraphQLTypeAsync<Context = GenericContext>
-        + GraphQLType<Context = GenericContext>
-        + Send
-        + Sync
-        + 'static,
-    GenericQuery::Context: Send + Sync,
-    GenericQuery::TypeInfo: Send + Sync,
-{
-    let res = data.execute(&schema, &context).await;
-
-    return HttpResponse::Ok().json(res);
-}
-
 //  expected reference `&<T as GraphQLValue>::Context`
 //      found reference `&PaymentContext`
