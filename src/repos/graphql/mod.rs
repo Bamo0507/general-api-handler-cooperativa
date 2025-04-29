@@ -1,4 +1,4 @@
-pub(crate) mod loan_repo;
-pub(crate) mod payment_repo;
+pub(crate) mod loan;
+pub(crate) mod payment;
 
 pub(super) mod utils;

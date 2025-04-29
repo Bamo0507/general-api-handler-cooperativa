@@ -1,2 +1,3 @@
-pub(super) mod auth_handler;
-pub(super) mod fetch_handler;
+pub(crate) mod configs;
+pub(crate) mod graphql;
+pub(crate) mod rest;
