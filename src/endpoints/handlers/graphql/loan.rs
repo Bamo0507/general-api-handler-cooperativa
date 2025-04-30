@@ -1,10 +1,4 @@
-use actix_web::web;
-use juniper::{EmptyMutation, EmptySubscription, RootNode};
-
-use crate::{
-    endpoints::handlers::configs::schema_configs::{GeneralContext, GeneralSchema},
-    models::graphql::Loan,
-};
+use crate::{endpoints::handlers::configs::schema_configs::GeneralContext, models::graphql::Loan};
 
 //* Queries
 
@@ -17,7 +11,7 @@ pub struct LoanQuery {}
 impl LoanQuery {
     //TODO: add the necesary possible queries
 
-    pub async fn get_all(context: &GeneralContext, id: String) -> Vec<Loan> {
+    pub async fn get_all(context: &GeneralContext, id: String) -> Result<Vec<Loan>, String> {
         return context.loan_repo().get_user_loans(id);
     }
 }
