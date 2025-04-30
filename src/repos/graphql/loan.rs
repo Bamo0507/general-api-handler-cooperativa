@@ -1,3 +1,5 @@
+use redis::RedisError;
+
 use crate::models::graphql::{Codeudor, Loan, Pagare, PrestamoDetalles};
 
 use super::utils::utils::return_n_dummies;
@@ -42,8 +44,8 @@ impl LoanRepo {
     }
 
     //TODO: implent true logic
-    pub fn get_user_loans(&self, user_id: String) -> Vec<Loan> {
-        return return_n_dummies::<Loan>(&dummy_loan, 10);
+    pub fn get_user_loans(&self, user_id: String) -> Result<Vec<Loan>, String> {
+        return Ok(return_n_dummies::<Loan>(&dummy_loan, 10));
     }
 
     //TODO: add later
