@@ -1,0 +1,24 @@
+name: dev-server-deployment
+
+on:
+  push:
+    branches:
+    - dev-deployment
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - run: mkdir ~/.keys
+      - run: touch ~/.keys/CSPI_KEY.pem
+      - run: echo "${{ secrets.CSPI_KEY}}" >> ~/.keys/CSPI_KEY.pem &&  chmod 400 ~/.keys/CSPI_KEY.pem 
+      - run: cat ~/.keys/CSPI_KEY.pem
+      - name: entering personal vm
+        run: |
+            ssh -i ~/.keys/CSPI_KEY.pem -o StrictHostKeyChecking=no  ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
+              cd general-api-handler-cooperativa
+              git pull
+              podman-compose down
+              podman-compose -f server-init.yml up --build -d
+            EOF
