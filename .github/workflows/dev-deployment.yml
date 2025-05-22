@@ -20,5 +20,5 @@ jobs:
               cd general-api-handler-cooperativa
               git pull
               podman-compose down
-              podman-compose -f server-init.yml up --build -d
+              podman-compose -f init-server.yml up --build -d
             EOF
