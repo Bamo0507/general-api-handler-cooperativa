@@ -18,6 +18,7 @@ jobs:
         run: |
             ssh -i ~/.keys/CSPI_KEY.pem -o StrictHostKeyChecking=no  ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
               cd general-api-handler-cooperativa
+              cargo build --release
               git pull
               podman-compose down
               podman-compose -f init-server.yml up --build -d
