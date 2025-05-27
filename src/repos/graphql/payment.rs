@@ -1,3 +1,4 @@
+use actix_web::web;
 use r2d2::Pool;
 use redis::{Client, RedisError};
 
@@ -34,12 +35,12 @@ fn dummy_payment() -> Payment {
 }
 
 pub struct PaymentRepo {
-    pub pool: Pool<Client>,
+    pub pool: web::Data<Pool<Client>>,
 }
 
 //TODO: add error managment for redis
 impl PaymentRepo {
-    pub fn init(pool: Pool<Client>) -> PaymentRepo {
+    pub fn init(pool: web::Data<Pool<Client>>) -> PaymentRepo {
         return PaymentRepo { pool };
     }
 

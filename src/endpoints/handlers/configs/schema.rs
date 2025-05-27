@@ -8,7 +8,7 @@ use crate::repos::graphql::{loan::LoanRepo, payment::PaymentRepo};
 //Context Related
 #[derive(Clone)]
 pub struct GeneralContext {
-    pub pool: Pool<Client>,
+    pub pool: web::Data<Pool<Client>>,
 }
 
 impl GeneralContext {

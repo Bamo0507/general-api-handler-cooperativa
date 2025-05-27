@@ -1,6 +1,6 @@
 use envconfig::Envconfig;
 
-#[derive(Envconfig)]
+#[derive(Envconfig, Debug)]
 pub struct Env {
     #[envconfig(from = "HOST")]
     pub host: String,

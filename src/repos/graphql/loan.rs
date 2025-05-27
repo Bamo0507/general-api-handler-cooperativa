@@ -1,3 +1,4 @@
+use actix_web::web;
 use r2d2::Pool;
 use redis::{Client, RedisError};
 
@@ -36,12 +37,12 @@ fn dummy_loan() -> Loan {
 }
 
 pub struct LoanRepo {
-    pub pool: Pool<Client>,
+    pub pool: web::Data<Pool<Client>>,
 }
 
 //TODO: add error managment for redis
 impl LoanRepo {
-    pub fn init(pool: Pool<Client>) -> LoanRepo {
+    pub fn init(pool: web::Data<Pool<Client>>) -> LoanRepo {
         return LoanRepo { pool };
     }
 
