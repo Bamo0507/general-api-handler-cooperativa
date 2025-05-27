@@ -1,18 +1,22 @@
 use actix_web::web;
 use juniper::{EmptyMutation, EmptySubscription, GraphQLType, GraphQLTypeAsync, RootNode};
+use r2d2::Pool;
+use redis::Client;
 
 use crate::repos::graphql::{loan::LoanRepo, payment::PaymentRepo};
 
 //Context Related
 #[derive(Clone)]
-pub struct GeneralContext {}
+pub struct GeneralContext {
+    pub pool: Pool<Client>,
+}
 
 impl GeneralContext {
     pub fn payment_repo(&self) -> PaymentRepo {
-        return PaymentRepo::init();
+        return PaymentRepo::init(self.pool.clone());
     }
     pub fn loan_repo(&self) -> LoanRepo {
-        return LoanRepo::init();
+        return LoanRepo::init(self.pool.clone());
     }
 }
 

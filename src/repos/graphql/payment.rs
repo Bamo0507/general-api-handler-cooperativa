@@ -1,4 +1,5 @@
-use redis::RedisError;
+use r2d2::Pool;
+use redis::{Client, RedisError};
 
 use crate::models::graphql::{Aporte, Cuota, Payment, PrestamoDetalles};
 
@@ -32,13 +33,14 @@ fn dummy_payment() -> Payment {
     };
 }
 
-//TODO: Add respective pools
-pub struct PaymentRepo {}
+pub struct PaymentRepo {
+    pub pool: Pool<Client>,
+}
 
 //TODO: add error managment for redis
 impl PaymentRepo {
-    pub fn init() -> PaymentRepo {
-        return PaymentRepo {};
+    pub fn init(pool: Pool<Client>) -> PaymentRepo {
+        return PaymentRepo { pool };
     }
 
     //TODO: implent true logic

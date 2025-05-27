@@ -8,7 +8,10 @@ use serde_json::json;
 use crate::models::general::GeneralInfo;
 
 use super::handlers::{
-    configs::schema_configs::{create_schema, GeneralContext, GeneralSchema},
+    configs::{
+        connection_pool::get_pool_connection,
+        schema::{create_schema, GeneralContext, GeneralSchema},
+    },
     graphql::{loan::LoanQuery, payment::PaymentQuery},
 };
 
@@ -59,7 +62,10 @@ where
         + Sync,
     GenericQuery::TypeInfo: Send + Sync,
 {
-    let context = GeneralContext {};
+    let context = GeneralContext {
+        pool: get_pool_connection(),
+    };
+
     let res = data.execute(&schema, &context).await;
 
     return HttpResponse::Ok().json(res);

@@ -1,4 +1,4 @@
-use crate::{endpoints::handlers::configs::schema_configs::GeneralContext, models::graphql::Loan};
+use crate::{endpoints::handlers::configs::schema::GeneralContext, models::graphql::Loan};
 
 //* Queries
 

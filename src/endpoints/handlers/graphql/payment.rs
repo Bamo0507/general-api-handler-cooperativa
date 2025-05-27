@@ -1,6 +1,4 @@
-use crate::{
-    endpoints::handlers::configs::schema_configs::GeneralContext, models::graphql::Payment,
-};
+use crate::{endpoints::handlers::configs::schema::GeneralContext, models::graphql::Payment};
 
 pub struct PaymentQuery {}
 

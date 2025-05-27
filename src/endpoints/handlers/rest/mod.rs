@@ -1,1 +1,1 @@
-pub(crate) mod auth_handler;
+pub(crate) mod auth;
