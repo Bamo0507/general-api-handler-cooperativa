@@ -20,6 +20,6 @@ jobs:
               cd general-api-handler-cooperativa
               cargo build --release
               git pull
-              podman-compose down
-              podman-compose -f init-server.yml up --build --replace -d
+              docker-compose down
+              docker-compose -f init-server.yml up --build --replace -d
             EOF
