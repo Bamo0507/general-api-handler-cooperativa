@@ -6,10 +6,7 @@ WORKDIR /General-Api
 RUN apk add --no-cache musl-dev
 
 #TODO: in production, delete all the residual files except for the executable and it's dependencies
-COPY . .
-
-
-RUN cargo build --release
+COPY ./target/release/general-api .
 
 
 EXPOSE 5050/tcp
