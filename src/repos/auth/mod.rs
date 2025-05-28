@@ -1,7 +1,7 @@
 use std::fmt::format;
 
 use r2d2::PooledConnection;
-use redis::{cmd, Client, Commands, RedisError};
+use redis::{cmd, from_redis_value, Client, Commands, Value as RedisValue};
 use utils::hashing_composite_key;
 
 use crate::{
@@ -37,17 +37,15 @@ pub fn create_user_with_access_token(
             //For creating fields
             // IK is pretty repetitive, but is the best way for being the most explicit neccesary
 
+            //Want to have the resource the closest to key level, cause is just for checking if it exists
             let _: () = con
-                .set(
-                    format!("users_on_used:{}", username.clone()),
-                    username.clone(),
-                )
+                .set(format!("users_on_used:{}", username.clone()), "")
                 .expect("USERNAME CREATION : Couldn't filled username");
 
             let _: () = con
                 .set(
-                    format!("users:{}:complete_name", real_name.clone()),
-                    username.clone(),
+                    format!("users:{}:complete_name", access_token.clone()),
+                    real_name.clone(),
                 )
                 .expect("ACCESS TOKEN CREATION: Couldn't filled username");
 
@@ -71,7 +69,36 @@ pub fn create_user_with_access_token(
         }
 
         Ok(_) => Err(ErrorMessage {
-            message: "User Already Exists".to_string(),
+            message: "Couldn't Create User".to_string(),
         }),
     }
+}
+
+pub fn get_user_access_token(username: String, pass: String) -> Result<TokenInfo, ErrorMessage> {
+    let mut con = get_pool_connection()
+        .get()
+        .expect("Couldn't connect to pool"); //Can't abstracted to a struct, :C
+
+    let access_token = hashing_composite_key(username, pass);
+
+    //Passing an String for recieving an nil
+    match cmd("EXISTS")
+        .arg(format!("users:{}:complete_name", access_token)) //Closests key-value we have at hand
+        .query::<bool>(&mut con)
+    {
+        Ok(it_exists) => {
+            if it_exists {
+                return Ok(TokenInfo { access_token });
+            }
+
+            return Err(ErrorMessage {
+                message: "User Might Not Exist or User/Password is wrong".to_string(),
+            });
+        }
+        Err(e) => {
+            return Err(ErrorMessage {
+                message: "Couldn't Get User Info".to_string(),
+            });
+        }
+    };
 }
