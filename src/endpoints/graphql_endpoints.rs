@@ -21,10 +21,6 @@ use super::handlers::{
 
 pub fn graphql_config(config: &mut web::ServiceConfig) {
     //General variables
-    let graphql_info = Json(GeneralInfo {
-        api_version: "v 0.0.1".to_string(),
-    });
-
     let pool = get_pool_connection();
 
     //Instance of Schemas with generic function
@@ -35,7 +31,6 @@ pub fn graphql_config(config: &mut web::ServiceConfig) {
         .app_data(pool)
         .app_data(payment_schema)
         .app_data(loan_schema)
-        .app_data(graphql_info)
         .service(web::resource("/graphql/payment").route(web::post().to(graphql::<PaymentQuery>)))
         .service(web::resource("/graphql/loan").route(web::post().to(graphql::<LoanQuery>)));
 }
