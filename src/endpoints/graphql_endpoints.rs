@@ -36,7 +36,6 @@ pub fn graphql_config(config: &mut web::ServiceConfig) {
         .app_data(payment_schema)
         .app_data(loan_schema)
         .app_data(graphql_info)
-        .service(web::resource("/graphql/health").route(web::post().to(general_endpoint_info)))
         .service(web::resource("/graphql/payment").route(web::post().to(graphql::<PaymentQuery>)))
         .service(web::resource("/graphql/loan").route(web::post().to(graphql::<LoanQuery>)));
 }
