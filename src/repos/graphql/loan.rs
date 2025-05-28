@@ -4,7 +4,7 @@ use redis::{Client, RedisError};
 
 use crate::models::graphql::{Codeudor, Loan, Pagare, PrestamoDetalles};
 
-use super::utils::utils::return_n_dummies;
+use super::utils::return_n_dummies;
 
 //it is use, but by referencing it, not directly
 fn dummy_loan() -> Loan {
