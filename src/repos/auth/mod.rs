@@ -11,10 +11,6 @@ use crate::{
 
 pub(super) mod utils;
 
-pub struct AuthRepo {
-    pub con: PooledConnection<Client>,
-}
-
 //TODO: Set for ALC
 pub fn create_user_with_access_token(
     username: String,
@@ -25,13 +21,15 @@ pub fn create_user_with_access_token(
         .get()
         .expect("Couldn't connect to pool"); //Can't abstracted to a struct, :C
 
-    let access_token = hashing_composite_key(&username, &pass);
+    // This will be the token that the user will use for loging
+    let access_token = hashing_composite_key(&[&username, &pass]);
 
-    let db_composite_key = hashing_composite_key(&access_token, &"".to_string());
+    // The reference on the db
+    let db_composite_key = hashing_composite_key(&[&access_token]);
 
     //For checking the existance of the field
     match cmd("GET")
-        .arg(format!("users_on_used:{}", username.clone()))
+        .arg(format!("users_on_used:{}", &username))
         .query::<String>(&mut con)
     {
         //This will look weird, but we are looking here in the case it fails
@@ -47,7 +45,7 @@ pub fn create_user_with_access_token(
             let _: () = con
                 .set(
                     format!("users:{}:complete_name", &db_composite_key),
-                    real_name.clone(),
+                    &real_name,
                 )
                 .expect("ACCESS TOKEN CREATION: Couldn't filled username");
 
@@ -74,12 +72,10 @@ pub fn create_user_with_access_token(
 }
 
 //TODO: Refactor this for recieving the access token
-pub fn get_user_access_token(username: String, pass: String) -> Result<TokenInfo, ErrorMessage> {
+pub fn get_user_access_token(access_token: String) -> Result<TokenInfo, ErrorMessage> {
     let mut con = get_pool_connection()
         .get()
         .expect("Couldn't connect to pool"); //Can't abstracted to a struct, :C
-
-    let access_token = hashing_composite_key(&username, &pass);
 
     //Passing an String for recieving an nil
     match cmd("EXISTS")
