@@ -25,7 +25,9 @@ pub fn create_user_with_access_token(
         .get()
         .expect("Couldn't connect to pool"); //Can't abstracted to a struct, :C
 
-    let access_token = hashing_composite_key(username.clone(), pass);
+    let access_token = hashing_composite_key(&username, &pass);
+
+    let db_composite_key = hashing_composite_key(&access_token, &"".to_string());
 
     //For checking the existance of the field
     match cmd("GET")
@@ -39,30 +41,27 @@ pub fn create_user_with_access_token(
 
             //Want to have the resource the closest to key level, cause is just for checking if it exists
             let _: () = con
-                .set(format!("users_on_used:{}", username.clone()), "")
+                .set(format!("users_on_used:{}", &username), "")
                 .expect("USERNAME CREATION : Couldn't filled username");
 
             let _: () = con
                 .set(
-                    format!("users:{}:complete_name", access_token.clone()),
+                    format!("users:{}:complete_name", &db_composite_key),
                     real_name.clone(),
                 )
                 .expect("ACCESS TOKEN CREATION: Couldn't filled username");
 
             // For default any new user won't be
             let _: () = con
-                .set(
-                    format!("users:{}:is_directive", access_token.clone()),
-                    false,
-                )
+                .set(format!("users:{}:is_directive", &db_composite_key), false)
                 .expect("ACCESS TOKEN CREATION: couldn't filled is_directive");
 
             let _: () = con
-                .set(format!("users:{}:payments", access_token.clone()), false)
+                .set(format!("users:{}:payments", &db_composite_key), false)
                 .expect("BASE PAYMENTS CREATION: Couldn't create field");
 
             let _: () = con
-                .set(format!("users:{}:loans", access_token.clone()), false)
+                .set(format!("users:{}:loans", &db_composite_key), false)
                 .expect("BASE LOANS CREATION: Couldn't create field");
 
             return Ok(TokenInfo { access_token });
@@ -74,12 +73,13 @@ pub fn create_user_with_access_token(
     }
 }
 
+//TODO: Refactor this for recieving the access token
 pub fn get_user_access_token(username: String, pass: String) -> Result<TokenInfo, ErrorMessage> {
     let mut con = get_pool_connection()
         .get()
         .expect("Couldn't connect to pool"); //Can't abstracted to a struct, :C
 
-    let access_token = hashing_composite_key(username, pass);
+    let access_token = hashing_composite_key(&username, &pass);
 
     //Passing an String for recieving an nil
     match cmd("EXISTS")
@@ -97,7 +97,7 @@ pub fn get_user_access_token(username: String, pass: String) -> Result<TokenInfo
         }
         Err(e) => {
             return Err(ErrorMessage {
-                message: "Couldn't Get User Info".to_string(),
+                message: "Couldn't Get User Info:".to_string(),
             });
         }
     };
