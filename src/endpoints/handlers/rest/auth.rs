@@ -21,5 +21,8 @@ pub async fn user_sign_up(user_data: web::Json<SignUpInfo>) -> HttpResponse {
 pub async fn user_login(user_data: web::Json<LoginInfo>) -> HttpResponse {
     let data = user_data.into_inner();
 
-    return HttpResponse::Ok().json(get_user_access_token(data.access_token));
+    return HttpResponse::Ok().json(get_user_access_token(
+        data.user_name.to_string(),
+        data.pass_code.to_string(),
+    ));
 }

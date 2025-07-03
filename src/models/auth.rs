@@ -9,7 +9,8 @@ pub struct SignUpInfo {
 
 #[derive(Clone, Deserialize, Debug)]
 pub struct LoginInfo {
-    pub access_token: String,
+    pub user_name: String,
+    pub pass_code: String, //TODO: Convience bryan to pass this info hashed
 }
 
 #[derive(Clone, Serialize)]

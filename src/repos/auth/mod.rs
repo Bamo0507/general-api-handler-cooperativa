@@ -1,7 +1,4 @@
-use std::fmt::format;
-
-use r2d2::PooledConnection;
-use redis::{cmd, from_redis_value, Client, Commands, Value as RedisValue};
+use redis::{cmd, Commands};
 use utils::hashing_composite_key;
 
 use crate::{
@@ -72,10 +69,12 @@ pub fn create_user_with_access_token(
 }
 
 //TODO: Refactor this for recieving the access token
-pub fn get_user_access_token(access_token: String) -> Result<TokenInfo, ErrorMessage> {
+pub fn get_user_access_token(username: String, pass: String) -> Result<TokenInfo, ErrorMessage> {
     let mut con = get_pool_connection()
         .get()
         .expect("Couldn't connect to pool"); //Can't abstracted to a struct, :C
+
+    let access_token = hashing_composite_key(&[&username, &pass]);
 
     //Passing an String for recieving an nil
     match cmd("EXISTS")
@@ -93,7 +92,7 @@ pub fn get_user_access_token(access_token: String) -> Result<TokenInfo, ErrorMes
         }
         Err(e) => {
             return Err(ErrorMessage {
-                message: "Couldn't Get User Info:".to_string(),
+                message: format!("Error: {}", e),
             });
         }
     };

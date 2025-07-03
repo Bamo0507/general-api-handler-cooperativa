@@ -2,6 +2,6 @@ services:
   general-api-handler:
     build: .
     ports: 
-      - "5050:5050"
+      - "5086:5086"
     env_file:
-      - env_variables/.env
+      - .env
