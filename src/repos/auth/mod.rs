@@ -74,11 +74,16 @@ pub fn get_user_access_token(username: String, pass: String) -> Result<TokenInfo
         .get()
         .expect("Couldn't connect to pool"); //Can't abstracted to a struct, :C
 
+    // THe tokwn derived from the user and pass
     let access_token = hashing_composite_key(&[&username, &pass]);
 
+    // How is registered on the db
+    let db_access_token = hashing_composite_key(&[&access_token]);
+
+    println!("{}", access_token);
     //Passing an String for recieving an nil
     match cmd("EXISTS")
-        .arg(format!("users:{}:complete_name", access_token)) //Closests key-value we have at hand
+        .arg(format!("users:{}:complete_name", db_access_token)) //Closests key-value we have at hand
         .query::<bool>(&mut con)
     {
         Ok(it_exists) => {

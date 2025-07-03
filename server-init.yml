@@ -4,4 +4,4 @@ services:
     ports: 
       - "5086:5086"
     env_file:
-      - .env
+      - env_variables/.env
