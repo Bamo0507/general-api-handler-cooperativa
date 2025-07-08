@@ -46,6 +46,13 @@ pub fn create_user_with_access_token(
                 )
                 .expect("ACCESS TOKEN CREATION: Couldn't filled username");
 
+            let _: () = con
+                .set(
+                    format!("users:{}:payed_to_capital", &db_composite_key),
+                    &real_name,
+                )
+                .expect("ACCESS TOKEN CREATION: Couldn't filled username");
+
             // For default any new user won't be
             let _: () = con
                 .set(format!("users:{}:is_directive", &db_composite_key), false)
