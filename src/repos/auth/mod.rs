@@ -44,19 +44,20 @@ pub fn create_user_with_access_token(
                     format!("users:{}:complete_name", &db_composite_key),
                     &real_name,
                 )
-                .expect("ACCESS TOKEN CREATION: Couldn't filled username");
+                .expect("ACCESS TOKEN CREATION: Couldn't create field");
 
             let _: () = con
-                .set(
-                    format!("users:{}:payed_to_capital", &db_composite_key),
-                    &real_name,
-                )
-                .expect("ACCESS TOKEN CREATION: Couldn't filled username");
+                .set(format!("users:{}:payed_to_capital", &db_composite_key), 0.0)
+                .expect("ACCESS TOKEN CREATION: Couldn't create field");
+
+            let _: () = con
+                .set(format!("users:{}:owed_capita", &db_composite_key), 0.0)
+                .expect("ACCESS TOKEN CREATION: Couldn't create field");
 
             // For default any new user won't be
             let _: () = con
                 .set(format!("users:{}:is_directive", &db_composite_key), false)
-                .expect("ACCESS TOKEN CREATION: couldn't filled is_directive");
+                .expect("ACCESS TOKEN CREATION: Couldn't create field");
 
             let _: () = con
                 .set(format!("users:{}:payments", &db_composite_key), false)
