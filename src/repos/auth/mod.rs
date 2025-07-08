@@ -51,7 +51,7 @@ pub fn create_user_with_access_token(
                 .expect("ACCESS TOKEN CREATION: Couldn't create field");
 
             let _: () = con
-                .set(format!("users:{}:owed_capita", &db_composite_key), 0.0)
+                .set(format!("users:{}:owed_capital", &db_composite_key), 0.0)
                 .expect("ACCESS TOKEN CREATION: Couldn't create field");
 
             // For default any new user won't be

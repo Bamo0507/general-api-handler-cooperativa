@@ -11,6 +11,7 @@ pub struct PaymentQuery {}
 impl PaymentQuery {
     //TODO: add the necesary possible queries
 
+    /// Get's the user's big picture history
     pub async fn get_history(
         context: &GeneralContext,
         access_token: String,
