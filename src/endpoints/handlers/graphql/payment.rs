@@ -8,7 +8,7 @@ pub struct PaymentQuery {}
 impl PaymentQuery {
     //TODO: add the necesary possible queries
 
-    pub async fn get_history(
+    pub async fn get_users_payments(
         context: &GeneralContext,
         access_token: String,
     ) -> Result<Vec<Payment>, String> {

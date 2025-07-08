@@ -46,7 +46,5 @@ impl PaymentRepo {
 
     //TODO: implent true logic
 
-    pub fn get_user_payments(&self, user_id: String) -> Result<Vec<Payment>, String> {
-        return Ok(return_n_dummies::<Payment>(&dummy_payment, 10));
-    }
+    pub fn get_user_payments(&self, acess_token: String) -> Result<Vec<Payment>, String> {}
 }
