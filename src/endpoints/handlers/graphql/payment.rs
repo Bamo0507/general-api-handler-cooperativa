@@ -1,4 +1,7 @@
-use crate::{endpoints::handlers::configs::schema::GeneralContext, models::graphql::Payment};
+use crate::{
+    endpoints::handlers::configs::schema::GeneralContext,
+    models::graphql::{Payment, PaymentHistory},
+};
 
 pub struct PaymentQuery {}
 
@@ -8,10 +11,10 @@ pub struct PaymentQuery {}
 impl PaymentQuery {
     //TODO: add the necesary possible queries
 
-    pub async fn get_users_payments(
+    pub async fn get_history(
         context: &GeneralContext,
         access_token: String,
-    ) -> Result<Vec<Payment>, String> {
-        return context.payment_repo().get_user_payments(access_token);
+    ) -> Result<PaymentHistory, String> {
+        context.payment_repo().get_user_history(access_token)
     }
 }

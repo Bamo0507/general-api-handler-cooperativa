@@ -34,6 +34,12 @@ pub struct Payment {
 }
 
 #[derive(Clone, Serialize, Deserialize, GraphQLObject, Debug)]
+pub struct PaymentHistory {
+    pub payed_to_capital: f64,
+    pub owed_capital: f64,
+}
+
+#[derive(Clone, Serialize, Deserialize, GraphQLObject, Debug)]
 pub struct Pagare {
     //pub prestamo_id i32 //! Redundant, not adding it
     pub pagare: String,              //For the bucket

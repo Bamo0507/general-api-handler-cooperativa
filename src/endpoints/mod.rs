@@ -20,5 +20,5 @@ async fn general_endpoint_info() -> HttpResponse {
         api_version: "v 0.0.1".to_string(),
     });
 
-    return HttpResponse::Ok().json(Json(json!(general_info)));
+    HttpResponse::Ok().json(Json(json!(general_info)))
 }

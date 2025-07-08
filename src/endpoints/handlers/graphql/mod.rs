@@ -41,5 +41,5 @@ where
 
     let res = data.execute(&schema, &context).await;
 
-    return HttpResponse::Ok().json(res);
+    HttpResponse::Ok().json(res)
 }
