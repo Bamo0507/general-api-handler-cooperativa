@@ -1,8 +1,10 @@
-use redis::RedisError;
+use actix_web::web;
+use r2d2::Pool;
+use redis::{Client, RedisError};
 
 use crate::models::graphql::{Codeudor, Loan, Pagare, PrestamoDetalles};
 
-use super::utils::utils::return_n_dummies;
+use super::utils::return_n_dummies;
 
 //it is use, but by referencing it, not directly
 fn dummy_loan() -> Loan {
@@ -34,13 +36,14 @@ fn dummy_loan() -> Loan {
     };
 }
 
-//TODO:Add respective pools
-pub struct LoanRepo {}
+pub struct LoanRepo {
+    pub pool: web::Data<Pool<Client>>,
+}
 
 //TODO: add error managment for redis
 impl LoanRepo {
-    pub fn init() -> LoanRepo {
-        return LoanRepo {};
+    pub fn init(pool: web::Data<Pool<Client>>) -> LoanRepo {
+        return LoanRepo { pool };
     }
 
     //TODO: implent true logic

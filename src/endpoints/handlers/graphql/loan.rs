@@ -1,4 +1,4 @@
-use crate::{endpoints::handlers::configs::schema_configs::GeneralContext, models::graphql::Loan};
+use crate::{endpoints::handlers::configs::schema::GeneralContext, models::graphql::Loan};
 
 //* Queries
 
@@ -11,7 +11,10 @@ pub struct LoanQuery {}
 impl LoanQuery {
     //TODO: add the necesary possible queries
 
-    pub async fn get_all(context: &GeneralContext, id: String) -> Result<Vec<Loan>, String> {
-        return context.loan_repo().get_user_loans(id);
+    pub async fn get_all(
+        context: &GeneralContext,
+        access_token: String,
+    ) -> Result<Vec<Loan>, String> {
+        return context.loan_repo().get_user_loans(access_token);
     }
 }
