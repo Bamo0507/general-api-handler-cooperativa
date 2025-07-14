@@ -15,6 +15,6 @@ impl LoanQuery {
         context: &GeneralContext,
         access_token: String,
     ) -> Result<Vec<Loan>, String> {
-        return context.loan_repo().get_user_loans(access_token);
+        context.loan_repo().get_user_loans(access_token)
     }
 }

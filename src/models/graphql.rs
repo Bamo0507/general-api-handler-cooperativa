@@ -25,12 +25,17 @@ pub struct Payment {
     pub fecha_pago: String, // I'll pass it as a string, for not having parsing difficulties
     pub num_boleta: String,
     pub banco_deposito: String,
-    pub cuotas: Vec<Cuota>,               //TODO: make later
-    pub prestamos: Vec<PrestamoDetalles>, //TODO: make later
-    pub aporte_capital: Vec<Aporte>,      //TODO: make it later
     pub comentarios: String,
     pub foto: String,   // For bucket use
     pub estado: String, // Following bryan's enums
+}
+
+#[derive(Clone, Serialize, Deserialize, GraphQLObject, Debug)]
+pub struct PaymentHistory {
+    /// the value that brings
+    pub payed_to_capital: f64,
+    /// The capital that the user owes in total
+    pub owed_capital: f64,
 }
 
 #[derive(Clone, Serialize, Deserialize, GraphQLObject, Debug)]
