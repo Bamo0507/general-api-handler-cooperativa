@@ -20,6 +20,6 @@ jobs:
               cd general-api-handler-cooperativa
               git pull
               cargo build ---release
-              docker-compose -f init-server.yml down
-              docker-compose -f init-server.yml up --build -d
+              sudo docker compose -f init-server.yml down
+              sudo docker compose -f init-server.yml up --build -d
             EOF
