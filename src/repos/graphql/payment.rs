@@ -1,9 +1,12 @@
+use std::collections::HashMap;
+
 use actix_web::web;
 use r2d2::Pool;
 use redis::{Client, Commands, RedisError};
+use regex::Regex;
 
 use crate::{
-    models::graphql::{Aporte, Cuota, Payment, PaymentHistory, PrestamoDetalles},
+    models::graphql::{Affiliate, Aporte, Cuota, Payment, PaymentHistory, PrestamoDetalles},
     repos::auth::utils::hashing_composite_key,
 };
 
@@ -42,12 +45,71 @@ impl PaymentRepo {
         })
     }
 
+    //TODO: keep with this later
     pub fn get_user_payments(&self, access_token: String) -> Result<Vec<Payment>, String> {
         let mut con = self.pool.get().expect("Couldn't connect to pool");
 
         let db_access_token = hashing_composite_key(&[&access_token]);
 
-        // get all payments keys
-        unimplemented!();
+        println!("db_key {}", db_access_token);
+        match con.scan_match::<String, String>(format!("users:{}:payments:*", db_access_token)) {
+            // Could be easier, but noo... Pedro wanted to do keys for everything
+            Ok(keys) => {
+                // IF ONLY I DID A GOD DAMM JSON
+                // Map to store all keys from the same payment
+                let mut payments_map: HashMap<String, &mut Payment> = HashMap::new();
+
+                // Regex for parsing the payments key
+                let regex =
+                    Regex::new(r"^(users+):([\w]+)*:(payments+):([\w]+)*:([\w]+)*").unwrap();
+
+                println!("Getting keys");
+                for key in keys {
+                    let parsed_key = regex.captures(key.as_str()).unwrap();
+
+                    // Getting the payment key and the respective field
+                    println!("{:?}", parsed_key[4].to_string());
+                    println!("{:?}", parsed_key[5].to_string());
+                }
+
+                Ok(Vec::new())
+            }
+            Err(_) => Err("Couldn't get users payments".to_string()),
+        }
+    }
+
+    pub fn get_all_users_for_affiliates(&self) -> Result<Vec<Affiliate>, String> {
+        let con = &mut self.pool.get().expect("Couldn't connect to pool");
+
+        match con.scan_match::<&str, String>("affiliate_ids:*") {
+            Ok(keys) => {
+                let mut affiliates: Vec<Affiliate> = Vec::new();
+                // TODO: see to refactor and generelize the regex part
+                let regex = Regex::new(r"^(affiliate_ids+):([\w]+)*").unwrap();
+
+                // TODO: see to refactor and generalize this
+                for key in keys {
+                    println!("{}", key);
+                    let parsed_key = regex.captures(key.as_str()).unwrap();
+
+                    // Why borrow checker, WHY?!?!?
+                    // The equivalent of cloning
+                    let name_con = &mut self.pool.get().expect("Couldn't connect to pool");
+
+                    affiliates.push(Affiliate {
+                        usuario_id: parsed_key[2].parse::<i32>().unwrap_or(0),
+                        name: name_con
+                            .get::<String, String>(format!(
+                                "affiliate_ids:{}",
+                                parsed_key[2].to_string()
+                            ))
+                            .unwrap_or("Not A Name".to_string()),
+                    })
+                }
+
+                Ok(affiliates)
+            }
+            Err(_) => Err("Couldn't get users".to_string()),
+        }
     }
 }

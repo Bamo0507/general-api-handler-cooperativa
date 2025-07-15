@@ -31,6 +31,12 @@ pub struct Payment {
 }
 
 #[derive(Clone, Serialize, Deserialize, GraphQLObject, Debug)]
+pub struct Affiliate {
+    pub usuario_id: i32,
+    pub name: String,
+}
+
+#[derive(Clone, Serialize, Deserialize, GraphQLObject, Debug)]
 pub struct PaymentHistory {
     /// the value that brings
     pub payed_to_capital: f64,
