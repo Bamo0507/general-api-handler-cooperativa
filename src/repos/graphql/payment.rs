@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use actix_web::web;
 use r2d2::Pool;
-use redis::{Client, Commands, RedisError};
+use redis::{from_redis_value, Client, Commands, RedisError, Value as RedisValue};
 use regex::Regex;
 
 use crate::{
@@ -53,23 +53,17 @@ impl PaymentRepo {
 
         println!("db_key {}", db_access_token);
         match con.scan_match::<String, String>(format!("users:{}:payments:*", db_access_token)) {
-            // Could be easier, but noo... Pedro wanted to do keys for everything
             Ok(keys) => {
-                // IF ONLY I DID A GOD DAMM JSON
-                // Map to store all keys from the same payment
-                let mut payments_map: HashMap<String, &mut Payment> = HashMap::new();
+                let paymnets: Vec<Payment> = Vec::new();
 
                 // Regex for parsing the payments key
-                let regex =
-                    Regex::new(r"^(users+):([\w]+)*:(payments+):([\w]+)*:([\w]+)*").unwrap();
+                let regex = Regex::new(r"^(users+):([\w]+)*:(payments+):([\w]+)*").unwrap();
 
                 println!("Getting keys");
                 for key in keys {
                     let parsed_key = regex.captures(key.as_str()).unwrap();
 
                     // Getting the payment key and the respective field
-                    println!("{:?}", parsed_key[4].to_string());
-                    println!("{:?}", parsed_key[5].to_string());
                 }
 
                 Ok(Vec::new())
