@@ -6,7 +6,7 @@ use crate::{
     models::{auth::TokenInfo, ErrorMessage},
 };
 
-pub(super) mod utils;
+pub mod utils;
 
 //TODO: Set for ALC
 pub fn create_user_with_access_token(

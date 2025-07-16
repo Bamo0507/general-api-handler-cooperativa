@@ -5,7 +5,7 @@ pub(crate) mod general;
 pub(crate) mod graphql;
 
 //My Own error message
-#[derive(Clone, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct ErrorMessage {
     pub message: String,
 }
