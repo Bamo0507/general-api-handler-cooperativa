@@ -78,6 +78,7 @@ impl PaymentRepo {
         }
     }
 
+    // This goes in the payment repo, only cause is an utililty endpoint for the Payments
     pub fn get_all_users_for_affiliates(&self) -> Result<Vec<Affiliate>, String> {
         let con = &mut self.pool.get().expect("Couldn't connect to pool");
 
