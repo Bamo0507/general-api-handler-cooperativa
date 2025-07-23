@@ -55,23 +55,7 @@ impl PaymentRepo {
         match con.scan_match::<String, String>(format!("users:{}:payments:*", db_access_token)) {
             // Could be easier, but noo... Pedro wanted to do keys for everything
             Ok(keys) => {
-                // IF ONLY I DID A GOD DAMM JSON
                 // Map to store all keys from the same payment
-                let mut payments_map: HashMap<String, &mut Payment> = HashMap::new();
-
-                // Regex for parsing the payments key
-                let regex =
-                    Regex::new(r"^(users+):([\w]+)*:(payments+):([\w]+)*:([\w]+)*").unwrap();
-
-                println!("Getting keys");
-                for key in keys {
-                    let parsed_key = regex.captures(key.as_str()).unwrap();
-
-                    // Getting the payment key and the respective field
-                    println!("{:?}", parsed_key[4].to_string());
-                    println!("{:?}", parsed_key[5].to_string());
-                }
-
                 Ok(Vec::new())
             }
             Err(_) => Err("Couldn't get users payments".to_string()),
