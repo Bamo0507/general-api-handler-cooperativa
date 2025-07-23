@@ -6,7 +6,7 @@ pub mod graphql;
 pub mod redis;
 
 //My Own error message
-#[derive(Clone, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct ErrorMessage {
     pub message: String,
 }

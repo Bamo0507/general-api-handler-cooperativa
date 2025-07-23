@@ -9,7 +9,7 @@ use crate::models::general::GeneralInfo;
 pub mod auth_endpoints;
 pub mod graphql_endpoints;
 
-pub(crate) mod handlers;
+pub mod handlers;
 
 pub fn health_config(config: &mut web::ServiceConfig) {
     config.service(web::resource("/health").route(web::get().to(general_endpoint_info)));

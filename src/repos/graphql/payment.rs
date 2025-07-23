@@ -53,25 +53,12 @@ impl PaymentRepo {
 
         println!("db_key {}", db_access_token);
         match con.scan_match::<String, String>(format!("users:{}:payments:*", db_access_token)) {
-            Ok(keys) => {
-                let paymnets: Vec<Payment> = Vec::new();
-
-                // Regex for parsing the payments key
-                let regex = Regex::new(r"^(users+):([\w]+)*:(payments+):([\w]+)*").unwrap();
-
-                println!("Getting keys");
-                for key in keys {
-                    let parsed_key = regex.captures(key.as_str()).unwrap();
-
-                    // Getting the payment key and the respective field
-                }
-
-                Ok(Vec::new())
-            }
+            Ok(keys) => Ok(Vec::new()),
             Err(_) => Err("Couldn't get users payments".to_string()),
         }
     }
 
+    // This goes in the payment repo, only cause is an utililty endpoint for the Payments
     pub fn get_all_users_for_affiliates(&self) -> Result<Vec<Affiliate>, String> {
         let con = &mut self.pool.get().expect("Couldn't connect to pool");
 
