@@ -1,11 +1,12 @@
 use serde::Serialize;
 
-pub(crate) mod auth;
-pub(crate) mod general;
-pub(crate) mod graphql;
+pub mod auth;
+pub mod general;
+pub mod graphql;
+pub mod redis;
 
 //My Own error message
-#[derive(Clone, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct ErrorMessage {
     pub message: String,
 }

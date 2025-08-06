@@ -14,6 +14,6 @@ pub struct Env {
 
 impl Env {
     pub fn env_init() -> Env {
-        return Env::init_from_env().unwrap();
+        Env::init_from_env().unwrap()
     }
 }

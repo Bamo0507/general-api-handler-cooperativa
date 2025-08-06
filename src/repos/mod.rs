@@ -1,2 +1,2 @@
-pub(crate) mod auth;
-pub(crate) mod graphql;
+pub mod auth;
+pub mod graphql;

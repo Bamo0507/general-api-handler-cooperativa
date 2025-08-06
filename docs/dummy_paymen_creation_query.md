@@ -1,20 +1,12 @@
 
-> [!NOTE]
-> The key after the payment is just a number in sha256
+>[!NOTE]
+>The key after the payment is just a number in sha256
 
 ## First Payment
 
 ```redis
-SET users:31559267D6F9152658557B4303CFF96EE29837E25EEEA5971104D57D7BAFE9A5:payments:5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9:date_created:2025-07-04
+JSON.SET users:6D1A4829F2AFEE0E3FA226991F08720ABDC94DB81D452A658D9662F03F8E9664 $ '{"date_created": "2025-07-04", "comprobante_bucket": "sup/sup.pdf", "ticket_number": "39129391", "status": "ON_REVISION", "quantity": 0.00, "comments": ""}
 ```
 
-```redis
-SET users:31559267D6F9152658557B4303CFF96EE29837E25EEEA5971104D57D7BAFE9A5:payments:5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9:comprobante_bucket:sup/sup.pdf
-```
-
-```redis
-SET users:31559267D6F9152658557B4303CFF96EE29837E25EEEA5971104D57D7BAFE9A5:payments:5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9:ticket_number:39129391
-```
-
-> [!NOTE]
-> Not adding affiliates now just for cause it won't be shown
+>[!NOTE]
+>Not adding affiliates now just for cause it won't be shown

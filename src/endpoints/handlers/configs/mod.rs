@@ -1,2 +1,2 @@
-pub(crate) mod connection_pool;
-pub(crate) mod schema;
+pub mod connection_pool;
+pub mod schema;

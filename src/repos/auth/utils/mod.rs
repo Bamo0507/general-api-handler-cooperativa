@@ -15,3 +15,5 @@ pub fn hashing_composite_key(args: &[&String]) -> String {
     //X is for hexadecimal
     return format!("{:X}", hashed_args);
 }
+
+// TODO: do function for matching payment end value with Payment Object

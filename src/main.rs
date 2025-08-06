@@ -1,12 +1,9 @@
-mod config;
-mod endpoints;
-mod models;
-mod repos;
-
 use actix_cors::Cors;
 use actix_web::{App, HttpServer};
-use config::Env;
-use endpoints::{auth_endpoints::auth_config, graphql_endpoints::graphql_config, health_config};
+use general_api::config::Env;
+use general_api::endpoints::{
+    auth_endpoints::auth_config, graphql_endpoints::graphql_config, health_config,
+};
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {

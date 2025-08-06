@@ -6,7 +6,7 @@ use crate::{
     models::{auth::TokenInfo, ErrorMessage},
 };
 
-pub(super) mod utils;
+pub mod utils;
 
 //TODO: Set for ALC
 pub fn create_user_with_access_token(
@@ -88,7 +88,6 @@ pub fn get_user_access_token(username: String, pass: String) -> Result<TokenInfo
     // How is registered on the db
     let db_access_token = hashing_composite_key(&[&access_token]);
 
-    println!("{}", access_token);
     //Passing an String for recieving an nil
     match cmd("EXISTS")
         .arg(format!("users:{}:complete_name", db_access_token)) //Closests key-value we have at hand
