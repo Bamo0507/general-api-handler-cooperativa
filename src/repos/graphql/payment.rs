@@ -62,13 +62,11 @@ impl PaymentRepo {
                 // conn for fetching payments
                 let mut con = self.pool.get().expect("Couldn't connect to pool");
 
+                println!("{}", db_access_token);
                 for key in keys {
                     // We first fetch the raw data, first
                     let user_payment_raw = con
-                        .json_get::<String, &str, RedisValue>(
-                            format!("users:{}:payments:{}", db_access_token, key),
-                            "$",
-                        )
+                        .json_get::<String, &str, RedisValue>(format!("{}", key), "$")
                         .unwrap(); // I will do it in one line, but nu uh, it would be unreadable
 
                     // for some reason redis gives all the info deserialize, so I have to do the
@@ -80,15 +78,15 @@ impl PaymentRepo {
                     // ik that I could've made the direct mapping to the GraphQl object, but I
                     // rather using my own name standar for the redis keys and that Bryan manages
                     // the names as however he want's it
+                    println!("{:?}", nested_data);
                     let user_payment_redis =
-                        from_str::<RedisPayment>(&nested_data[1].as_str()).unwrap_or_default();
+                        from_str::<RedisPayment>(&nested_data[0].as_str()).unwrap_or_default();
                     // that
                     // was just for getting the redis object, now I have to do the mapping
 
                     // now we do the payment mapping
 
                     payment_list.push(Payment {
-                        payment_id: key,
                         monto_total: user_payment_redis.quantity,
                         fecha_pago: user_payment_redis.date_created,
                         num_boleta: user_payment_redis.ticket_number,
