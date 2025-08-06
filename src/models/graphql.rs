@@ -20,11 +20,11 @@ pub struct Loan {
 
 #[derive(Clone, Serialize, Deserialize, GraphQLObject, Debug)]
 pub struct Payment {
-    pub usuario_id: i32,
+    pub payment_id: String,
     pub monto_total: f64,
     pub fecha_pago: String, // I'll pass it as a string, for not having parsing difficulties
     pub num_boleta: String,
-    pub banco_deposito: String,
+    //pub banco_deposito: String, //Like this the same as the as ticker_num
     pub comentarios: String,
     pub foto: String,   // For bucket use
     pub estado: String, // Following bryan's enums
