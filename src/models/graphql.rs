@@ -1,3 +1,5 @@
+// TODO: Refactor all of them with default imp
+
 use juniper::GraphQLObject;
 use serde::{Deserialize, Serialize};
 
