@@ -19,7 +19,7 @@ jobs:
             ssh -i ~/.keys/CSPI_KEY.pem -o StrictHostKeyChecking=no  ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
               cd general-api-handler-cooperativa
               git pull
-              cargo build ---release
+              cargo build --release
               sudo docker compose -f init-server.yml down
               sudo docker compose -f init-server.yml up --build -d
             EOF
