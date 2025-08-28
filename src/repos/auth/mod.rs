@@ -28,7 +28,7 @@ pub fn create_user_with_access_token(
     let db_composite_key = hashing_composite_key(&[&access_token]);
 
     // getting username and the las character for getting the affiliate key
-    let affiliate_key = hashing_composite_key(&[&username]);
+    let affiliate_key = hashing_composite_key(&[&user_name]);
 
     //For checking the existance of the field
     match cmd("GET")
@@ -54,11 +54,8 @@ pub fn create_user_with_access_token(
 
             let _: () = con
                 .set(
-                    format!(
-                        "users:{}:affiliate_key:{}",
-                        &db_composite_key, &affiliate_key
-                    ),
-                    &real_name,
+                    format!("users:{}:affiliate_key", &db_composite_key),
+                    &affiliate_key,
                 )
                 .expect("ACCESS TOKEN CREATION: Couldn't create field");
 
