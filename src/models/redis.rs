@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+//TODO: refactor for different files
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Payment {
     pub date_created: String,
@@ -19,6 +21,31 @@ impl Default for Payment {
             status: "NOT_PROCESS".to_string(),
             quantity: 0.00,
             comments: "".to_string(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Loan {
+    pub total_qouta: i32,         // total couta needed
+    pub base_needed_payment: f64, //initial value of the lone without fines
+    pub payed: f64,
+    pub debt: f64,
+    pub total: f64,
+    pub status: String, //TODO: ASk bryan how to do this
+    pub reason: String,
+}
+
+impl Default for Loan {
+    fn default() -> Self {
+        Loan {
+            total_qouta: 0,
+            base_needed_payment: 0.,
+            payed: 0.,
+            debt: 0.,
+            total: 0.,
+            status: "Not Done".to_owned(),
+            reason: "None".to_owned(),
         }
     }
 }

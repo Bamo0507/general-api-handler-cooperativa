@@ -6,18 +6,12 @@ use serde::{Deserialize, Serialize};
 // Fields are in spanish, for easier parsing in bryan's side
 #[derive(Clone, Serialize, Deserialize, GraphQLObject, Debug)]
 pub struct Loan {
-    pub solicitante_id: i32,
-    pub nombre: String,
-    pub monto_total: f64,
-    pub monto_cancelado: f64,
-    pub motivo: String,
-    pub tasa_interes: f64,
-    pub fecha_solicitud: String, // For parsing purposes
-    pub plazo_meses: i32,
-    pub meses_cancelados: i32,
-    pub codeudores: Vec<Codeudor>,
-    pub mensualidad_prestamo: Vec<PrestamoDetalles>,
-    pub pagares: Vec<Pagare>,
+    pub qoutas: i32, // total couta needed
+    pub payed: f64,
+    pub debt: f64,
+    pub total: f64,
+    pub status: String, //TODO: ASk bryan how to do this
+    pub reason: String,
 }
 
 #[derive(Clone, Serialize, Deserialize, GraphQLObject, Debug)]
