@@ -3,14 +3,17 @@ use utils::hashing_composite_key;
 
 use crate::{
     endpoints::handlers::configs::connection_pool::get_pool_connection,
-    models::{auth::TokenInfo, ErrorMessage},
+    models::{
+        auth::{TokenInfo, UserType},
+        ErrorMessage,
+    },
 };
 
 pub mod utils;
 
 //TODO: Set for ALC
 pub fn create_user_with_access_token(
-    username: String,
+    user_name: String,
     pass: String,
     real_name: String,
 ) -> Result<TokenInfo, ErrorMessage> {
@@ -19,7 +22,7 @@ pub fn create_user_with_access_token(
         .expect("Couldn't connect to pool"); //Can't abstracted to a struct, :C
 
     // This will be the token that the user will use for loging
-    let access_token = hashing_composite_key(&[&username, &pass]);
+    let access_token = hashing_composite_key(&[&user_name, &pass]);
 
     // The reference on the db
     let db_composite_key = hashing_composite_key(&[&access_token]);
@@ -29,7 +32,7 @@ pub fn create_user_with_access_token(
 
     //For checking the existance of the field
     match cmd("GET")
-        .arg(format!("users_on_used:{}", &username))
+        .arg(format!("users_on_used:{}", &user_name))
         .query::<String>(&mut con)
     {
         //This will look weird, but we are looking here in the case it fails
@@ -39,7 +42,7 @@ pub fn create_user_with_access_token(
 
             //Want to have the resource the closest to key level, cause is just for checking if it exists
             let _: () = con
-                .set(format!("users_on_used:{}", &username), "")
+                .set(format!("users_on_used:{}", &user_name), "")
                 .expect("USERNAME CREATION : Couldn't filled username");
 
             let _: () = con
@@ -80,46 +83,66 @@ pub fn create_user_with_access_token(
                 .set(format!("users:{}:loans", &db_composite_key), false)
                 .expect("BASE LOANS CREATION: Couldn't create field");
 
-            return Ok(TokenInfo { access_token });
+            Ok(TokenInfo {
+                user_name,
+                access_token,
+                user_type: UserType::General.to_string(),
+            })
         }
 
-        Ok(_) => Err(ErrorMessage {
+        Ok(e) => Err(ErrorMessage {
             message: "Couldn't Create User".to_string(),
         }),
     }
 }
 
 //TODO: Refactor this for recieving the access token
-pub fn get_user_access_token(username: String, pass: String) -> Result<TokenInfo, ErrorMessage> {
+pub fn get_user_access_token(user_name: String, pass: String) -> Result<TokenInfo, ErrorMessage> {
     let mut con = get_pool_connection()
         .get()
         .expect("Couldn't connect to pool"); //Can't abstracted to a struct, :C
 
     // THe token derived from the user and pass
-    let access_token = hashing_composite_key(&[&username, &pass]);
+    let access_token = hashing_composite_key(&[&user_name, &pass]);
 
     // How is registered on the db
     let db_access_token = hashing_composite_key(&[&access_token]);
 
-    println!("{}", access_token);
     //Passing an String for recieving an nil
     match cmd("EXISTS")
-        .arg(format!("users:{}:complete_name", db_access_token)) //Closests key-value we have at hand
+        .arg(format!("users:{db_access_token}:complete_name")) //Closests key-value we have at hand
         .query::<bool>(&mut con)
     {
         Ok(it_exists) => {
             if it_exists {
-                return Ok(TokenInfo { access_token });
+                let mut con = get_pool_connection()
+                    .get()
+                    .expect("Couldn't connect to pool");
+
+                // get the the user type
+
+                let user_type = match con
+                    .get::<String, bool>(format!("users:{db_access_token}:is_directive"))
+                    .unwrap_or_default()
+                {
+                    true => UserType::Directive.to_string(),
+                    false => UserType::General.to_string(),
+                };
+
+                // cause this is an "earlier" return, can't use the other syntax
+                return Ok(TokenInfo {
+                    user_name,
+                    access_token,
+                    user_type,
+                });
             }
 
-            return Err(ErrorMessage {
+            Err(ErrorMessage {
                 message: "User Might Not Exist or User/Password is wrong".to_string(),
-            });
+            })
         }
-        Err(e) => {
-            return Err(ErrorMessage {
-                message: format!("Error: {}", e),
-            });
-        }
-    };
+        Err(e) => Err(ErrorMessage {
+            message: format!("Error: {e}"),
+        }),
+    }
 }

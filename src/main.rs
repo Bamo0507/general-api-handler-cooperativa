@@ -13,6 +13,9 @@ async fn main() -> std::io::Result<()> {
     let port = config.port;
     let host = config.host;
 
+    // Weird bugg in server
+    println!("{}", config.redis_url);
+
     std::env::set_var("RUST_LOG", "debug");
     env_logger::init();
 
