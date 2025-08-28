@@ -101,15 +101,17 @@ impl PaymentRepo {
         }
     }
 
+    //TODO: refactor for the affiliate_key jus to be a simple array
+
     // This goes in the payment repo, only cause is an utililty endpoint for the Payments
     pub fn get_all_users_for_affiliates(&self) -> Result<Vec<Affiliate>, String> {
         let con = &mut self.pool.get().expect("Couldn't connect to pool");
 
-        match con.scan_match::<&str, String>("affiliate_ids:*") {
+        match con.scan_match::<&str, String>("affiliate_keys:*") {
             Ok(keys) => {
                 let mut affiliates: Vec<Affiliate> = Vec::new();
                 // TODO: see to refactor and generelize the regex part
-                let regex = Regex::new(r"^(affiliate_ids+):([\w]+)*").unwrap();
+                let regex = Regex::new(r"^(affiliate_keys+):([\w]+)*").unwrap();
 
                 // TODO: see to refactor and generalize this
                 for key in keys {
@@ -124,7 +126,7 @@ impl PaymentRepo {
                         usuario_id: parsed_key[2].parse::<i32>().unwrap_or(0),
                         name: name_con
                             .get::<String, String>(format!(
-                                "affiliate_ids:{}",
+                                "affiliate_keys:{}",
                                 parsed_key[2].to_string()
                             ))
                             .unwrap_or("Not A Name".to_string()),

@@ -60,6 +60,10 @@ pub fn create_user_with_access_token(
                 .expect("ACCESS TOKEN CREATION: Couldn't create field");
 
             let _: () = con
+                .set(format!("affiliate_keys:{}", &affiliate_key), &user_name)
+                .expect("USERNAME CREATION : Couldn't filled username");
+
+            let _: () = con
                 .set(format!("users:{}:payed_to_capital", &db_composite_key), 0.0)
                 .expect("ACCESS TOKEN CREATION: Couldn't create field");
 
