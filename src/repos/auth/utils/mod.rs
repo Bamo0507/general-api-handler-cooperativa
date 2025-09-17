@@ -13,7 +13,7 @@ pub fn hashing_composite_key(args: &[&String]) -> String {
     let hashed_args = Sha256::digest(string_acc);
 
     //X is for hexadecimal
-    return format!("{:X}", hashed_args);
+    format!("{:X}", hashed_args)
 }
 
 // TODO: do function for matching payment end value with Payment Object

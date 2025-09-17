@@ -15,5 +15,23 @@ pub struct LoginInfo {
 
 #[derive(Clone, Serialize)]
 pub struct TokenInfo {
+    pub user_name: String,
     pub access_token: String,
+    pub user_type: String,
+}
+
+#[derive(Clone)]
+pub enum UserType {
+    Directive,
+    General,
+}
+
+// Ignore the error, I'm just doing this for parsing things for bryan
+impl ToString for UserType {
+    fn to_string(&self) -> String {
+        match self {
+            UserType::Directive => "Directive".to_string(), // funny how bryan it's doing thing in spanish
+            UserType::General => "General".to_string(),
+        }
+    }
 }
