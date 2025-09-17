@@ -1,21 +1,15 @@
-use actix_web::web;
+use actix_web::web::Data;
 use r2d2::Pool;
-use redis::{Client, RedisError};
+use redis::Client;
 
 use crate::models::graphql::{Codeudor, Loan, Pagare, PrestamoDetalles};
 
-use super::utils::return_n_dummies;
-
 pub struct LoanRepo {
-    pub pool: web::Data<Pool<Client>>,
+    pub pool: Data<Pool<Client>>,
 }
 
 //TODO: add error managment for redis
 impl LoanRepo {
-    pub fn init(pool: web::Data<Pool<Client>>) -> LoanRepo {
-        return LoanRepo { pool };
-    }
-
     //TODO: implent true logic
     pub fn get_user_loans(&self, user_id: String) -> Result<Vec<Loan>, String> {
         todo!();

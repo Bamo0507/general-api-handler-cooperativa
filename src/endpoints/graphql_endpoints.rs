@@ -1,4 +1,6 @@
-use actix_web::{web, HttpResponse};
+use actix_web::web::{post, resource, ServiceConfig};
+
+use crate::endpoints::handlers::graphql::fine::FineQuery;
 
 use super::handlers::{
     configs::{connection_pool::get_pool_connection, schema::create_schema},
@@ -7,18 +9,21 @@ use super::handlers::{
 
 //This is pretty much boilerplate for any Graphql api
 
-pub fn graphql_config(config: &mut web::ServiceConfig) {
+pub fn graphql_config(config: &mut ServiceConfig) {
     //General variables
     let pool = get_pool_connection();
 
     //Instance of Schemas with generic function
     let payment_schema = create_schema(PaymentQuery {});
     let loan_schema = create_schema(LoanQuery {});
+    let fine_schema = create_schema(FineQuery {});
 
     config
         .app_data(pool)
         .app_data(payment_schema)
         .app_data(loan_schema)
-        .service(web::resource("/graphql/payment").route(web::post().to(graphql::<PaymentQuery>)))
-        .service(web::resource("/graphql/loan").route(web::post().to(graphql::<LoanQuery>)));
+        .app_data(fine_schema)
+        .service(resource("/graphql/payment").route(post().to(graphql::<PaymentQuery>)))
+        .service(resource("/graphql/loan").route(post().to(graphql::<LoanQuery>)))
+        .service(resource("/graphql/fine").route(post().to(graphql::<FineQuery>)));
 }

@@ -35,7 +35,9 @@ fn from_credentials_to_acess_token() {
 /// For checking if credentials cretead an user instance in Redis DB (Signup)
 #[test]
 fn from_credentials_to_data() {
-    let repo = PaymentRepo::init(get_pool_connection());
+    let repo = PaymentRepo {
+        pool: get_pool_connection(),
+    };
 
     // random string
     let mut random_string = Alphanumeric.sample_string(&mut rng(), 16);
@@ -100,7 +102,9 @@ fn check_if_can_acess_data() {
     let username = "El_Mago_Pero_Del_Test".to_string();
     let passcode = "ElTestoPaga".to_string();
 
-    let repo = PaymentRepo::init(get_pool_connection());
+    let repo = PaymentRepo {
+        pool: get_pool_connection(),
+    };
 
     // Creates user in DB if not already created (assuming that signup works)
     let access_token = match get_user_access_token(username.clone(), passcode.clone()) {

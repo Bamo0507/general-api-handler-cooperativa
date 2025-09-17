@@ -21,6 +21,11 @@ pub struct Loan {
 }
 
 #[derive(Clone, Serialize, Deserialize, GraphQLObject, Debug)]
+pub struct Fine {
+    pub cantidad: f64,
+}
+
+#[derive(Clone, Serialize, Deserialize, GraphQLObject, Debug)]
 pub struct Payment {
     pub payment_id: String,
     pub monto_total: f64,
