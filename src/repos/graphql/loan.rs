@@ -2,7 +2,7 @@ use actix_web::web::Data;
 use r2d2::Pool;
 use redis::Client;
 
-use crate::models::graphql::{Codeudor, Loan, Pagare, PrestamoDetalles};
+use crate::models::graphql::Loan;
 
 pub struct LoanRepo {
     pub pool: Data<Pool<Client>>,

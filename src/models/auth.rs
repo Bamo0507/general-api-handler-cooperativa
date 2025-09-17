@@ -30,8 +30,8 @@ pub enum UserType {
 impl ToString for UserType {
     fn to_string(&self) -> String {
         match self {
-            UserType::Directive => "Directive".to_string(), // funny how bryan it's doing thing in spanish
-            UserType::General => "General".to_string(),
+            UserType::Directive => "Directive".to_owned(), // funny how bryan it's doing thing in spanish
+            UserType::General => "General".to_owned(),
         }
     }
 }

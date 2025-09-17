@@ -59,7 +59,7 @@ impl PaymentRepo {
                 for key in keys {
                     // We first fetch the raw data, first
                     let user_payment_raw = con
-                        .json_get::<String, &str, RedisValue>(format!("{}", key), "$")
+                        .json_get::<String, &str, RedisValue>(key.to_owned(), "$")
                         .unwrap(); // I will do it in one line, but nu uh, it would be unreadable
 
                     // for some reason redis gives all the info deserialize, so I have to do the
