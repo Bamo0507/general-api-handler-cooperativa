@@ -1,22 +1,31 @@
-use actix_web::web;
+use actix_web::web::Data;
 use juniper::{EmptyMutation, EmptySubscription, GraphQLType, GraphQLTypeAsync, RootNode};
 use r2d2::Pool;
 use redis::Client;
 
-use crate::repos::graphql::{loan::LoanRepo, payment::PaymentRepo};
+use crate::repos::graphql::{fine::FineRepo, loan::LoanRepo, payment::PaymentRepo};
 
 //Context Related
 #[derive(Clone)]
 pub struct GeneralContext {
-    pub pool: web::Data<Pool<Client>>,
+    pub pool: Data<Pool<Client>>,
 }
 
 impl GeneralContext {
     pub fn payment_repo(&self) -> PaymentRepo {
-        return PaymentRepo::init(self.pool.clone());
+        PaymentRepo {
+            pool: self.pool.clone(),
+        }
     }
     pub fn loan_repo(&self) -> LoanRepo {
-        return LoanRepo::init(self.pool.clone());
+        LoanRepo {
+            pool: self.pool.clone(),
+        }
+    }
+    pub fn fine_repo(&self) -> FineRepo {
+        FineRepo {
+            pool: self.pool.clone(),
+        }
     }
 }
 
@@ -27,7 +36,7 @@ impl juniper::Context for GeneralContext {}
 pub type GeneralSchema<T> =
     RootNode<'static, T, EmptyMutation<GeneralContext>, EmptySubscription<GeneralContext>>;
 
-pub fn create_schema<GenericQuery>(query: GenericQuery) -> web::Data<GeneralSchema<GenericQuery>>
+pub fn create_schema<GenericQuery>(query: GenericQuery) -> Data<GeneralSchema<GenericQuery>>
 where
     //Here we are putting specifics Types
     GenericQuery: GraphQLTypeAsync<Context = GeneralContext, TypeInfo = ()>
@@ -40,5 +49,5 @@ where
     let schema = RootNode::new(query, EmptyMutation::new(), EmptySubscription::new());
 
     // I always need for passing the squema to actix
-    return web::Data::new(schema);
+    Data::new(schema)
 }

@@ -1,11 +1,11 @@
 use std::time::Duration;
 
 use crate::config::Env;
-use actix_web::web;
+use actix_web::web::Data;
 use r2d2::Pool;
 use redis::Client;
 
-pub fn get_pool_connection() -> web::Data<Pool<Client>> {
+pub fn get_pool_connection() -> Data<Pool<Client>> {
     let config: Env = Env::env_init();
 
     //TODO: Change the url for being concat friendly
@@ -15,12 +15,10 @@ pub fn get_pool_connection() -> web::Data<Pool<Client>> {
         .connection_timeout(Duration::from_secs(5))
         .build(client)
     {
-        Ok(val) => {
-            return web::Data::<Pool<Client>>::new(val);
-        }
+        Ok(val) => Data::<Pool<Client>>::new(val),
         Err(e) => {
             println!("Couldn't Connect Because: {:}", e);
             panic!("Couldn't Connect Because: {:}", e);
         }
-    };
+    }
 }

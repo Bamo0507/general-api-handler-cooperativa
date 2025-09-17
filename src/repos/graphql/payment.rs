@@ -1,14 +1,12 @@
-use std::collections::HashMap;
-
 use actix_web::web;
 use r2d2::Pool;
-use redis::{from_redis_value, Client, Commands, JsonCommands, RedisError, Value as RedisValue};
+use redis::{from_redis_value, Client, Commands, JsonCommands, Value as RedisValue};
 use regex::Regex;
 use serde_json::from_str;
 
 use crate::{
     models::{
-        graphql::{Affiliate, Aporte, Cuota, Payment, PaymentHistory, PrestamoDetalles},
+        graphql::{Affiliate, Payment, PaymentHistory},
         redis::Payment as RedisPayment,
     },
     repos::{auth::utils::hashing_composite_key, graphql::utils::get_payment_key},
@@ -20,10 +18,6 @@ pub struct PaymentRepo {
 
 //TODO: add error managment for redis
 impl PaymentRepo {
-    pub fn init(pool: web::Data<Pool<Client>>) -> PaymentRepo {
-        PaymentRepo { pool }
-    }
-
     /// giving the acess token, this returns the an Object of PaymentHistory of that "user"
     pub fn get_user_history(&self, access_token: String) -> Result<PaymentHistory, String> {
         let mut con = self.pool.get().expect("Couldn't connect to pool");
@@ -65,7 +59,7 @@ impl PaymentRepo {
                 for key in keys {
                     // We first fetch the raw data, first
                     let user_payment_raw = con
-                        .json_get::<String, &str, RedisValue>(format!("{}", key), "$")
+                        .json_get::<String, &str, RedisValue>(key.to_owned(), "$")
                         .unwrap(); // I will do it in one line, but nu uh, it would be unreadable
 
                     // for some reason redis gives all the info deserialize, so I have to do the
@@ -126,10 +120,10 @@ impl PaymentRepo {
                         usuario_id: parsed_key[2].parse::<i32>().unwrap_or(0),
                         name: name_con
                             .get::<String, String>(format!(
-                                "affiliate_keys:{}",
-                                parsed_key[2].to_string()
+                                "affiliate_ids:{}",
+                                parsed_key[2].to_owned()
                             ))
-                            .unwrap_or("Not A Name".to_string()),
+                            .unwrap_or("Not A Name".to_owned()),
                     })
                 }
 

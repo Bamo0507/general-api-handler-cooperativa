@@ -1,6 +1,6 @@
-use actix_web::web;
+use actix_web::web::Data;
 use r2d2::Pool;
-use redis::{Client, RedisError};
+use redis::Client;
 
 use redis::{from_redis_value, Commands, JsonCommands, Value as RedisValue};
 use regex::Regex;
@@ -14,18 +14,12 @@ use crate::{
     repos::auth::utils::hashing_composite_key,
 };
 
-use super::utils::return_n_dummies;
-
 pub struct LoanRepo {
-    pub pool: web::Data<Pool<Client>>,
+    pub pool: Data<Pool<Client>>,
 }
 
 //TODO: add error managment for redis
 impl LoanRepo {
-    pub fn init(pool: web::Data<Pool<Client>>) -> LoanRepo {
-        return LoanRepo { pool };
-    }
-
     //TODO: refactor for generalize this kind of methods of get n thing
 
     // ! NOT FULLY TESTED, BUT IT SHOULD WORK

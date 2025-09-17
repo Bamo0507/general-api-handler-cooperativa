@@ -49,3 +49,20 @@ impl Default for Loan {
         }
     }
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Fine {
+    pub amount: f32,
+    pub loan_key: String,
+    pub motive: String,
+}
+
+impl Default for Fine {
+    fn default() -> Self {
+        Fine {
+            amount: 0.,
+            loan_key: "".to_owned(),
+            motive: "nu uh".to_owned(),
+        }
+    }
+}

@@ -1,5 +1,6 @@
-pub(crate) mod loan;
-pub(crate) mod payment;
+pub mod loan;
+pub mod payment;
+pub mod fine;
 
 use actix_web::{web, HttpResponse};
 use juniper::{http::GraphQLRequest, GraphQLType, GraphQLTypeAsync};

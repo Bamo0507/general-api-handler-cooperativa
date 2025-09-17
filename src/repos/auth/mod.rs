@@ -91,7 +91,7 @@ pub fn create_user_with_access_token(
             })
         }
 
-        Ok(e) => Err(ErrorMessage {
+        Ok(_) => Err(ErrorMessage {
             message: "Couldn't Create User".to_string(),
         }),
     }
