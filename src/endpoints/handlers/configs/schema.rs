@@ -3,7 +3,7 @@ use juniper::{EmptyMutation, EmptySubscription, GraphQLType, GraphQLTypeAsync, R
 use r2d2::Pool;
 use redis::Client;
 
-use crate::repos::graphql::{loan::LoanRepo, payment::PaymentRepo};
+use crate::repos::graphql::{fine::FineRepo, loan::LoanRepo, payment::PaymentRepo};
 
 //Context Related
 #[derive(Clone)]
@@ -19,6 +19,11 @@ impl GeneralContext {
     }
     pub fn loan_repo(&self) -> LoanRepo {
         LoanRepo {
+            pool: self.pool.clone(),
+        }
+    }
+    pub fn fine_repo(&self) -> FineRepo {
+        FineRepo {
             pool: self.pool.clone(),
         }
     }

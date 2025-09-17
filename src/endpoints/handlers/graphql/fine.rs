@@ -12,6 +12,6 @@ impl FineQuery {
         context: &GeneralContext,
         access_token: String,
     ) -> Result<Vec<Fine>, String> {
-        todo!()
+        context.fine_repo().get_user_fines(access_token)
     }
 }

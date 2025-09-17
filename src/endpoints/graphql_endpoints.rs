@@ -1,10 +1,8 @@
 use actix_web::web::{post, resource, ServiceConfig};
 
-use crate::endpoints::handlers::graphql::fine::FineQuery;
-
 use super::handlers::{
     configs::{connection_pool::get_pool_connection, schema::create_schema},
-    graphql::{graphql, loan::LoanQuery, payment::PaymentQuery},
+    graphql::{fine::FineQuery, graphql, loan::LoanQuery, payment::PaymentQuery},
 };
 
 //This is pretty much boilerplate for any Graphql api

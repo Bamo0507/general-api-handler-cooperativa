@@ -1,4 +1,9 @@
+use actix_web::web::Data;
+use r2d2::{Pool, PooledConnection};
+use redis::Client;
 use regex::Regex;
+
+use crate::repos::auth::utils::hashing_composite_key;
 
 ///Function for returning n number of any type value, having a function as a generator
 //(Ik syntaxis looks scary in the parameters, but it ain't)
