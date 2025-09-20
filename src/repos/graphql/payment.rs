@@ -101,15 +101,12 @@ impl PaymentRepo {
     pub fn get_all_users_for_affiliates(&self) -> Result<Vec<Affiliate>, String> {
         let con = &mut self.pool.get().expect("Couldn't connect to pool");
 
-        match con.scan_match::<&str, String>("affiliate_keys:*") {
+        match con.scan_match::<&str, String>("users:*:affiliate_key") {
             Ok(keys) => {
                 let mut affiliates: Vec<Affiliate> = Vec::new();
-                // TODO: see to refactor and generelize the regex part
-                let regex = Regex::new(r"^(affiliate_keys+):([\w]+)*").unwrap();
+                let regex = Regex::new(r"(users):(\w+):(affiliate_key)").unwrap();
 
-                // TODO: see to refactor and generalize this
                 for key in keys {
-                    println!("{}", key);
                     let parsed_key = regex.captures(key.as_str()).unwrap();
 
                     // Why borrow checker, WHY?!?!?
@@ -117,13 +114,14 @@ impl PaymentRepo {
                     let name_con = &mut self.pool.get().expect("Couldn't connect to pool");
 
                     affiliates.push(Affiliate {
-                        usuario_id: parsed_key[2].parse::<i32>().unwrap_or(0),
+                        // user db_id
+                        user_id: parsed_key[2].to_owned(),
                         name: name_con
                             .get::<String, String>(format!(
-                                "affiliate_ids:{}",
+                                "users:{}:complete_name",
                                 parsed_key[2].to_owned()
                             ))
-                            .unwrap_or("Not A Name".to_owned()),
+                            .unwrap_or("Not Name Found".to_owned()),
                     })
                 }
 

@@ -34,7 +34,7 @@ pub struct Payment {
 
 #[derive(Clone, Serialize, Deserialize, GraphQLObject, Debug)]
 pub struct Affiliate {
-    pub usuario_id: i32,
+    pub user_id: String,
     pub name: String,
 }
 
