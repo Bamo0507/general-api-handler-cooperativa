@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 // Fields are in spanish, for easier parsing in bryan's side
 #[derive(Clone, Serialize, Deserialize, GraphQLObject, Debug)]
 pub struct Loan {
-    pub qoutas: i32, // total couta needed
+    pub quotas: i32, // total couta needed
     pub payed: f64,
     pub debt: f64,
     pub total: f64,
@@ -16,21 +16,20 @@ pub struct Loan {
 
 #[derive(Clone, Serialize, Deserialize, GraphQLObject, Debug)]
 pub struct Fine {
-    pub cantidad: f64,
-    pub loan_key: String,
-    pub razon: String,
+    pub quantity: f64,
+    pub reason: String,
 }
 
 #[derive(Clone, Serialize, Deserialize, GraphQLObject, Debug)]
 pub struct Payment {
     pub payment_id: String,
-    pub monto_total: f64,
-    pub fecha_pago: String, // I'll pass it as a string, for not having parsing difficulties
-    pub num_boleta: String,
+    pub total_amount: f64,
+    pub payment_date: String, // I'll pass it as a string, for not having parsing difficulties
+    pub ticket_num: String,
     //pub banco_deposito: String, //Like this the same as the as ticker_num
-    pub comentarios: String,
-    pub foto: String,   // For bucket use
-    pub estado: String, // Following bryan's enums
+    pub commentary: String,
+    pub photo: String, // For bucket use
+    pub state: String, // Following bryan's enums
 }
 
 #[derive(Clone, Serialize, Deserialize, GraphQLObject, Debug)]
