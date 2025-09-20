@@ -20,5 +20,5 @@ jobs:
               cd general-api-handler-cooperativa
               git pull
               sudo docker compose -f init-server.yml down
-              sudo docker compose -f init-server.yml up --build -d
+              sudo docker compose -f init-server.yml up --build --force-recreate -d
             EOF
