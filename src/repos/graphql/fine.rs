@@ -33,22 +33,24 @@ impl FineRepo {
                     // for some reason redis gives all the info deserialize, so I have to do the
                     // serializion process my self
                     let nested_data =
-                        from_redis_value::<String>(&user_payment_raw).unwrap_or_default(); // first is
-                                                                                           // just the path, second is the actual data
+                        from_redis_value::<String>(&user_payment_raw).unwrap_or_default(); // cause
+                                                                                           // of the way  of the way the json library works on redis, the objects follow a
+                                                                                           // list type fetching, but as the db was planned, we where heading for a more
+                                                                                           // key aproach overall, so that's why we need the cast (after all there will
+                                                                                           // always be just one element)
 
                     // ik that I could've made the direct mapping to the GraphQl object, but I
                     // rather using my own name standar for the redis keys and that Bryan manages
                     // the names as however he want's it
                     let user_fines_redis =
-                        from_str::<RedisFine>(nested_data.as_str()).unwrap_or_default();
+                        from_str::<Vec<RedisFine>>(nested_data.as_str()).unwrap()[0].clone();
                     // that
                     // was just for getting the redis object, now I have to do the mapping
 
                     // now we do the payment mapping
                     fine_list.push(Fine {
-                        cantidad: user_fines_redis.amount as f64,
-                        loan_key: user_fines_redis.loan_key,
-                        razon: user_fines_redis.motive,
+                        quantity: user_fines_redis.amount as f64,
+                        reason: user_fines_redis.motive,
                     });
                 }
 

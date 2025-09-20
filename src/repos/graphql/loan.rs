@@ -40,27 +40,29 @@ impl LoanRepo {
                 for key in keys {
                     // We first fetch the raw data, first
                     let user_loan_raw = con
-                        .json_get::<String, &str, RedisValue>(format!("{}", key), "$")
+                        .json_get::<String, &str, RedisValue>(key.to_owned(), "$")
                         .unwrap(); // I will do it in one line, but nu uh, it would be unreadable
 
+                    println!("{user_loan_raw:?}");
                     // for some reason redis gives all the info deserialize, so I have to do the
                     // serializion process my self
-                    let nested_data =
-                        from_redis_value::<String>(&user_loan_raw).unwrap_or_default(); // first is
-                                                                                        // just the path, second is the actual data
+                    let nested_data = from_redis_value::<String>(&user_loan_raw).unwrap(); // first is
+                                                                                           // just the path, second is the actual data
 
                     // ik that I could've made the direct mapping to the GraphQl object, but I
                     // rather using my own name standar for the redis keys and that Bryan manages
                     // the names as however he want's it
                     let user_loan_redis =
-                        from_str::<RedisLoan>(nested_data.as_str()).unwrap_or_default();
-                    // that
-                    // was just for getting the redis object, now I have to do the mapping
+                        from_str::<Vec<RedisLoan>>(nested_data.as_str()).unwrap()[0].clone(); // cause
+                                                                                              // of the way  of the way the json library works on redis, the objects follow a
+                                                                                              // list type fetching, but as the db was planned, we where heading for a more
+                                                                                              // key aproach overall, so that's why we need the cast (after all there will
+                                                                                              // always be just one element)
 
                     // now we do the loan mapping
 
                     loans_list.push(Loan {
-                        qoutas: user_loan_redis.total_qouta,
+                        quotas: user_loan_redis.total_quota,
                         payed: user_loan_redis.payed,
                         debt: user_loan_redis.debt,
                         total: user_loan_redis.total,

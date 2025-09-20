@@ -11,7 +11,7 @@ pub struct LoanQuery {}
 impl LoanQuery {
     //TODO: add the necesary possible queries
 
-    pub async fn get_all(
+    pub async fn get_user_loans(
         context: &GeneralContext,
         access_token: String,
     ) -> Result<Vec<Loan>, String> {
