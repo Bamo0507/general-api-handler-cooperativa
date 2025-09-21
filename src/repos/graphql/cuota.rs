@@ -17,7 +17,7 @@ impl CuotaRepo {
         let db_access_token = hashing_composite_key(&[&access_token]);
         let key = match &cuota.tipo {
             crate::models::graphql::TipoCuota::Prestamo => {
-                let loan_id = cuota.loan_id.as_deref().unwrap_or("unknown");
+                let loan_id = cuota.loan_id.as_deref().ok_or("loan_id es requerido para cuotas de préstamo")?;
                 format!("users:{}:loans:{}:cuotas:{}", db_access_token, loan_id, cuota.fecha_vencimiento)
             },
             crate::models::graphql::TipoCuota::Afiliado => {
@@ -51,6 +51,9 @@ impl CuotaRepo {
             let nested = from_redis_value::<String>(&raw).map_err(|_| "Error parsing redis value")?;
             println!("[DEBUG] Clave: {} | Valor nested: {}", key, nested);
             let cuota_vec = from_str::<Vec<Cuota>>(&nested).map_err(|_| "Error deserializing cuota")?;
+            if cuota_vec.len() != 1 {
+                return Err(format!("Unexpected cuota array size for key {}: expected 1, got {}", key, cuota_vec.len()));
+            }
             let cuota = cuota_vec.get(0).cloned();
             if let Some(cuota) = cuota {
                 cuotas.push(cuota);

@@ -38,8 +38,8 @@ mod tests {
             loan_id: None,
             extraordinaria: Some(false),
         };
-        insert_cuota_test(&repo, access_token, &cuota_prestamo);
-        insert_cuota_test(&repo, access_token, &cuota_afiliado);
+        insert_cuota_test(&repo, access_token, &cuota_prestamo).expect("No se pudo guardar la cuota de prueba (Prestamo)");
+        insert_cuota_test(&repo, access_token, &cuota_afiliado).expect("No se pudo guardar la cuota de prueba (Afiliado)");
 
         let result = repo.get_cuotas_pendientes(access_token.to_string());
         assert!(result.is_ok(), "La consulta de cuotas pendientes falló");
@@ -67,15 +67,16 @@ mod tests {
 
     // Utilidad para crear un CuotaRepo de prueba
     fn get_test_repo() -> CuotaRepo {
-        // Aquí deberías configurar un pool de Redis de prueba
-        // Por ahora, se asume que existe un pool global para tests
-        let pool = Data::new(Pool::new(Client::open("redis://127.0.0.1/").unwrap()).unwrap());
+        // Usa una variable de entorno para la URL de Redis en vez de hardcodear
+        let redis_url = std::env::var("REDIS_TEST_URL").unwrap_or_else(|_| "redis://127.0.0.1/".to_string());
+        let pool = Data::new(Pool::new(Client::open(redis_url).unwrap()).unwrap());
         CuotaRepo { pool }
     }
 
     // Utilidad para insertar cuotas de prueba
-    fn insert_cuota_test(repo: &CuotaRepo, access_token: &str, cuota: &Cuota) {
-        repo.save_cuota(access_token.to_string(), cuota).expect("No se pudo guardar la cuota de prueba");
+    fn insert_cuota_test(repo: &CuotaRepo, access_token: &str, cuota: &Cuota) -> Result<(), Box<dyn std::error::Error>> {
+        repo.save_cuota(access_token.to_string(), cuota)?;
+        Ok(())
     }
 
     #[test]
@@ -93,7 +94,7 @@ mod tests {
             loan_id: Some("loan_abc".to_string()),
             extraordinaria: None,
         };
-        insert_cuota_test(&repo, access_token, &cuota);
+        insert_cuota_test(&repo, access_token, &cuota).expect("No se pudo guardar la cuota de prueba");
 
         let result = repo.get_cuotas_pendientes(access_token.to_string());
         assert!(result.is_ok(), "La consulta de cuotas pendientes falló");

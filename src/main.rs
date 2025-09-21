@@ -7,6 +7,8 @@ use general_api::endpoints::{
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
+    // Cargar variables de entorno desde .env
+    dotenv::dotenv().ok();
     // !For production
     let config = Env::env_init();
 

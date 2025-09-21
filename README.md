@@ -30,3 +30,4 @@ Handler principal para todo el manejo del backend de la cooperativa, desde:
 [!NOTE]
 > El compose file esta versionado de momento, solo para mostrar que si funciona el seteo
 > Luego se dejara de versionar
+> EL TESTING SE TIENE QUE HACER EN UN ENTORNO DE DESARROLLO, NO EN PRODUCCION
