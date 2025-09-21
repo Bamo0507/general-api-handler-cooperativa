@@ -1,3 +1,4 @@
+use dotenv::dotenv;
 // This tests assume that the redis db is running and the env variables are declare on the cli
 use rand::{
     distr::{Alphanumeric, SampleString},
@@ -19,6 +20,7 @@ use redis::Commands;
 /// For for getting acess_token with the given credentials in Redis DB (Login)
 #[test]
 fn from_credentials_to_acess_token() {
+    let _ = dotenv();
     let acess_token = get_user_access_token(
         "El_Mago_Pero_Del_Test".to_string(),
         "ElTestoPaga".to_string(),
@@ -35,6 +37,7 @@ fn from_credentials_to_acess_token() {
 /// For checking if credentials cretead an user instance in Redis DB (Signup)
 #[test]
 fn from_credentials_to_data() {
+    let _ = dotenv();
     let repo = PaymentRepo {
         pool: get_pool_connection(),
     };
@@ -99,6 +102,7 @@ fn from_credentials_to_data() {
 /// For getting data from User in Redis DB (Login)
 #[test]
 fn check_if_can_acess_data() {
+    let _ = dotenv();
     let username = "El_Mago_Pero_Del_Test".to_string();
     let passcode = "ElTestoPaga".to_string();
 

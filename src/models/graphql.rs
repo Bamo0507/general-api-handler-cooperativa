@@ -76,15 +76,6 @@ pub struct Aporte {
     pub monto: f64,
 }
 
-// ! As bryan sent me the model, it left for room for tons of overfetching, restructuring
-#[derive(Clone, Serialize, Deserialize, GraphQLObject, Debug)]
-pub struct Cuota {
-    pub monto_couta: f64,
-    pub fecha_vencimiento: String,
-    pub monto_pagado: f64,
-    pub multa: f64,
-}
-
 
 // --- SCRUM-255: Modelo de cuota de préstamo ---
 #[derive(Clone, Serialize, Deserialize, GraphQLObject, Debug)]
@@ -96,10 +87,12 @@ pub struct Cuota {
     pub multa: f64,
     pub pagada_por: Option<String>,
     pub tipo: TipoCuota,
+    pub loan_id: Option<String>,
+    pub extraordinaria: Option<bool>,
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug, juniper::GraphQLEnum)]
 pub enum TipoCuota {
-    Prestamo { loan_id: String },
-    Afiliado { extraordinaria: bool },
+    Prestamo,
+    Afiliado,
 }

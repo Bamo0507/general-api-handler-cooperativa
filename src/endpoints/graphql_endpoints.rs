@@ -25,6 +25,6 @@ pub fn graphql_config(config: &mut ServiceConfig) {
         .app_data(cuota_schema)
         .service(resource("/graphql/payment").route(post().to(graphql::<PaymentQuery>)))
         .service(resource("/graphql/loan").route(post().to(graphql::<LoanQuery>)))
-        .service(resource("/graphql/fine").route(post().to(graphql::<FineQuery>)));
+        .service(resource("/graphql/fine").route(post().to(graphql::<FineQuery>)))
         .service(resource("/graphql/cuota").route(post().to(graphql::<CuotaQuery>)));
 }
