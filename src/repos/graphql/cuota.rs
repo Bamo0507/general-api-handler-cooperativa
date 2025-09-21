@@ -18,10 +18,12 @@ impl CuotaRepo {
         let key = match &cuota.tipo {
             crate::models::graphql::TipoCuota::Prestamo => {
                 let loan_id = cuota.loan_id.as_deref().ok_or("loan_id es requerido para cuotas de préstamo")?;
-                format!("users:{}:loans:{}:cuotas:{}", db_access_token, loan_id, cuota.fecha_vencimiento)
+                let fecha = cuota.fecha_vencimiento.as_deref().ok_or("fecha_vencimiento es requerida para cuotas de préstamo")?;
+                format!("users:{}:loans:{}:cuotas:{}", db_access_token, loan_id, fecha)
             },
             crate::models::graphql::TipoCuota::Afiliado => {
-                format!("users:{}:cuotas_afiliado:{}", db_access_token, cuota.fecha_vencimiento)
+                let fecha = cuota.fecha_vencimiento.as_deref().ok_or("fecha_vencimiento es requerida para cuotas de afiliado")?;
+                format!("users:{}:cuotas_afiliado:{}", db_access_token, fecha)
             }
         };
         con.json_set::<_, _, _, ()>(key, "$", cuota).map_err(|_| "Error saving cuota")?;

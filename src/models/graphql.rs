@@ -82,16 +82,17 @@ pub struct Aporte {
 pub struct Cuota {
     pub user_id: String,
     pub monto: f64,
-    pub fecha_vencimiento: String, 
+    pub fecha_vencimiento: Option<String>,
     pub monto_pagado: f64,
     pub multa: f64,
     pub pagada_por: Option<String>,
     pub tipo: TipoCuota,
     pub loan_id: Option<String>,
     pub extraordinaria: Option<bool>,
+    pub pagada: Option<bool>, // SCRUM-255: campo para estado de pago
 }
 
-#[derive(Clone, Serialize, Deserialize, Debug, juniper::GraphQLEnum)]
+#[derive(Clone, Serialize, Deserialize, Debug, juniper::GraphQLEnum, PartialEq)]
 pub enum TipoCuota {
     Prestamo,
     Afiliado,

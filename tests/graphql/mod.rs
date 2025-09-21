@@ -1,1 +1,1 @@
-mod cuota_test;
+mod cuota_prestamo_test;
