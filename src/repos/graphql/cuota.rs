@@ -61,4 +61,56 @@ impl CuotaRepo {
         }
         Ok(cuotas)
     }
+
+    /// Consulta solo las cuotas de préstamo pendientes para un usuario, fundamentado en la estructura real de Redis y reglas de negocio:
+    /// - Solo cuotas de tipo préstamo (no afiliado)
+    /// - No pagadas (pagada == false)
+    /// - Fecha de vencimiento >= hoy
+    pub fn get_cuotas_prestamo_pendientes(&self, access_token: String) -> Result<Vec<Cuota>, String> {
+        use chrono::NaiveDate;
+        let db_access_token = hashing_composite_key(&[&access_token]);
+        let mut con = self.pool.get().map_err(|_| "Couldn't connect to pool")?;
+        let pattern_prestamo = format!("users:{}:loans:*:cuotas:*", db_access_token);
+        let keys_prestamo: Vec<String> = {
+            let iter = con.scan_match::<String, String>(pattern_prestamo).map_err(|_| "Error scanning keys prestamo")?;
+            iter.collect()
+        };
+        let mut cuotas = Vec::new();
+        let today = chrono::Local::now().date_naive();
+        for key in keys_prestamo.iter() {
+            let raw = con.json_get::<String, &str, RedisValue>(key.clone(), "$")
+                .map_err(|_| format!("Error getting cuota for key {}", key))?;
+            let nested = from_redis_value::<String>(&raw).map_err(|_| "Error parsing redis value")?;
+            let cuota_vec = from_str::<Vec<Cuota>>(&nested).map_err(|_| "Error deserializing cuota")?;
+            if cuota_vec.len() != 1 {
+                continue; // Si el array no es de tamaño 1, ignora la cuota
+            }
+            let cuota = cuota_vec.get(0).cloned();
+            if let Some(cuota) = cuota {
+                // Filtrado fundamentado:
+                // 1. Solo tipo préstamo
+                if cuota.tipo != crate::models::graphql::TipoCuota::Prestamo {
+                    continue;
+                }
+                // 2. No pagada
+                if cuota.pagada.unwrap_or(false) {
+                    continue;
+                }
+                // 3. Fecha de vencimiento >= hoy
+                if let Some(fecha_str) = &cuota.fecha_vencimiento {
+                    if let Ok(fecha) = NaiveDate::parse_from_str(fecha_str, "%Y-%m-%d") {
+                        if fecha < today {
+                            continue;
+                        }
+                    } else {
+                        continue; // Si la fecha no se puede parsear, ignora la cuota
+                    }
+                } else {
+                    continue; // Si no hay fecha, ignora la cuota
+                }
+                cuotas.push(cuota);
+            }
+        }
+        Ok(cuotas)
+    }
 }
