@@ -4,6 +4,7 @@ use r2d2::Pool;
 use redis::Client;
 
 use crate::repos::graphql::{fine::FineRepo, loan::LoanRepo, payment::PaymentRepo};
+use crate::repos::graphql::cuota::CuotaRepo;
 
 //Context Related
 #[derive(Clone)]
@@ -24,6 +25,11 @@ impl GeneralContext {
     }
     pub fn fine_repo(&self) -> FineRepo {
         FineRepo {
+            pool: self.pool.clone(),
+        }
+    }
+    pub fn cuota_repo(&self) -> CuotaRepo {
+        CuotaRepo {
             pool: self.pool.clone(),
         }
     }
