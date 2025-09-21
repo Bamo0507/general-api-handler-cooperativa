@@ -84,3 +84,22 @@ pub struct Cuota {
     pub monto_pagado: f64,
     pub multa: f64,
 }
+
+
+// --- SCRUM-255: Modelo de cuota de préstamo ---
+#[derive(Clone, Serialize, Deserialize, GraphQLObject, Debug)]
+pub struct Cuota {
+    pub user_id: String,
+    pub monto: f64,
+    pub fecha_vencimiento: String, 
+    pub monto_pagado: f64,
+    pub multa: f64,
+    pub pagada_por: Option<String>,
+    pub tipo: TipoCuota,
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug, juniper::GraphQLEnum)]
+pub enum TipoCuota {
+    Prestamo { loan_id: String },
+    Afiliado { extraordinaria: bool },
+}
