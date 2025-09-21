@@ -115,4 +115,36 @@ impl CuotaRepo {
         }
         Ok(cuotas)
     }
+
+        /// Obtiene todas las cuotas asociadas a un loan_id, sin filtrar por estado de pago ni vigencia.
+        /// Fundamento: Permite consultar el historial completo de cuotas de un préstamo específico para trazabilidad y reportes.
+        pub fn get_cuotas_por_loan_id(&self, access_token: String, loan_id: String) -> Result<Vec<Cuota>, String> {
+            let db_access_token = hashing_composite_key(&[&access_token]);
+            let mut con = self.pool.get().map_err(|_| "Couldn't connect to pool")?;
+            let pattern_prestamo = format!("users:{}:loans:*:cuotas:*", db_access_token);
+            let keys_prestamo: Vec<String> = {
+                let iter = con.scan_match::<String, String>(pattern_prestamo).map_err(|_| "Error scanning keys prestamo")?;
+                iter.collect()
+            };
+            let mut cuotas = Vec::new();
+            for key in keys_prestamo.iter() {
+                let raw = con.json_get::<String, &str, RedisValue>(key.clone(), "$")
+                    .map_err(|_| format!("Error getting cuota for key {}", key))?;
+                let nested = from_redis_value::<String>(&raw).map_err(|_| "Error parsing redis value")?;
+                let cuota_vec = from_str::<Vec<Cuota>>(&nested).map_err(|_| "Error deserializing cuota")?;
+                if cuota_vec.len() != 1 {
+                    continue; // Si el array no es de tamaño 1, ignora la cuota
+                }
+                let cuota = cuota_vec.get(0).cloned();
+                if let Some(cuota) = cuota {
+                    // Filtrado fundamentado: solo por loan_id
+                    if let Some(ref cuota_loan_id) = cuota.loan_id {
+                        if cuota_loan_id == &loan_id {
+                            cuotas.push(cuota);
+                        }
+                    }
+                }
+            }
+            Ok(cuotas)
+        }
 }
