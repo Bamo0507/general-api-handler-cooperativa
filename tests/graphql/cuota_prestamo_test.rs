@@ -236,3 +236,97 @@ fn test_fecha_mal_formateada_no_aparece() {
     cleanup_redis_for_user(access_token);
 }
 
+#[test]
+fn test_error_conexion_no_panic() {
+    // Fundamento: Errores en operaciones Redis no deben causar panic del sistema
+    let repo = get_test_repo();
+    let access_token = "TEST_TOKEN_8";
+    cleanup_redis_for_user(access_token);
+
+    // Insertar datos que causen problemas en deserialización
+    let access_token_string = access_token.to_string();
+    let db_access_token = hashing_composite_key(&[&access_token_string]);
+    let redis_url = std::env::var("REDIS_URL").unwrap_or_else(|_| "redis://127.0.0.1/".to_string());
+    let client = Client::open(redis_url).expect("No se pudo conectar a Redis");
+    let mut con = client.get_connection().expect("No se pudo obtener conexión");
+    let key = format!("users:{}:cuotas:problematic_data", db_access_token);
+    let _: () = con.set(&key, "not-a-json-object").expect("Error insertando datos problemáticos");
+
+    let result = repo.get_cuotas_prestamo_pendientes(access_token.to_string());
+    
+    // El sistema debe manejar errores de deserialización graciosamente
+    // Puede retornar error o lista vacía, pero no debe hacer panic
+    match result {
+        Ok(cuotas) => {
+            // Si retorna Ok, los datos problemáticos no deben aparecer
+            assert_eq!(cuotas.len(), 0, "Datos problemáticos no deben deserializarse");
+        },
+        Err(_) => {
+            // Si retorna error, es aceptable - lo importante es que no haga panic
+            assert!(true, "Error controlado es aceptable");
+        }
+    }
+    cleanup_redis_for_user(access_token);
+}
+
+// Cada test debe documentar su fundamento y limpiar el entorno antes/después
+// Los helpers y setup deben evitar duplicidad y residuos
+// No se asume nada: todo se valida y se documenta
+
+#[test]
+fn test_get_cuotas_por_loan_id_retornan_todas() {
+    // Fundamento: Debe retornar todas las cuotas asociadas a un loan_id, sin filtrar por estado de pago ni vigencia
+    // Se crean cuotas pagadas, pendientes y de otros préstamos para validar el filtrado correcto
+    let repo = get_test_repo();
+    let access_token = "TEST_TOKEN_LOANID";
+    cleanup_redis_for_user(access_token);
+
+    let loan_id = "loanX".to_string();
+    let cuota1 = Cuota {
+        user_id: "userA".to_string(),
+        monto: 100.0,
+        fecha_vencimiento: Some("2025-09-21".to_string()),
+        monto_pagado: 0.0,
+        multa: 0.0,
+        pagada_por: None,
+        tipo: TipoCuota::Prestamo,
+        loan_id: Some(loan_id.clone()),
+        pagada: Some(false),
+        extraordinaria: None,
+    };
+    let cuota2 = Cuota {
+        user_id: "userB".to_string(),
+        monto: 200.0,
+        fecha_vencimiento: Some("2025-09-22".to_string()),
+        monto_pagado: 200.0,
+        multa: 0.0,
+        pagada_por: Some("userB".to_string()),
+        tipo: TipoCuota::Prestamo,
+        loan_id: Some(loan_id.clone()),
+        pagada: Some(true),
+        extraordinaria: None,
+    };
+    let cuota3 = Cuota {
+        user_id: "userC".to_string(),
+        monto: 300.0,
+        fecha_vencimiento: Some("2025-09-23".to_string()),
+        monto_pagado: 0.0,
+        multa: 10.0,
+        pagada_por: None,
+        tipo: TipoCuota::Prestamo,
+        loan_id: Some("loanY".to_string()), // Otro préstamo
+        pagada: Some(false),
+        extraordinaria: None,
+    };
+    repo.save_cuota(access_token.to_string(), &cuota1).expect("No se pudo guardar cuota1");
+    repo.save_cuota(access_token.to_string(), &cuota2).expect("No se pudo guardar cuota2");
+    repo.save_cuota(access_token.to_string(), &cuota3).expect("No se pudo guardar cuota3");
+
+    let result = repo.get_cuotas_por_loan_id(access_token.to_string(), loan_id.clone()).expect("Error en consulta por loan_id");
+    assert_eq!(result.len(), 2, "Debe retornar solo las cuotas asociadas a loan_id");
+    let user_ids: Vec<String> = result.iter().map(|c| c.user_id.clone()).collect();
+    assert!(user_ids.contains(&"userA".to_string()), "Debe incluir cuota1");
+    assert!(user_ids.contains(&"userB".to_string()), "Debe incluir cuota2");
+    assert!(!user_ids.contains(&"userC".to_string()), "No debe incluir cuota3 de otro préstamo");
+    cleanup_redis_for_user(access_token);
+}
