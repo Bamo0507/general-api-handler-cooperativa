@@ -11,6 +11,59 @@ pub struct CuotaRepo {
 }
 
 impl CuotaRepo {
+    /// Consulta solo las cuotas de afiliado pendientes para un usuario   
+     /// - Solo cuotas de tipo afiliado
+    /// - No pagadas (pagada == false)
+    /// - Fecha de vencimiento <= mes actual (no futuras)
+    /// - Permite pagos por terceros (pagada_por)
+    pub fn get_cuotas_afiliado_pendientes(&self, access_token: String) -> Result<Vec<Cuota>, String> {
+        use chrono::{NaiveDate, Datelike};
+        let db_access_token = hashing_composite_key(&[&access_token]);
+        let mut con = self.pool.get().map_err(|_| "Couldn't connect to pool")?;
+        let pattern_afiliado = format!("users:{}:cuotas_afiliado:*", db_access_token);
+        let keys_afiliado: Vec<String> = {
+            let iter = con.scan_match::<String, String>(pattern_afiliado).map_err(|_| "Error scanning keys afiliado")?;
+            iter.collect()
+        };
+        let mut cuotas = Vec::new();
+        let today = chrono::Local::now().date_naive();
+        for key in keys_afiliado.iter() {
+            let raw = con.json_get::<String, &str, RedisValue>(key.clone(), "$")
+                .map_err(|_| format!("Error getting cuota for key {}", key))?;
+            let nested = from_redis_value::<String>(&raw).map_err(|_| "Error parsing redis value")?;
+            let cuota_vec = from_str::<Vec<Cuota>>(&nested).map_err(|_| "Error deserializing cuota")?;
+            if cuota_vec.len() != 1 {
+                continue; // Si el array no es de tamaño 1, ignora la cuota
+            }
+            let cuota = cuota_vec.get(0).cloned();
+            if let Some(cuota) = cuota {
+                // 1. Solo tipo afiliado
+                if cuota.tipo != crate::models::graphql::TipoCuota::Afiliado {
+                    continue;
+                }
+                // 2. No pagada
+                if cuota.pagada.unwrap_or(false) {
+                    continue;
+                }
+                // 3. Fecha de vencimiento <= mes actual
+                if let Some(fecha_str) = &cuota.fecha_vencimiento {
+                    if let Ok(fecha) = NaiveDate::parse_from_str(fecha_str, "%Y-%m-%d") {
+                        // Solo mostrar cuotas hasta el mes actual
+                        if fecha.year() > today.year() || (fecha.year() == today.year() && fecha.month() > today.month()) {
+                            continue;
+                        }
+                    } else {
+                        continue; // Si la fecha no se puede parsear, ignora la cuota
+                    }
+                } else {
+                    continue; // Si no hay fecha, ignora la cuota
+                }
+                // 4. Permite pagos por terceros (pagada_por puede ser distinto a user_id)
+                cuotas.push(cuota);
+            }
+        }
+        Ok(cuotas)
+    }
     // Guarda una cuota en Redis
     pub fn save_cuota(&self, access_token: String, cuota: &Cuota) -> Result<(), String> {
         let mut con = self.pool.get().map_err(|_| "Couldn't connect to pool")?;
@@ -117,7 +170,6 @@ impl CuotaRepo {
     }
 
         /// Obtiene todas las cuotas asociadas a un loan_id, sin filtrar por estado de pago ni vigencia.
-        /// Fundamento: Permite consultar el historial completo de cuotas de un préstamo específico para trazabilidad y reportes.
         pub fn get_cuotas_por_loan_id(&self, access_token: String, loan_id: String) -> Result<Vec<Cuota>, String> {
             let db_access_token = hashing_composite_key(&[&access_token]);
             let mut con = self.pool.get().map_err(|_| "Couldn't connect to pool")?;
