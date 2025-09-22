@@ -83,7 +83,7 @@ impl CuotaRepo {
         Ok(())
     }
 
-    // Consulta todas las cuotas de préstamo pendientes para un usuario
+    // Consulta todas las cuotas  pendientes para un usuario
     pub fn get_cuotas_pendientes(&self, access_token: String) -> Result<Vec<Cuota>, String> {
         let db_access_token = hashing_composite_key(&[&access_token]);
         let mut con = self.pool.get().map_err(|_| "Couldn't connect to pool")?;
