@@ -52,6 +52,7 @@ fn test_cuotas_prestamo_no_pagadas_vigentes_aparecen() {
         loan_id: Some("loan1".to_string()),
         pagada: Some(false),
         extraordinaria: None,
+        numero_cuota: Some(1),
     };
     repo.save_cuota(access_token.to_string(), &cuota).expect("No se pudo guardar cuota");
 
@@ -63,6 +64,7 @@ fn test_cuotas_prestamo_no_pagadas_vigentes_aparecen() {
     assert_eq!(returned.fecha_vencimiento, cuota.fecha_vencimiento);
     assert_eq!(returned.tipo, TipoCuota::Prestamo);
     assert_eq!(returned.pagada, Some(false));
+    assert_eq!(returned.numero_cuota, Some(1));
     cleanup_redis_for_user(access_token);
 }
 
@@ -85,6 +87,7 @@ fn test_cuotas_prestamo_pagadas_no_aparecen() {
         loan_id: Some("loan2".to_string()),
         pagada: Some(true), // Marcada como pagada
         extraordinaria: None,
+        numero_cuota: Some(2),
     };
     repo.save_cuota(access_token.to_string(), &cuota_pagada).expect("No se pudo guardar cuota");
 
@@ -113,6 +116,7 @@ fn test_cuotas_prestamo_vencidas_no_aparecen() {
         loan_id: Some("loan3".to_string()),
         pagada: Some(false),
         extraordinaria: None,
+        numero_cuota: Some(3),
     };
     repo.save_cuota(access_token.to_string(), &cuota_vencida).expect("No se pudo guardar cuota");
 
@@ -140,6 +144,7 @@ fn test_cuotas_afiliado_no_aparecen() {
         loan_id: None,
         pagada: Some(false),
         extraordinaria: None,
+        numero_cuota: None,
     };
     repo.save_cuota(access_token.to_string(), &cuota_afiliado).expect("No se pudo guardar cuota");
 
@@ -192,6 +197,7 @@ fn test_concurrent_access_and_cleanup() {
         loan_id: Some("loan6".to_string()),
         pagada: Some(false),
         extraordinaria: None,
+        numero_cuota: Some(6),
     };
     
     // Guardar la misma cuota múltiples veces (simular concurrencia)
@@ -226,6 +232,7 @@ fn test_fecha_mal_formateada_no_aparece() {
         loan_id: Some("loan7".to_string()),
         pagada: Some(false),
         extraordinaria: None,
+        numero_cuota: Some(7),
     };
     repo.save_cuota(access_token.to_string(), &cuota_fecha_mala).expect("No se pudo guardar cuota");
 
@@ -293,6 +300,7 @@ fn test_get_cuotas_por_loan_id_retornan_todas() {
         loan_id: Some(loan_id.clone()),
         pagada: Some(false),
         extraordinaria: None,
+        numero_cuota: Some(1),
     };
     let cuota2 = Cuota {
         user_id: "userB".to_string(),
@@ -305,6 +313,7 @@ fn test_get_cuotas_por_loan_id_retornan_todas() {
         loan_id: Some(loan_id.clone()),
         pagada: Some(true),
         extraordinaria: None,
+        numero_cuota: Some(2),
     };
     let cuota3 = Cuota {
         user_id: "userC".to_string(),
@@ -317,6 +326,7 @@ fn test_get_cuotas_por_loan_id_retornan_todas() {
         loan_id: Some("loanY".to_string()), // Otro préstamo
         pagada: Some(false),
         extraordinaria: None,
+        numero_cuota: Some(3),
     };
     repo.save_cuota(access_token.to_string(), &cuota1).expect("No se pudo guardar cuota1");
     repo.save_cuota(access_token.to_string(), &cuota2).expect("No se pudo guardar cuota2");

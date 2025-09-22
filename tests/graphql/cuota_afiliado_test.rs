@@ -53,6 +53,7 @@ mod tests {
                 loan_id: None,
                 extraordinaria: None,
                 pagada: Some(false),
+                numero_cuota: None,
             },
             Cuota {
                 user_id: "afiliado1".to_string(),
@@ -65,6 +66,7 @@ mod tests {
                 loan_id: None,
                 extraordinaria: None,
                 pagada: Some(false),
+                numero_cuota: None,
             },
             Cuota {
                 user_id: "afiliado2".to_string(),
@@ -77,6 +79,7 @@ mod tests {
                 loan_id: None,
                 extraordinaria: None,
                 pagada: Some(false),
+                numero_cuota: None,
             },
         ];
         for cuota in &cuotas {

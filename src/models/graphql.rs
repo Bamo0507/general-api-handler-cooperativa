@@ -90,6 +90,7 @@ pub struct Cuota {
     pub loan_id: Option<String>,
     pub extraordinaria: Option<bool>,
     pub pagada: Option<bool>, // SCRUM-255: campo para estado de pago
+    pub numero_cuota: Option<i32>, // Solo para préstamo
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug, juniper::GraphQLEnum, PartialEq)]

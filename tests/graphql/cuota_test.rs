@@ -18,25 +18,29 @@ mod tests {
         let cuota_prestamo = Cuota {
             user_id: "user_2".to_string(),
             monto: 500.0,
-            fecha_vencimiento: "2025-09-10".to_string(),
+            fecha_vencimiento: Some("2025-09-10".to_string()),
             monto_pagado: 0.0,
             multa: 0.0,
             pagada_por: None,
             tipo: TipoCuota::Prestamo,
             loan_id: Some("loan_xyz".to_string()),
             extraordinaria: None,
+            pagada: None,
+            numero_cuota: Some(1),
         };
         // Cuota tipo Afiliado
         let cuota_afiliado = Cuota {
             user_id: "user_2".to_string(),
             monto: 200.0,
-            fecha_vencimiento: "2025-09-15".to_string(),
+            fecha_vencimiento: Some("2025-09-15".to_string()),
             monto_pagado: 0.0,
             multa: 0.0,
             pagada_por: None,
             tipo: TipoCuota::Afiliado,
             loan_id: None,
             extraordinaria: Some(false),
+            pagada: None,
+            numero_cuota: None,
         };
         insert_cuota_test(&repo, access_token, &cuota_prestamo).expect("No se pudo guardar la cuota de prueba (Prestamo)");
         insert_cuota_test(&repo, access_token, &cuota_afiliado).expect("No se pudo guardar la cuota de prueba (Afiliado)");
@@ -52,10 +56,12 @@ mod tests {
             match &cuota.tipo {
                 TipoCuota::Prestamo => {
                     assert_eq!(cuota.loan_id.as_deref(), Some("loan_xyz"));
+                    assert_eq!(cuota.numero_cuota, Some(1));
                     found_prestamo = true;
                 },
                 TipoCuota::Afiliado => {
                     assert_eq!(cuota.extraordinaria, Some(false));
+                    assert_eq!(cuota.numero_cuota, None);
                     found_afiliado = true;
                 },
             }
