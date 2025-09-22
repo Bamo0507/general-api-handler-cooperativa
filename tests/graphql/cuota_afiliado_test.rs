@@ -96,7 +96,7 @@ mod tests {
         // 4. Mock de get_all_users_for_affiliates si es necesario
         // 5. Ejecutar el resolver
         let result = futures::executor::block_on(
-            CuotaQuery::get_cuotas_afiliado_mensuales_formateadas(&context)
+            CuotaQuery::get_cuotas_afiliado_mensuales_formateadas(&context, "TEST_ACCESS_TOKEN".to_string())
         ).unwrap();
         
         // Imprimir resultado para depuración
@@ -107,13 +107,13 @@ mod tests {
         
         // Verificar que contiene cuotas para Juan Perez (debería tener dos cuotas: enero y febrero 2025)
         let cuotas_juan: Vec<&CuotaAfiliadoMensualResponse> = result.iter()
-            .filter(|r| r.user_id == "afiliado1")
+            .filter(|r| r.identifier.contains("Juan Perez"))
             .collect();
         assert_eq!(cuotas_juan.len(), 2, "Juan Perez debe tener exactamente 2 cuotas");
         
         // Verificar campos específicos para las cuotas de Juan Perez
         for cuota in &cuotas_juan {
-            assert_eq!(cuota.user_id, "afiliado1");
+            assert_eq!(cuota.user_id, "TEST_ACCESS_TOKEN");
             assert_eq!(cuota.monto, 250.0);
             assert_eq!(cuota.nombre, "Juan Perez");
             assert_eq!(cuota.extraordinaria, false);
@@ -131,13 +131,13 @@ mod tests {
         
         // Verificar que contiene cuotas para Maria Gomez (debería tener una cuota: enero 2025)
         let cuotas_maria: Vec<&CuotaAfiliadoMensualResponse> = result.iter()
-            .filter(|r| r.user_id == "afiliado2")
+            .filter(|r| r.identifier.contains("Maria Gomez"))
             .collect();
         assert_eq!(cuotas_maria.len(), 1, "Maria Gomez debe tener exactamente 1 cuota");
         
         // Verificar campos específicos para la cuota de Maria Gomez
         let cuota_maria = cuotas_maria[0];
-        assert_eq!(cuota_maria.user_id, "afiliado2");
+        assert_eq!(cuota_maria.user_id, "TEST_ACCESS_TOKEN");
         assert_eq!(cuota_maria.monto, 250.0);
         assert_eq!(cuota_maria.nombre, "Maria Gomez");
         assert_eq!(cuota_maria.extraordinaria, false);

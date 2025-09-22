@@ -7,8 +7,19 @@ use redis::{Client, Commands};
 use general_api::models::graphql::{Cuota, TipoCuota};
 use general_api::repos::graphql::cuota::CuotaRepo;
 use general_api::repos::auth::utils::hashing_composite_key;
+use general_api::endpoints::handlers::configs::schema::GeneralContext;
+use general_api::endpoints::handlers::graphql::cuota::{CuotaQuery, CuotaPrestamoResponse};
 use chrono::Local;
 use dotenv::dotenv;
+
+// Helper para crear contexto siguiendo patrón del proyecto
+fn setup_context() -> GeneralContext {
+    dotenv().ok();
+    let redis_url = std::env::var("REDIS_URL").unwrap_or_else(|_| "redis://127.0.0.1/".to_string());
+    let client = Client::open(redis_url).unwrap();
+    let pool = Pool::builder().build(client).unwrap();
+    GeneralContext { pool: Data::new(pool) }
+}
 
 // Helper para crear repo siguiendo patrón del proyecto
 fn get_test_repo() -> CuotaRepo {
@@ -338,5 +349,95 @@ fn test_get_cuotas_por_loan_id_retornan_todas() {
     assert!(user_ids.contains(&"userA".to_string()), "Debe incluir cuota1");
     assert!(user_ids.contains(&"userB".to_string()), "Debe incluir cuota2");
     assert!(!user_ids.contains(&"userC".to_string()), "No debe incluir cuota3 de otro préstamo");
+    cleanup_redis_for_user(access_token);
+}
+
+#[test]
+fn test_get_cuotas_prestamo_pendientes_formateadas() {
+    // Fundamento: Debe retornar cuotas de préstamo en el formato específico requerido según docs/api-quota-response-format.md
+    let context = setup_context();
+    let access_token = "TEST_TOKEN_FORMATTED";
+    cleanup_redis_for_user(access_token);
+
+    // Crear cuotas de préstamo con diferentes características para validar el mapeo completo
+    let today = Local::now().date_naive().format("%Y-%m-%d").to_string();
+    let cuota1 = Cuota {
+        user_id: "user_formatted_1".to_string(),
+        monto: 100.0,
+        fecha_vencimiento: Some(today.clone()),
+        monto_pagado: 25.0,
+        multa: 5.0,
+        pagada_por: None,
+        tipo: TipoCuota::Prestamo,
+        loan_id: Some("loan_abc".to_string()),
+        pagada: Some(false),
+        extraordinaria: None,
+        numero_cuota: Some(1),
+    };
+    let cuota2 = Cuota {
+        user_id: "user_formatted_2".to_string(),
+        monto: 200.0,
+        fecha_vencimiento: Some(today.clone()),
+        monto_pagado: 0.0,
+        multa: 0.0,
+        pagada_por: Some("third_party".to_string()),
+        tipo: TipoCuota::Prestamo,
+        loan_id: Some("loan_xyz".to_string()),
+        pagada: Some(false),
+        extraordinaria: None,
+        numero_cuota: Some(2),
+    };
+
+    // Guardar cuotas usando el repo
+    let repo = get_test_repo();
+    repo.save_cuota(access_token.to_string(), &cuota1).expect("No se pudo guardar cuota1");
+    repo.save_cuota(access_token.to_string(), &cuota2).expect("No se pudo guardar cuota2");
+
+    // Ejecutar el resolver formateado
+    let result = futures::executor::block_on(
+        CuotaQuery::get_cuotas_prestamo_pendientes_formateadas(&context, access_token.to_string())
+    ).unwrap();
+
+    // Imprimir resultado para depuración
+    println!("Resultado del resolver formateado: {:?}", result);
+
+    // Validar formato y contenido del array de objetos CuotaPrestamoResponse
+    assert!(!result.is_empty(), "El resultado no debe estar vacío");
+    assert_eq!(result.len(), 2, "Debe retornar exactamente 2 cuotas");
+
+    // Verificar campos específicos para la primera cuota
+    let cuota_response_1: &CuotaPrestamoResponse = result.iter()
+        .find(|r| r.monto == 100.0)
+        .expect("Debe encontrar cuota con monto 100.0");
+    
+    assert_eq!(cuota_response_1.user_id, access_token);
+    assert_eq!(cuota_response_1.monto, 100.0);
+    assert_eq!(cuota_response_1.fecha_vencimiento, today);
+    assert_eq!(cuota_response_1.monto_pagado, 25.0);
+    assert_eq!(cuota_response_1.multa, 5.0);
+    assert_eq!(cuota_response_1.pagada_por, None);
+    assert_eq!(cuota_response_1.tipo, "Prestamo");
+    assert_eq!(cuota_response_1.loan_id, Some("loan_abc".to_string()));
+    assert_eq!(cuota_response_1.pagada, false);
+    assert_eq!(cuota_response_1.numero_cuota, Some(1));
+    assert_eq!(cuota_response_1.nombre_prestamo, None); // Por ahora vacío según documentación
+
+    // Verificar campos específicos para la segunda cuota
+    let cuota_response_2: &CuotaPrestamoResponse = result.iter()
+        .find(|r| r.monto == 200.0)
+        .expect("Debe encontrar cuota con monto 200.0");
+    
+    assert_eq!(cuota_response_2.user_id, access_token);
+    assert_eq!(cuota_response_2.monto, 200.0);
+    assert_eq!(cuota_response_2.fecha_vencimiento, today);
+    assert_eq!(cuota_response_2.monto_pagado, 0.0);
+    assert_eq!(cuota_response_2.multa, 0.0);
+    assert_eq!(cuota_response_2.pagada_por, Some("third_party".to_string()));
+    assert_eq!(cuota_response_2.tipo, "Prestamo");
+    assert_eq!(cuota_response_2.loan_id, Some("loan_xyz".to_string()));
+    assert_eq!(cuota_response_2.pagada, false);
+    assert_eq!(cuota_response_2.numero_cuota, Some(2));
+    assert_eq!(cuota_response_2.nombre_prestamo, None); // Por ahora vacío según documentación
+
     cleanup_redis_for_user(access_token);
 }

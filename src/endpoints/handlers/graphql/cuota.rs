@@ -15,6 +15,21 @@ pub struct CuotaAfiliadoMensualResponse {
     pub extraordinaria: bool,
 }
 
+#[derive(GraphQLObject, Debug)]
+pub struct CuotaPrestamoResponse {
+    pub user_id: String,
+    pub monto: f64,
+    pub fecha_vencimiento: String,
+    pub monto_pagado: f64,
+    pub multa: f64,
+    pub pagada_por: Option<String>,
+    pub tipo: String,
+    pub loan_id: Option<String>,
+    pub pagada: bool,
+    pub numero_cuota: Option<i32>,
+    pub nombre_prestamo: Option<String>,
+}
+
 pub struct CuotaQuery {}
 
 #[juniper::graphql_object(
@@ -34,6 +49,7 @@ impl CuotaQuery {
         /// Cada objeto incluye: identifier, user_id, monto, nombre, fecha_vencimiento, extraordinaria
         pub async fn get_cuotas_afiliado_mensuales_formateadas(
     context: &GeneralContext,
+    access_token: String,
 ) -> Result<Vec<CuotaAfiliadoMensualResponse>, String> {
     let afiliados = context.payment_repo().get_all_users_for_affiliates()?;
     let hoy = chrono::Utc::now().date_naive();
@@ -64,7 +80,7 @@ impl CuotaQuery {
                         let identifier = format!("{} - {} {}", nombre, mes, anio);
                         resultado.push(CuotaAfiliadoMensualResponse {
                             identifier,
-                            user_id: afiliado.user_id.clone(),
+                            user_id: access_token.clone(),
                             monto: cuota.monto,
                             nombre,
                             fecha_vencimiento: fecha_str.clone(),
@@ -83,5 +99,33 @@ impl CuotaQuery {
         access_token: String,
     ) -> Result<Vec<Cuota>, String> {
         context.cuota_repo().get_cuotas_prestamo_pendientes(access_token)
+    }
+
+    /// Retorna las cuotas de préstamo pendientes en formato completo según docs/api-quota-response-format.md
+    /// Cada objeto incluye: user_id, monto, fecha_vencimiento, monto_pagado, multa, pagada_por, tipo, loan_id, pagada, numero_cuota, nombre_prestamo
+    pub async fn get_cuotas_prestamo_pendientes_formateadas(
+        context: &GeneralContext,
+        access_token: String,
+    ) -> Result<Vec<CuotaPrestamoResponse>, String> {
+        let cuotas = context.cuota_repo().get_cuotas_prestamo_pendientes(access_token.clone())?;
+        let mut resultado = Vec::new();
+        
+        for cuota in cuotas {
+            resultado.push(CuotaPrestamoResponse {
+                user_id: access_token.clone(),
+                monto: cuota.monto,
+                fecha_vencimiento: cuota.fecha_vencimiento.unwrap_or_default(),
+                monto_pagado: cuota.monto_pagado,
+                multa: cuota.multa,
+                pagada_por: cuota.pagada_por,
+                tipo: format!("{:?}", cuota.tipo), // Convierte el enum a string
+                loan_id: cuota.loan_id,
+                pagada: cuota.pagada.unwrap_or(false),
+                numero_cuota: cuota.numero_cuota,
+                nombre_prestamo: None, // Por ahora vacío como dice la documentación
+            });
+        }
+        
+        Ok(resultado)
     }
 }
