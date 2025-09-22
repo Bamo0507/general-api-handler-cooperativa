@@ -1,2 +1,2 @@
 mod cuota_prestamo_test;
-//mod cuota_test;
+pub mod cuota_afiliado_test;
