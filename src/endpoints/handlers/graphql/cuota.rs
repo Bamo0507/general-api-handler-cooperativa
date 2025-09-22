@@ -122,7 +122,7 @@ impl CuotaQuery {
                 loan_id: cuota.loan_id,
                 pagada: cuota.pagada.unwrap_or(false),
                 numero_cuota: cuota.numero_cuota,
-                nombre_prestamo: None, // Por ahora vacío como dice la documentación
+                nombre_prestamo: None, // Por ahora vacío porque no está implementado
             });
         }
         

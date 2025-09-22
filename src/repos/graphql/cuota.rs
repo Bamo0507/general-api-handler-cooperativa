@@ -64,7 +64,7 @@ impl CuotaRepo {
         }
         Ok(cuotas)
     }
-    // Guarda una cuota en Redis
+    // ESTE MÉTODO SE USA PARA TESTING, NO TIENE LÓGICA DE NEGOCIO, NO USAR EN PRODUCCIÓN
     pub fn save_cuota(&self, access_token: String, cuota: &Cuota) -> Result<(), String> {
         let mut con = self.pool.get().map_err(|_| "Couldn't connect to pool")?;
         let db_access_token = hashing_composite_key(&[&access_token]);
@@ -83,7 +83,7 @@ impl CuotaRepo {
         Ok(())
     }
 
-    // Consulta todas las cuotas  pendientes para un usuario
+    // Consulta todas las cuotas  pendientes para un usuario a nivel general
     pub fn get_cuotas_pendientes(&self, access_token: String) -> Result<Vec<Cuota>, String> {
         let db_access_token = hashing_composite_key(&[&access_token]);
         let mut con = self.pool.get().map_err(|_| "Couldn't connect to pool")?;
@@ -117,7 +117,7 @@ impl CuotaRepo {
         Ok(cuotas)
     }
 
-    /// Consulta solo las cuotas de préstamo pendientes para un usuario, fundamentado en la estructura real de Redis y reglas de negocio:
+    /// Consulta solo las cuotas de préstamo pendientes para un usuario
     /// - Solo cuotas de tipo préstamo (no afiliado)
     /// - No pagadas (pagada == false)
     /// - Fecha de vencimiento >= hoy
