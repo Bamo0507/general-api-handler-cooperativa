@@ -43,7 +43,6 @@ impl PaymentRepo {
         })
     }
 
-    //TODO: keep with this later
     pub fn get_user_payments(&self, access_token: String) -> Result<Vec<Payment>, String> {
         let mut con = self.pool.get().expect("Couldn't connect to pool");
 
