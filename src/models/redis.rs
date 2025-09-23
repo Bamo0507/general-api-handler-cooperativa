@@ -1,5 +1,10 @@
 use serde::{Deserialize, Serialize};
 
+use crate::{
+    models::{graphql::Payment as GraphQLPayment, GraphQLMappable},
+    repos::graphql::utils::get_payment_key,
+};
+
 //TODO: refactor for different files
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
