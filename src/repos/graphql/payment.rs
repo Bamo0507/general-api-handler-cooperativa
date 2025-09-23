@@ -50,7 +50,15 @@ impl PaymentRepo {
         )
     }
 
-    //TODO: refactor for the affiliate_key jus to be a simple array
+    // TODO: implement payment creation
+    pub fn create_payment(
+        &self,
+        affiliates_ids: Option<Vec<String>>,
+        loans_ids: Option<Vec<String>>,
+        fines_ids: Option<Vec<String>>,
+    ) -> Result<String, String> {
+        todo!();
+    }
 
     // This goes in the payment repo, only cause is an utililty endpoint for the Payments
     pub fn get_all_users_for_affiliates(&self) -> Result<Vec<Affiliate>, String> {
