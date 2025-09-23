@@ -5,6 +5,7 @@ use crate::{
 
 pub struct PaymentQuery {}
 
+//TODO: refactor error and ok string with status message
 #[juniper::graphql_object(
     Context = GeneralContext,
 )]
@@ -30,5 +31,10 @@ impl PaymentQuery {
     /// Get's all the members names with pg_id (mostly for payments and affiliates)
     pub async fn get_all_memembers(context: &GeneralContext) -> Result<Vec<Affiliate>, String> {
         context.payment_repo().get_all_users_for_affiliates()
+    }
+
+    pub async fn create_user_payment(context: &GeneralContext) -> Result<String, String> {
+        //TODO: implement repo method call
+        todo!()
     }
 }

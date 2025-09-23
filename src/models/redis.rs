@@ -1,11 +1,20 @@
 use serde::{Deserialize, Serialize};
 
+use crate::{
+    models::{
+        graphql::{Fine as GraphQLFine, Loan as GraphQLLoan, Payment as GraphQLPayment},
+        GraphQLMappable,
+    },
+    repos::graphql::utils::get_key,
+};
+
 //TODO: refactor for different files
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Payment {
     pub date_created: String,
     pub comprobante_bucket: String,
+    pub account_number: String,
     pub ticket_number: String,
     pub status: String,
     pub quantity: f64,
@@ -17,10 +26,26 @@ impl Default for Payment {
         Payment {
             date_created: "0-00-0000".to_string(),
             comprobante_bucket: "/".to_string(),
+            account_number: "000000000".to_string(),
             ticket_number: "000000000".to_string(),
             status: "NOT_PROCESS".to_string(),
             quantity: 0.00,
             comments: "".to_string(),
+        }
+    }
+}
+
+impl GraphQLMappable<GraphQLPayment> for Payment {
+    fn to_graphql_type(&self, key: String) -> GraphQLPayment {
+        GraphQLPayment {
+            id: get_key(key, "payments".to_owned()),
+            total_amount: self.quantity,
+            account_num: (*self.account_number).to_string(),
+            payment_date: (*self.date_created).to_string(),
+            ticket_num: (*self.ticket_number).to_string(),
+            commentary: (*self.comments).to_string(),
+            photo: (*self.comprobante_bucket).to_string(),
+            state: (*self.status).to_string(),
         }
     }
 }
@@ -50,6 +75,20 @@ impl Default for Loan {
     }
 }
 
+impl GraphQLMappable<GraphQLLoan> for Loan {
+    fn to_graphql_type(&self, key: String) -> GraphQLLoan {
+        GraphQLLoan {
+            id: get_key(key, "loans".to_owned()),
+            quotas: self.total_quota,
+            payed: self.payed,
+            debt: self.debt,
+            total: self.total,
+            status: (*self.status).to_string(),
+            reason: (*self.reason).to_string(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Fine {
     pub amount: f32,
@@ -61,6 +100,16 @@ impl Default for Fine {
         Fine {
             amount: 0.,
             motive: "nu uh".to_owned(),
+        }
+    }
+}
+
+impl GraphQLMappable<GraphQLFine> for Fine {
+    fn to_graphql_type(&self, key: String) -> GraphQLFine {
+        GraphQLFine {
+            id: get_key(key, "fines".to_owned()),
+            quantity: self.amount as f64,
+            reason: (*self.motive).to_string(),
         }
     }
 }

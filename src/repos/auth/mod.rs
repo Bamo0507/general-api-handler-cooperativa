@@ -5,7 +5,7 @@ use crate::{
     endpoints::handlers::configs::connection_pool::get_pool_connection,
     models::{
         auth::{TokenInfo, UserType},
-        ErrorMessage,
+        StatusMessage,
     },
 };
 
@@ -16,7 +16,7 @@ pub fn create_user_with_access_token(
     user_name: String,
     pass: String,
     real_name: String,
-) -> Result<TokenInfo, ErrorMessage> {
+) -> Result<TokenInfo, StatusMessage> {
     let mut con = get_pool_connection()
         .get()
         .expect("Couldn't connect to pool"); //Can't abstracted to a struct, :C
@@ -91,14 +91,14 @@ pub fn create_user_with_access_token(
             })
         }
 
-        Ok(_) => Err(ErrorMessage {
+        Ok(_) => Err(StatusMessage {
             message: "Couldn't Create User".to_string(),
         }),
     }
 }
 
 //TODO: Refactor this for recieving the access token
-pub fn get_user_access_token(user_name: String, pass: String) -> Result<TokenInfo, ErrorMessage> {
+pub fn get_user_access_token(user_name: String, pass: String) -> Result<TokenInfo, StatusMessage> {
     let mut con = get_pool_connection()
         .get()
         .expect("Couldn't connect to pool"); //Can't abstracted to a struct, :C
@@ -138,11 +138,11 @@ pub fn get_user_access_token(user_name: String, pass: String) -> Result<TokenInf
                 });
             }
 
-            Err(ErrorMessage {
+            Err(StatusMessage {
                 message: "User Might Not Exist or User/Password is wrong".to_string(),
             })
         }
-        Err(e) => Err(ErrorMessage {
+        Err(e) => Err(StatusMessage {
             message: format!("Error: {e}"),
         }),
     }
