@@ -45,7 +45,7 @@ mod tests {
         insert_quota_test(&repo, access_token, &quota_prestamo).expect("No se pudo guardar la Quota de prueba (Prestamo)");
         insert_quota_test(&repo, access_token, &quota_afiliado).expect("No se pudo guardar la Quota de prueba (Afiliado)");
 
-        let result = repo.get_quotas_pendientes(access_token.to_string());
+        let result = repo.get_pending_quotas(access_token.to_string());
         assert!(result.is_ok(), "La consulta de quotas pendientes falló");
         let quotas = result.unwrap();
         assert_eq!(quotas.len(), 2, "Debe retornar dos quotas pendientes");
@@ -102,7 +102,7 @@ mod tests {
         };
         insert_quota_test(&repo, access_token, &Quota).expect("No se pudo guardar la Quota de prueba");
 
-        let result = repo.get_quotas_pendientes(access_token.to_string());
+        let result = repo.get_pending_quotas(access_token.to_string());
         assert!(result.is_ok(), "La consulta de quotas pendientes falló");
         let quotas = result.unwrap();
         assert_eq!(quotas.len(), 1, "Debe retornar una Quota pendiente");

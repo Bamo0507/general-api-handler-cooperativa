@@ -292,7 +292,7 @@ fn test_error_conexion_no_panic() {
 // No se asume nada: todo se valida y se documenta
 
 #[test]
-fn test_get_quotas_por_loan_id_retornan_todas() {
+fn test_get_quota_by_loan_id_retornan_todas() {
     // Fundamento: Debe retornar todas las quotas asociadas a un loan_id, sin filtrar por estado de pago ni vigencia
     // Se crean quotas pagadas, pendientes y de otros préstamos para validar el filtrado correcto
     let repo = get_test_repo();
@@ -343,7 +343,7 @@ fn test_get_quotas_por_loan_id_retornan_todas() {
     repo.save_quota(access_token.to_string(), &quota2).expect("No se pudo guardar quota2");
     repo.save_quota(access_token.to_string(), &quota3).expect("No se pudo guardar quota3");
 
-    let result = repo.get_quotas_por_loan_id(access_token.to_string(), loan_id.clone()).expect("Error en consulta por loan_id");
+    let result = repo.get_quota_by_loan_id(access_token.to_string(), loan_id.clone()).expect("Error en consulta por loan_id");
     assert_eq!(result.len(), 2, "Debe retornar solo las quotas asociadas a loan_id");
     let user_ids: Vec<String> = result.iter().map(|c| c.user_id.clone()).collect();
     assert!(user_ids.contains(&"userA".to_string()), "Debe incluir quota1");
@@ -353,7 +353,7 @@ fn test_get_quotas_por_loan_id_retornan_todas() {
 }
 
 #[test]
-fn test_get_quotas_prestamo_pendientes_formateadas() {
+fn test_get_pending_loans_quotas() {
     // Fundamento: Debe retornar quotas de préstamo en el formato específico requerido según docs/api-quota-response-format.md
     let context = setup_context();
     let access_token = "TEST_TOKEN_FORMATTED";
@@ -395,7 +395,7 @@ fn test_get_quotas_prestamo_pendientes_formateadas() {
 
     // Ejecutar el resolver formateado
     let result = futures::executor::block_on(
-        QuotaQuery::get_quotas_prestamo_pendientes_formateadas(&context, access_token.to_string())
+        QuotaQuery::get_pending_loans_quotas(&context, access_token.to_string())
     ).unwrap();
 
     // Imprimir resultado para depuración

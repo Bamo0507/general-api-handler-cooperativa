@@ -14,7 +14,7 @@ use general_api::{
         graphql::payment::PaymentRepo,
     },
 };
-use redis::{Commands, cmd};
+use redis::Commands;
 
 // Helper function para limpiar datos de usuario de prueba
 fn cleanup_test_user(username: &str) {
@@ -68,13 +68,13 @@ fn from_credentials_to_acess_token() {
     assert!(creation_result.is_ok(), "Should create test user: {:?}", creation_result.err());
 
     // Ahora obtener el token de acceso
-    let acess_token = get_user_access_token(
+    let access_token = get_user_access_token(
         username.to_string(),
         password.to_string(),
     );
 
     assert_eq!(
-        acess_token.unwrap().access_token.to_uppercase(),
+        access_token.unwrap().access_token.to_uppercase(),
         "c50329f3e834e2d6a27d0e1a81fc12579aa4570fa889eb302ca192f82961edb0"
             .to_string()
             .to_uppercase()
@@ -95,9 +95,9 @@ fn from_credentials_to_data() {
     // random string
     let mut random_string = Alphanumeric.sample_string(&mut rng(), 16);
 
-    let mut access_token = String::new();
 
     // Loop for getting new access token
+    let mut access_token = String::new();
     loop {
         access_token = match create_user_with_access_token(
             random_string.clone(),

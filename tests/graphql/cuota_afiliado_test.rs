@@ -18,7 +18,7 @@ mod tests {
     }
 
     #[test]
-    fn test_get_quotas_afiliado_mensuales_formateadas() {
+    fn test_get_monthly_affiliate_quota() {
         let context = setup_context();
         
         // *** LIMPIAR Redis antes de la prueba ***
@@ -96,7 +96,7 @@ mod tests {
         // 4. Mock de get_all_users_for_affiliates si es necesario
         // 5. Ejecutar el resolver
         let result = futures::executor::block_on(
-            QuotaQuery::get_quotas_afiliado_mensuales_formateadas(&context, "TEST_ACCESS_TOKEN".to_string())
+            QuotaQuery::get_monthly_affiliate_quota(&context, "TEST_ACCESS_TOKEN".to_string())
         ).unwrap();
         
         // Imprimir resultado para depuración
