@@ -16,11 +16,15 @@ pub struct Loan {
     pub reason: String,
 }
 
+impl GraphQLMapFriendly for Loan {} // Don't like the sintaxs for trait impl
+
 #[derive(Clone, Serialize, Deserialize, GraphQLObject, Debug)]
 pub struct Fine {
     pub quantity: f64,
     pub reason: String,
 }
+
+impl GraphQLMapFriendly for Fine {} // Don't like the sintaxs for trait impl
 
 #[derive(Clone, Serialize, Deserialize, GraphQLObject, Debug)]
 pub struct Payment {
