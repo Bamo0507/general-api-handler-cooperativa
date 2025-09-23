@@ -3,8 +3,6 @@
 use juniper::GraphQLObject;
 use serde::{Deserialize, Serialize};
 
-use crate::models::GraphQLMapFriendly;
-
 // Fields are in spanish, for easier parsing in bryan's side
 #[derive(Clone, Serialize, Deserialize, GraphQLObject, Debug)]
 pub struct Loan {
@@ -17,16 +15,12 @@ pub struct Loan {
     pub reason: String,
 }
 
-impl GraphQLMapFriendly for Loan {} // Don't like the sintaxs for trait impl
-
 #[derive(Clone, Serialize, Deserialize, GraphQLObject, Debug)]
 pub struct Fine {
     pub id: String,
     pub quantity: f64,
     pub reason: String,
 }
-
-impl GraphQLMapFriendly for Fine {} // Don't like the sintaxs for trait impl
 
 #[derive(Clone, Serialize, Deserialize, GraphQLObject, Debug)]
 pub struct Payment {
@@ -39,8 +33,6 @@ pub struct Payment {
     pub photo: String, // For bucket use
     pub state: String, // Following bryan's enums
 }
-
-impl GraphQLMapFriendly for Payment {}
 
 #[derive(Clone, Serialize, Deserialize, GraphQLObject, Debug)]
 pub struct Affiliate {

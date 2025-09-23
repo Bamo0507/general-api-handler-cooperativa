@@ -33,7 +33,7 @@ impl Default for Payment {
     }
 }
 
-impl GraphQLMappable for Payment {
+impl GraphQLMappable<GraphQLPayment> for Payment {
     fn to_graphql_type(&self, key: String) -> GraphQLPayment {
         GraphQLPayment {
             id: get_key(key, "payments".to_owned()),
@@ -72,7 +72,7 @@ impl Default for Loan {
     }
 }
 
-impl GraphQLMappable for Loan {
+impl GraphQLMappable<GraphQLLoan> for Loan {
     fn to_graphql_type(&self, key: String) -> GraphQLLoan {
         GraphQLLoan {
             id: get_key(key, "loans".to_owned()),
@@ -101,7 +101,7 @@ impl Default for Fine {
     }
 }
 
-impl GraphQLMappable for Fine {
+impl GraphQLMappable<GraphQLFine> for Fine {
     fn to_graphql_type(&self, key: String) -> GraphQLFine {
         GraphQLFine {
             id: get_key(key, "fines".to_owned()),
