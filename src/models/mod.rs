@@ -7,7 +7,7 @@ pub mod redis;
 
 //my Own error message
 #[derive(Debug, Clone, Serialize)]
-pub struct ErrorMessage {
+pub struct StatusMessage {
     pub message: String,
 }
 

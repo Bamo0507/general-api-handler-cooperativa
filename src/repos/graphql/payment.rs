@@ -53,9 +53,15 @@ impl PaymentRepo {
     // TODO: implement payment creation
     pub fn create_payment(
         &self,
-        affiliates_ids: Option<Vec<String>>,
-        loans_ids: Option<Vec<String>>,
-        fines_ids: Option<Vec<String>>,
+        comment: String,
+        ammount: f32,
+        account_number: String,
+        // each type (String, T), referes to the key of it and it's value (which in this case it's
+        // the amount)
+        quotas: Vec<(String, f32)>,
+        loans: Vec<(String, f32)>,
+        fines: Vec<(String, f32)>,
+        affiliates_owed_capitals: Vec<(String, f32)>,
     ) -> Result<String, String> {
         todo!();
     }
