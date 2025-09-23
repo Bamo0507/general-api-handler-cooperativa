@@ -63,8 +63,8 @@ pub struct Codeudor {
 // ! As bryan sent me the model, it left for room for tons of overfetching, restructuring
 #[derive(Clone, Serialize, Deserialize, GraphQLObject, Debug)]
 pub struct PrestamoDetalles {
-    pub numero_cuota: i32,
-    pub monto_cuota: f64,
+    pub numero_quota: i32,
+    pub monto_quota: f64,
     pub fecha_vencimiento: String, // I'll pass it as a string, for not having parsing difficulties
     pub monto_pagado: f64,
     pub multa: f64,
@@ -86,15 +86,15 @@ pub struct Quota {
     pub monto_pagado: f64,
     pub multa: f64,
     pub pagada_por: Option<String>, // bryan lo dijo porque en caso de que la Quota la pague otro usuario
-    pub tipo: TipoCuota,
+    pub tipo: TipoQuota,
     pub loan_id: Option<String>, // de acá se debería sacar el nombre del prestamo, pero todavía no está implementado (así lo pidió bryan)
     pub extraordinaria: Option<bool>, // esto al crear, por logica de negocio va cambiar el monto si es extraordinaria o no
     pub pagada: Option<bool>, // SCRUM-255: campo para estado de pago
-    pub numero_cuota: Option<i32>, // Solo para préstamo
+    pub numero_quota: Option<i32>, // Solo para préstamo
 }
 
 #[derive(Clone, Serialize, Deserialize, GraphQLObject, Debug)]
-pub struct CuotaAfiliadoMensualResponse {
+pub struct QuotaAfiliadoMensualResponse {
     pub identifier: String,
     pub user_id: String,
     pub monto: f64,
@@ -104,7 +104,7 @@ pub struct CuotaAfiliadoMensualResponse {
 }
 
 #[derive(Clone, Serialize, Deserialize, GraphQLObject, Debug)]
-pub struct CuotaPrestamoResponse {
+pub struct QuotaPrestamoResponse {
     pub user_id: String,
     pub monto: f64,
     pub fecha_vencimiento: String,
@@ -114,12 +114,12 @@ pub struct CuotaPrestamoResponse {
     pub tipo: String,
     pub loan_id: Option<String>,
     pub pagada: bool,
-    pub numero_cuota: Option<i32>,
+    pub numero_quota: Option<i32>,
     pub nombre_prestamo: Option<String>,
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug, juniper::GraphQLEnum, PartialEq)]
-pub enum TipoCuota {
+pub enum TipoQuota {
     Prestamo,
     Afiliado,
 }
