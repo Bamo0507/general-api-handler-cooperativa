@@ -3,13 +3,12 @@ use r2d2::Pool;
 use redis::Client;
 
 use redis::{from_redis_value, Commands, JsonCommands, Value as RedisValue};
-use regex::Regex;
 use serde_json::from_str;
 
 use crate::repos::graphql::utils::get_multiple_models;
 use crate::{
     models::{
-        graphql::{Codeudor, Loan, Pagare, PrestamoDetalles},
+        graphql::{Loan},
         redis::Loan as RedisLoan,
     },
     repos::auth::utils::hashing_composite_key,

@@ -1,3 +1,9 @@
 target
 # the repo has local env, so it doesn't really matter
 .env
+docs/planeacion_scrum314.md
+
+docs/refactor-cuota-nuevos-campos.md
+docs/api-quota-response-format.md
+cuotas-related
+

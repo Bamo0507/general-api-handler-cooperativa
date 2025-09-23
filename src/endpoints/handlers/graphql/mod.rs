@@ -1,6 +1,8 @@
+
 pub mod loan;
 pub mod payment;
 pub mod fine;
+pub mod quota;
 
 use actix_web::{web, HttpResponse};
 use juniper::{http::GraphQLRequest, GraphQLType, GraphQLTypeAsync};
