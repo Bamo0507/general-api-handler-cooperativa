@@ -2,7 +2,7 @@ use actix_web::web::{post, resource, ServiceConfig};
 
 use super::handlers::{
     configs::{connection_pool::get_pool_connection, schema::create_schema},
-    graphql::{fine::FineQuery, graphql, loan::LoanQuery, payment::PaymentQuery, cuota::CuotaQuery},
+    graphql::{fine::FineQuery, graphql, loan::LoanQuery, payment::PaymentQuery, Quota::CuotaQuery},
 };
 
 //This is pretty much boilerplate for any Graphql api
@@ -26,5 +26,5 @@ pub fn graphql_config(config: &mut ServiceConfig) {
         .service(resource("/graphql/payment").route(post().to(graphql::<PaymentQuery>)))
         .service(resource("/graphql/loan").route(post().to(graphql::<LoanQuery>)))
         .service(resource("/graphql/fine").route(post().to(graphql::<FineQuery>)))
-        .service(resource("/graphql/cuota").route(post().to(graphql::<CuotaQuery>)));
+        .service(resource("/graphql/Quota").route(post().to(graphql::<CuotaQuery>)));
 }

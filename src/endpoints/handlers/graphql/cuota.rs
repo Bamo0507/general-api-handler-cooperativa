@@ -1,34 +1,10 @@
 use crate::{
     endpoints::handlers::configs::schema::GeneralContext,
-    models::graphql::Cuota,
+    models::graphql::Quota,
 };
 use chrono::Datelike;
-use juniper::GraphQLObject;
-
-#[derive(GraphQLObject, Debug)]
-pub struct CuotaAfiliadoMensualResponse {
-    pub identifier: String,
-    pub user_id: String,
-    pub monto: f64,
-    pub nombre: String,
-    pub fecha_vencimiento: String,
-    pub extraordinaria: bool,
-}
-
-#[derive(GraphQLObject, Debug)]
-pub struct CuotaPrestamoResponse {
-    pub user_id: String,
-    pub monto: f64,
-    pub fecha_vencimiento: String,
-    pub monto_pagado: f64,
-    pub multa: f64,
-    pub pagada_por: Option<String>,
-    pub tipo: String,
-    pub loan_id: Option<String>,
-    pub pagada: bool,
-    pub numero_cuota: Option<i32>,
-    pub nombre_prestamo: Option<String>,
-}
+// ...existing code...
+use crate::models::graphql::{CuotaAfiliadoMensualResponse, CuotaPrestamoResponse};
 
 pub struct CuotaQuery {}
 
@@ -40,7 +16,7 @@ impl CuotaQuery {
     pub async fn get_cuotas_pendientes(
         context: &GeneralContext,
         access_token: String,
-    ) -> Result<Vec<Cuota>, String> {
+    ) -> Result<Vec<Quota>, String> {
         context.cuota_repo().get_cuotas_pendientes(access_token)
     }
 
@@ -56,8 +32,8 @@ impl CuotaQuery {
     let mut resultado = Vec::new();
     for afiliado in afiliados {
         let cuotas = context.cuota_repo().get_cuotas_afiliado_pendientes(afiliado.user_id.clone())?;
-        for cuota in cuotas {
-            if let Some(fecha_str) = &cuota.fecha_vencimiento {
+        for Quota in cuotas {
+            if let Some(fecha_str) = &Quota.fecha_vencimiento {
                 if let Ok(fecha) = chrono::NaiveDate::parse_from_str(fecha_str, "%Y-%m-%d") {
                     if fecha <= hoy {
                         let mes = match fecha.month() {
@@ -81,10 +57,10 @@ impl CuotaQuery {
                         resultado.push(CuotaAfiliadoMensualResponse {
                             identifier,
                             user_id: access_token.clone(),
-                            monto: cuota.monto,
+                            monto: Quota.monto,
                             nombre,
-                            fecha_vencimiento: fecha_str.clone(),
-                            extraordinaria: cuota.extraordinaria.unwrap_or(false),
+                            fecha_vencimiento: fecha_str.to_string(),
+                            extraordinaria: Quota.extraordinaria.unwrap_or(false),
                         });
                     }
                 }
@@ -97,7 +73,7 @@ impl CuotaQuery {
     pub async fn get_cuotas_prestamo_pendientes(
         context: &GeneralContext,
         access_token: String,
-    ) -> Result<Vec<Cuota>, String> {
+    ) -> Result<Vec<Quota>, String> {
         context.cuota_repo().get_cuotas_prestamo_pendientes(access_token)
     }
 
@@ -110,18 +86,18 @@ impl CuotaQuery {
         let cuotas = context.cuota_repo().get_cuotas_prestamo_pendientes(access_token.clone())?;
         let mut resultado = Vec::new();
         
-        for cuota in cuotas {
+        for Quota in cuotas {
             resultado.push(CuotaPrestamoResponse {
                 user_id: access_token.clone(),
-                monto: cuota.monto,
-                fecha_vencimiento: cuota.fecha_vencimiento.unwrap_or_default(),
-                monto_pagado: cuota.monto_pagado,
-                multa: cuota.multa,
-                pagada_por: cuota.pagada_por,
-                tipo: format!("{:?}", cuota.tipo), // Convierte el enum a string
-                loan_id: cuota.loan_id,
-                pagada: cuota.pagada.unwrap_or(false),
-                numero_cuota: cuota.numero_cuota,
+                monto: Quota.monto,
+                fecha_vencimiento: Quota.fecha_vencimiento.unwrap_or_default(),
+                monto_pagado: Quota.monto_pagado,
+                multa: Quota.multa,
+                pagada_por: Quota.pagada_por,
+                tipo: format!("{:?}", Quota.tipo), // Convierte el enum a string
+                loan_id: Quota.loan_id,
+                pagada: Quota.pagada.unwrap_or(false),
+                numero_cuota: Quota.numero_cuota,
                 nombre_prestamo: None, // Por ahora vacío porque no está implementado
             });
         }

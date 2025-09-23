@@ -5,8 +5,8 @@
 use actix_web::web::Data;
 use r2d2::Pool;
 use redis::Client;
-use general_api::models::graphql::{Cuota, TipoCuota};
-use general_api::repos::graphql::cuota::CuotaRepo;
+use general_api::models::graphql::{Quota, TipoCuota};
+use general_api::repos::graphql::Quota::CuotaRepo;
 
 #[cfg(test)]
 mod tests {
@@ -14,8 +14,8 @@ mod tests {
     fn test_filtrado_por_tipo_cuota() {
         let repo = get_test_repo();
         let access_token = "test_token_tipo";
-        // Cuota tipo Prestamo
-        let cuota_prestamo = Cuota {
+        // Quota tipo Prestamo
+        let cuota_prestamo = Quota {
             user_id: "user_2".to_string(),
             monto: 500.0,
             fecha_vencimiento: Some("2025-09-10".to_string()),
@@ -28,8 +28,8 @@ mod tests {
             pagada: None,
             numero_cuota: Some(1),
         };
-        // Cuota tipo Afiliado
-        let cuota_afiliado = Cuota {
+        // Quota tipo Afiliado
+        let cuota_afiliado = Quota {
             user_id: "user_2".to_string(),
             monto: 200.0,
             fecha_vencimiento: Some("2025-09-15".to_string()),
@@ -42,8 +42,8 @@ mod tests {
             pagada: None,
             numero_cuota: None,
         };
-        insert_cuota_test(&repo, access_token, &cuota_prestamo).expect("No se pudo guardar la cuota de prueba (Prestamo)");
-        insert_cuota_test(&repo, access_token, &cuota_afiliado).expect("No se pudo guardar la cuota de prueba (Afiliado)");
+        insert_cuota_test(&repo, access_token, &cuota_prestamo).expect("No se pudo guardar la Quota de prueba (Prestamo)");
+        insert_cuota_test(&repo, access_token, &cuota_afiliado).expect("No se pudo guardar la Quota de prueba (Afiliado)");
 
         let result = repo.get_cuotas_pendientes(access_token.to_string());
         assert!(result.is_ok(), "La consulta de cuotas pendientes falló");
@@ -52,22 +52,22 @@ mod tests {
 
         let mut found_prestamo = false;
         let mut found_afiliado = false;
-        for cuota in cuotas {
-            match &cuota.tipo {
+        for Quota in cuotas {
+            match &Quota.tipo {
                 TipoCuota::Prestamo => {
-                    assert_eq!(cuota.loan_id.as_deref(), Some("loan_xyz"));
-                    assert_eq!(cuota.numero_cuota, Some(1));
+                    assert_eq!(Quota.loan_id.as_deref(), Some("loan_xyz"));
+                    assert_eq!(Quota.numero_cuota, Some(1));
                     found_prestamo = true;
                 },
                 TipoCuota::Afiliado => {
-                    assert_eq!(cuota.extraordinaria, Some(false));
-                    assert_eq!(cuota.numero_cuota, None);
+                    assert_eq!(Quota.extraordinaria, Some(false));
+                    assert_eq!(Quota.numero_cuota, None);
                     found_afiliado = true;
                 },
             }
         }
-        assert!(found_prestamo, "No se encontró cuota tipo Prestamo");
-        assert!(found_afiliado, "No se encontró cuota tipo Afiliado");
+        assert!(found_prestamo, "No se encontró Quota tipo Prestamo");
+        assert!(found_afiliado, "No se encontró Quota tipo Afiliado");
     }
     use super::*;
 
@@ -80,8 +80,8 @@ mod tests {
     }
 
     // Utilidad para insertar cuotas de prueba
-    fn insert_cuota_test(repo: &CuotaRepo, access_token: &str, cuota: &Cuota) -> Result<(), Box<dyn std::error::Error>> {
-        repo.save_cuota(access_token.to_string(), cuota)?;
+    fn insert_cuota_test(repo: &CuotaRepo, access_token: &str, Quota: &Quota) -> Result<(), Box<dyn std::error::Error>> {
+        repo.save_cuota(access_token.to_string(), Quota)?;
         Ok(())
     }
 
@@ -89,7 +89,7 @@ mod tests {
     fn test_consulta_basica_cuotas_pendientes() {
         let repo = get_test_repo();
         let access_token = "test_token_123";
-        let cuota = Cuota {
+        let Quota = Quota {
             user_id: "user_1".to_string(),
             monto: 1000.0,
             fecha_vencimiento: "2025-09-01".to_string(),
@@ -100,24 +100,24 @@ mod tests {
             loan_id: Some("loan_abc".to_string()),
             extraordinaria: None,
         };
-        insert_cuota_test(&repo, access_token, &cuota).expect("No se pudo guardar la cuota de prueba");
+        insert_cuota_test(&repo, access_token, &Quota).expect("No se pudo guardar la Quota de prueba");
 
         let result = repo.get_cuotas_pendientes(access_token.to_string());
         assert!(result.is_ok(), "La consulta de cuotas pendientes falló");
         let cuotas = result.unwrap();
-        assert_eq!(cuotas.len(), 1, "Debe retornar una cuota pendiente");
+        assert_eq!(cuotas.len(), 1, "Debe retornar una Quota pendiente");
         let returned = &cuotas[0];
-        assert_eq!(returned.user_id, cuota.user_id);
-        assert_eq!(returned.monto, cuota.monto);
-        assert_eq!(returned.fecha_vencimiento, cuota.fecha_vencimiento);
-        assert_eq!(returned.monto_pagado, cuota.monto_pagado);
-        assert_eq!(returned.multa, cuota.multa);
-        assert_eq!(returned.pagada_por, cuota.pagada_por);
+        assert_eq!(returned.user_id, Quota.user_id);
+        assert_eq!(returned.monto, Quota.monto);
+        assert_eq!(returned.fecha_vencimiento, Quota.fecha_vencimiento);
+        assert_eq!(returned.monto_pagado, Quota.monto_pagado);
+        assert_eq!(returned.multa, Quota.multa);
+        assert_eq!(returned.pagada_por, Quota.pagada_por);
         match &returned.tipo {
             TipoCuota::Prestamo => {
                 assert_eq!(returned.loan_id.as_deref(), Some("loan_abc"));
             },
-            _ => panic!("El tipo de cuota no es Prestamo"),
+            _ => panic!("El tipo de Quota no es Prestamo"),
         }
     }
     // TODO: Implementar test de filtrado por tipo

@@ -4,11 +4,11 @@
 use actix_web::web::Data;
 use r2d2::Pool;
 use redis::{Client, Commands};
-use general_api::models::graphql::{Cuota, TipoCuota};
-use general_api::repos::graphql::cuota::CuotaRepo;
+use general_api::models::graphql::{Quota, TipoCuota};
+use general_api::repos::graphql::Quota::CuotaRepo;
 use general_api::repos::auth::utils::hashing_composite_key;
 use general_api::endpoints::handlers::configs::schema::GeneralContext;
-use general_api::endpoints::handlers::graphql::cuota::{CuotaQuery, CuotaPrestamoResponse};
+use general_api::endpoints::handlers::graphql::Quota::{CuotaQuery, CuotaPrestamoResponse};
 use chrono::Local;
 use dotenv::dotenv;
 
@@ -52,7 +52,7 @@ fn test_cuotas_prestamo_no_pagadas_vigentes_aparecen() {
     cleanup_redis_for_user(access_token);
 
     let today = Local::now().date_naive().format("%Y-%m-%d").to_string();
-    let cuota = Cuota {
+    let Quota = Quota {
         user_id: "user1".to_string(),
         monto: 100.0,
         fecha_vencimiento: Some(today.clone()),
@@ -65,14 +65,14 @@ fn test_cuotas_prestamo_no_pagadas_vigentes_aparecen() {
         extraordinaria: None,
         numero_cuota: Some(1),
     };
-    repo.save_cuota(access_token.to_string(), &cuota).expect("No se pudo guardar cuota");
+    repo.save_cuota(access_token.to_string(), &Quota).expect("No se pudo guardar Quota");
 
     let result = repo.get_cuotas_prestamo_pendientes(access_token.to_string()).expect("Error en consulta");
-    assert_eq!(result.len(), 1, "Debe retornar una cuota");
+    assert_eq!(result.len(), 1, "Debe retornar una Quota");
     let returned = &result[0];
-    assert_eq!(returned.user_id, cuota.user_id);
-    assert_eq!(returned.monto, cuota.monto);
-    assert_eq!(returned.fecha_vencimiento, cuota.fecha_vencimiento);
+    assert_eq!(returned.user_id, Quota.user_id);
+    assert_eq!(returned.monto, Quota.monto);
+    assert_eq!(returned.fecha_vencimiento, Quota.fecha_vencimiento);
     assert_eq!(returned.tipo, TipoCuota::Prestamo);
     assert_eq!(returned.pagada, Some(false));
     assert_eq!(returned.numero_cuota, Some(1));
@@ -87,7 +87,7 @@ fn test_cuotas_prestamo_pagadas_no_aparecen() {
     cleanup_redis_for_user(access_token);
 
     let today = Local::now().date_naive().format("%Y-%m-%d").to_string();
-    let cuota_pagada = Cuota {
+    let cuota_pagada = Quota {
         user_id: "user2".to_string(),
         monto: 200.0,
         fecha_vencimiento: Some(today),
@@ -100,7 +100,7 @@ fn test_cuotas_prestamo_pagadas_no_aparecen() {
         extraordinaria: None,
         numero_cuota: Some(2),
     };
-    repo.save_cuota(access_token.to_string(), &cuota_pagada).expect("No se pudo guardar cuota");
+    repo.save_cuota(access_token.to_string(), &cuota_pagada).expect("No se pudo guardar Quota");
 
     let result = repo.get_cuotas_prestamo_pendientes(access_token.to_string()).expect("Error en consulta");
     assert_eq!(result.len(), 0, "No debe retornar cuotas pagadas");
@@ -116,7 +116,7 @@ fn test_cuotas_prestamo_vencidas_no_aparecen() {
 
     let fecha_vencida = Local::now().date_naive().checked_sub_days(chrono::Days::new(1))
         .unwrap().format("%Y-%m-%d").to_string();
-    let cuota_vencida = Cuota {
+    let cuota_vencida = Quota {
         user_id: "user3".to_string(),
         monto: 300.0,
         fecha_vencimiento: Some(fecha_vencida),
@@ -129,7 +129,7 @@ fn test_cuotas_prestamo_vencidas_no_aparecen() {
         extraordinaria: None,
         numero_cuota: Some(3),
     };
-    repo.save_cuota(access_token.to_string(), &cuota_vencida).expect("No se pudo guardar cuota");
+    repo.save_cuota(access_token.to_string(), &cuota_vencida).expect("No se pudo guardar Quota");
 
     let result = repo.get_cuotas_prestamo_pendientes(access_token.to_string()).expect("Error en consulta");
     assert_eq!(result.len(), 0, "No debe retornar cuotas vencidas");
@@ -144,7 +144,7 @@ fn test_cuotas_afiliado_no_aparecen() {
     cleanup_redis_for_user(access_token);
 
     let today = Local::now().date_naive().format("%Y-%m-%d").to_string();
-    let cuota_afiliado = Cuota {
+    let cuota_afiliado = Quota {
         user_id: "user4".to_string(),
         monto: 50.0,
         fecha_vencimiento: Some(today),
@@ -157,7 +157,7 @@ fn test_cuotas_afiliado_no_aparecen() {
         extraordinaria: None,
         numero_cuota: None,
     };
-    repo.save_cuota(access_token.to_string(), &cuota_afiliado).expect("No se pudo guardar cuota");
+    repo.save_cuota(access_token.to_string(), &cuota_afiliado).expect("No se pudo guardar Quota");
 
     let result = repo.get_cuotas_prestamo_pendientes(access_token.to_string()).expect("Error en consulta");
     assert_eq!(result.len(), 0, "No debe retornar cuotas de afiliado");
@@ -197,7 +197,7 @@ fn test_concurrent_access_and_cleanup() {
     cleanup_redis_for_user(access_token);
 
     let today = Local::now().date_naive().format("%Y-%m-%d").to_string();
-    let cuota = Cuota {
+    let Quota = Quota {
         user_id: "user6".to_string(),
         monto: 100.0,
         fecha_vencimiento: Some(today.clone()),
@@ -211,13 +211,13 @@ fn test_concurrent_access_and_cleanup() {
         numero_cuota: Some(6),
     };
     
-    // Guardar la misma cuota múltiples veces (simular concurrencia)
-    repo.save_cuota(access_token.to_string(), &cuota).expect("Error en primera inserción");
-    repo.save_cuota(access_token.to_string(), &cuota).expect("Error en segunda inserción");
+    // Guardar la misma Quota múltiples veces (simular concurrencia)
+    repo.save_cuota(access_token.to_string(), &Quota).expect("Error en primera inserción");
+    repo.save_cuota(access_token.to_string(), &Quota).expect("Error en segunda inserción");
     
     let result = repo.get_cuotas_prestamo_pendientes(access_token.to_string()).expect("Error en consulta");
     // La lógica debería manejar duplicados apropiadamente
-    assert!(result.len() >= 1, "Debe retornar al menos una cuota");
+    assert!(result.len() >= 1, "Debe retornar al menos una Quota");
     
     // Verificar limpieza completa
     cleanup_redis_for_user(access_token);
@@ -232,7 +232,7 @@ fn test_fecha_mal_formateada_no_aparece() {
     let access_token = "TEST_TOKEN_7";
     cleanup_redis_for_user(access_token);
 
-    let cuota_fecha_mala = Cuota {
+    let cuota_fecha_mala = Quota {
         user_id: "user7".to_string(),
         monto: 150.0,
         fecha_vencimiento: Some("fecha-invalida".to_string()), // Fecha mal formateada
@@ -245,7 +245,7 @@ fn test_fecha_mal_formateada_no_aparece() {
         extraordinaria: None,
         numero_cuota: Some(7),
     };
-    repo.save_cuota(access_token.to_string(), &cuota_fecha_mala).expect("No se pudo guardar cuota");
+    repo.save_cuota(access_token.to_string(), &cuota_fecha_mala).expect("No se pudo guardar Quota");
 
     let result = repo.get_cuotas_prestamo_pendientes(access_token.to_string());
     assert!(result.is_ok(), "No debe fallar con fechas mal formateadas");
@@ -300,7 +300,7 @@ fn test_get_cuotas_por_loan_id_retornan_todas() {
     cleanup_redis_for_user(access_token);
 
     let loan_id = "loanX".to_string();
-    let cuota1 = Cuota {
+    let cuota1 = Quota {
         user_id: "userA".to_string(),
         monto: 100.0,
         fecha_vencimiento: Some("2025-09-21".to_string()),
@@ -313,7 +313,7 @@ fn test_get_cuotas_por_loan_id_retornan_todas() {
         extraordinaria: None,
         numero_cuota: Some(1),
     };
-    let cuota2 = Cuota {
+    let cuota2 = Quota {
         user_id: "userB".to_string(),
         monto: 200.0,
         fecha_vencimiento: Some("2025-09-22".to_string()),
@@ -326,7 +326,7 @@ fn test_get_cuotas_por_loan_id_retornan_todas() {
         extraordinaria: None,
         numero_cuota: Some(2),
     };
-    let cuota3 = Cuota {
+    let cuota3 = Quota {
         user_id: "userC".to_string(),
         monto: 300.0,
         fecha_vencimiento: Some("2025-09-23".to_string()),
@@ -361,7 +361,7 @@ fn test_get_cuotas_prestamo_pendientes_formateadas() {
 
     // Crear cuotas de préstamo con diferentes características para validar el mapeo completo
     let today = Local::now().date_naive().format("%Y-%m-%d").to_string();
-    let cuota1 = Cuota {
+    let cuota1 = Quota {
         user_id: "user_formatted_1".to_string(),
         monto: 100.0,
         fecha_vencimiento: Some(today.clone()),
@@ -374,7 +374,7 @@ fn test_get_cuotas_prestamo_pendientes_formateadas() {
         extraordinaria: None,
         numero_cuota: Some(1),
     };
-    let cuota2 = Cuota {
+    let cuota2 = Quota {
         user_id: "user_formatted_2".to_string(),
         monto: 200.0,
         fecha_vencimiento: Some(today.clone()),
@@ -405,10 +405,10 @@ fn test_get_cuotas_prestamo_pendientes_formateadas() {
     assert!(!result.is_empty(), "El resultado no debe estar vacío");
     assert_eq!(result.len(), 2, "Debe retornar exactamente 2 cuotas");
 
-    // Verificar campos específicos para la primera cuota
+    // Verificar campos específicos para la primera Quota
     let cuota_response_1: &CuotaPrestamoResponse = result.iter()
         .find(|r| r.monto == 100.0)
-        .expect("Debe encontrar cuota con monto 100.0");
+        .expect("Debe encontrar Quota con monto 100.0");
     
     assert_eq!(cuota_response_1.user_id, access_token);
     assert_eq!(cuota_response_1.monto, 100.0);
@@ -422,10 +422,10 @@ fn test_get_cuotas_prestamo_pendientes_formateadas() {
     assert_eq!(cuota_response_1.numero_cuota, Some(1));
     assert_eq!(cuota_response_1.nombre_prestamo, None); // Por ahora vacío según documentación
 
-    // Verificar campos específicos para la segunda cuota
+    // Verificar campos específicos para la segunda Quota
     let cuota_response_2: &CuotaPrestamoResponse = result.iter()
         .find(|r| r.monto == 200.0)
-        .expect("Debe encontrar cuota con monto 200.0");
+        .expect("Debe encontrar Quota con monto 200.0");
     
     assert_eq!(cuota_response_2.user_id, access_token);
     assert_eq!(cuota_response_2.monto, 200.0);

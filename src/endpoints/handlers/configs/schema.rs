@@ -4,7 +4,7 @@ use r2d2::Pool;
 use redis::Client;
 
 use crate::repos::graphql::{fine::FineRepo, loan::LoanRepo, payment::PaymentRepo};
-use crate::repos::graphql::cuota::CuotaRepo;
+use crate::repos::graphql::Quota::CuotaRepo;
 
 //Context Related
 #[derive(Clone)]
