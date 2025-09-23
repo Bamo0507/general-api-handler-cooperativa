@@ -1,6 +1,3 @@
-use actix_web::web::Data;
-use r2d2::{Pool, PooledConnection};
-use redis::Client;
 use regex::Regex;
 
 use crate::repos::auth::utils::hashing_composite_key;
@@ -19,11 +16,14 @@ pub fn return_n_dummies<Value>(dummy_generator: &dyn Fn() -> Value, n: i32) -> V
 }
 
 /// Function that returns only the relative payment key
-pub fn get_payment_key(raw_payment_key: String) -> String {
-    let re = Regex::new(r"users:[\w]+:payments:(?<payment_key>\w+)").unwrap();
+/// where the raw_key is the string of the value, and the key_type is the type of the redis
+/// key
+pub fn get_key(raw_key: String, key_type: String) -> String {
+    // we format for injecting the key_type
+    let re = Regex::new(format!(r"users:[\w]+:{}:(?<key>\w+)", key_type).as_str()).unwrap();
 
     // let's assume this is correct, cause the only value that will enter here will be payment_keys
-    let split_key = re.captures(&raw_payment_key).unwrap();
+    let split_key = re.captures(&raw_key).unwrap();
 
-    split_key["payment_key"].to_string()
+    split_key["key"].to_string()
 }

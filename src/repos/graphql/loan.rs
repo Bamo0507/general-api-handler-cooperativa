@@ -53,22 +53,14 @@ impl LoanRepo {
                     // rather using my own name standar for the redis keys and that Bryan manages
                     // the names as however he want's it
                     let user_loan_redis =
-                        from_str::<Vec<RedisLoan>>(nested_data.as_str()).unwrap()[0].clone(); // cause
-                                                                                              // of the way  of the way the json library works on redis, the objects follow a
-                                                                                              // list type fetching, but as the db was planned, we where heading for a more
-                                                                                              // key aproach overall, so that's why we need the cast (after all there will
-                                                                                              // always be just one element)
+                        from_str::<Vec<RedisLoan>>(nested_data.as_str()).unwrap()[0].clone();
+                    // cause
+                    // of the way  of the way the json library works on redis, the objects follow a
+                    // list type fetching, but as the db was planned, we where heading for a more
+                    // key aproach overall, so that's why we need the cast (after all there will
+                    // always be just one element)
 
                     // now we do the loan mapping
-
-                    loans_list.push(Loan {
-                        quotas: user_loan_redis.total_quota,
-                        payed: user_loan_redis.payed,
-                        debt: user_loan_redis.debt,
-                        total: user_loan_redis.total,
-                        status: user_loan_redis.status,
-                        reason: user_loan_redis.reason,
-                    });
                 }
 
                 Ok(loans_list)

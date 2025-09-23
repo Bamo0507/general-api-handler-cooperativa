@@ -9,9 +9,8 @@ use crate::{
         graphql::{Affiliate, Payment, PaymentHistory},
         redis::Payment as RedisPayment,
     },
-    repos::{auth::utils::hashing_composite_key, graphql::utils::get_payment_key},
+    repos::auth::utils::hashing_composite_key,
 };
-
 pub struct PaymentRepo {
     pub pool: web::Data<Pool<Client>>,
 }
@@ -69,23 +68,24 @@ impl PaymentRepo {
                     // rather using my own name standar for the redis keys and that Bryan manages
                     // the names as however he want's it
                     let user_payment_redis =
-                        from_str::<Vec<RedisPayment>>(nested_data.as_str()).unwrap()[0].clone(); // cause
-                                                                                                 // of the way  of the way the json library works on redis, the objects follow a
-                                                                                                 // list type fetching, but as the db was planned, we where heading for a more
-                                                                                                 // key aproach overall, so that's why we need the cast (after all there will
-                                                                                                 // always be just one element)
+                        from_str::<Vec<RedisPayment>>(nested_data.as_str()).unwrap()[0].clone();
+                    // cause
+                    // of the way  of the way the json library works on redis, the objects follow a
+                    // list type fetching, but as the db was planned, we where heading for a more
+                    // key aproach overall, so that's why we need the cast (after all there will
+                    // always be just one element)
 
                     // now we do the payment mapping
 
-                    payment_list.push(Payment {
-                        payment_id: get_payment_key(key),
-                        total_amount: user_payment_redis.quantity,
-                        payment_date: user_payment_redis.date_created,
-                        ticket_num: user_payment_redis.ticket_number,
-                        commentary: user_payment_redis.comments,
-                        photo: user_payment_redis.comprobante_bucket,
-                        state: user_payment_redis.status,
-                    });
+                    //payment_list.push(Payment {
+                    //    payment_id: get_payment_key(key),
+                    //    total_amount: user_payment_redis.quantity,
+                    //    payment_date: user_payment_redis.date_created,
+                    //    ticket_num: user_payment_redis.ticket_number,
+                    //    commentary: user_payment_redis.comments,
+                    //    photo: user_payment_redis.comprobante_bucket,
+                    //    state: user_payment_redis.status,
+                    //});
                 }
 
                 Ok(payment_list)

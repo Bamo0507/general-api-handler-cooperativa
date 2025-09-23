@@ -5,7 +5,7 @@ use crate::{
         graphql::{Fine as GraphQLFine, Loan as GraphQLLoan, Payment as GraphQLPayment},
         GraphQLMappable,
     },
-    repos::graphql::utils::get_payment_key,
+    repos::graphql::utils::get_key,
 };
 
 //TODO: refactor for different files
@@ -34,9 +34,9 @@ impl Default for Payment {
 }
 
 impl GraphQLMappable for Payment {
-    fn to_graphql_type(&self, key: Option<String>) -> GraphQLPayment {
+    fn to_graphql_type(&self, key: String) -> GraphQLPayment {
         GraphQLPayment {
-            payment_id: get_payment_key(key.expect("key wasn't given for Payment redis model")),
+            id: get_key(key, "payments".to_owned()),
             total_amount: self.quantity,
             payment_date: (*self.date_created).to_string(),
             ticket_num: (*self.ticket_number).to_string(),
@@ -73,8 +73,9 @@ impl Default for Loan {
 }
 
 impl GraphQLMappable for Loan {
-    fn to_graphql_type(&self, key: Option<String>) -> GraphQLLoan {
+    fn to_graphql_type(&self, key: String) -> GraphQLLoan {
         GraphQLLoan {
+            id: get_key(key, "loans".to_owned()),
             quotas: self.total_quota,
             payed: self.payed,
             debt: self.debt,
@@ -101,8 +102,9 @@ impl Default for Fine {
 }
 
 impl GraphQLMappable for Fine {
-    fn to_graphql_type(&self, key: Option<String>) -> GraphQLFine {
+    fn to_graphql_type(&self, key: String) -> GraphQLFine {
         GraphQLFine {
+            id: get_key(key, "fines".to_owned()),
             quantity: self.amount as f64,
             reason: (*self.motive).to_string(),
         }

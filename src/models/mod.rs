@@ -17,6 +17,6 @@ pub trait GraphQLMapFriendly {}
 /// trait for mapping redis values to graphql ones
 pub trait GraphQLMappable {
     /// method for mapping any object with this trait in to a graphQLModel.
-    fn to_graphql_type(&self, key: Option<String>) -> impl GraphQLMapFriendly; // adding the key
-                                                                               // argument for not doing multiple traits jus for those which don't hae
+    fn to_graphql_type(&self, key: String) -> impl GraphQLMapFriendly; // adding the key
+                                                                       // argument for not doing multiple traits jus for those which don't hae
 }
