@@ -28,3 +28,4 @@ pub fn graphql_config(config: &mut ServiceConfig) {
         .service(resource("/graphql/fine").route(post().to(graphql::<FineQuery>)))
     .service(resource("/graphql/quota").route(post().to(graphql::<QuotaQuery>)));
 }
+

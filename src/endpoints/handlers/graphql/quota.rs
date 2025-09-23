@@ -1,10 +1,6 @@
-use crate::{
-    endpoints::handlers::configs::schema::GeneralContext,
-    models::graphql::Quota,
-};
+use crate::endpoints::handlers::configs::schema::GeneralContext;
+use crate::models::graphql::{Quota, QuotaAfiliadoMensualResponse, QuotaPrestamoResponse};
 use chrono::Datelike;
-// ...existing code...
-use crate::models::graphql::{QuotaAfiliadoMensualResponse, QuotaPrestamoResponse};
 
 pub struct QuotaQuery {}
 
@@ -32,8 +28,8 @@ impl QuotaQuery {
     let mut resultado = Vec::new();
     for afiliado in afiliados {
         let quotas = context.quota_repo().get_quotas_afiliado_pendientes(afiliado.user_id.clone())?;
-        for Quota in quotas {
-            if let Some(fecha_str) = &Quota.fecha_vencimiento {
+    for quota in quotas {
+            if let Some(fecha_str) = &quota.fecha_vencimiento {
                 if let Ok(fecha) = chrono::NaiveDate::parse_from_str(fecha_str, "%Y-%m-%d") {
                     if fecha <= hoy {
                         let mes = match fecha.month() {
@@ -57,10 +53,10 @@ impl QuotaQuery {
                         resultado.push(QuotaAfiliadoMensualResponse {
                             identifier,
                             user_id: access_token.clone(),
-                            monto: Quota.monto,
+                            monto: quota.monto,
                             nombre,
                             fecha_vencimiento: fecha_str.to_string(),
-                            extraordinaria: Quota.extraordinaria.unwrap_or(false),
+                            extraordinaria: quota.extraordinaria.unwrap_or(false),
                         });
                     }
                 }
@@ -86,18 +82,18 @@ impl QuotaQuery {
         let quotas = context.quota_repo().get_quotas_prestamo_pendientes(access_token.clone())?;
         let mut resultado = Vec::new();
         
-        for Quota in quotas {
+        for quota in quotas {
             resultado.push(QuotaPrestamoResponse {
                 user_id: access_token.clone(),
-                monto: Quota.monto,
-                fecha_vencimiento: Quota.fecha_vencimiento.unwrap_or_default(),
-                monto_pagado: Quota.monto_pagado,
-                multa: Quota.multa,
-                pagada_por: Quota.pagada_por,
-                tipo: format!("{:?}", Quota.tipo), // Convierte el enum a string
-                loan_id: Quota.loan_id,
-                pagada: Quota.pagada.unwrap_or(false),
-                numero_quota: Quota.numero_quota,
+                monto: quota.monto,
+                fecha_vencimiento: quota.fecha_vencimiento.unwrap_or_default(),
+                monto_pagado: quota.monto_pagado,
+                multa: quota.multa,
+                pagada_por: quota.pagada_por,
+                tipo: format!("{:?}", quota.tipo), // Convierte el enum a string
+                loan_id: quota.loan_id,
+                pagada: quota.pagada.unwrap_or(false),
+                numero_quota: quota.numero_quota,
                 nombre_prestamo: None, // Por ahora vacío porque no está implementado
             });
         }
