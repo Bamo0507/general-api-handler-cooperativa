@@ -14,6 +14,7 @@ use crate::{
 pub struct Payment {
     pub date_created: String,
     pub comprobante_bucket: String,
+    pub account_number: String,
     pub ticket_number: String,
     pub status: String,
     pub quantity: f64,
@@ -25,6 +26,7 @@ impl Default for Payment {
         Payment {
             date_created: "0-00-0000".to_string(),
             comprobante_bucket: "/".to_string(),
+            account_number: "000000000".to_string(),
             ticket_number: "000000000".to_string(),
             status: "NOT_PROCESS".to_string(),
             quantity: 0.00,
@@ -38,6 +40,7 @@ impl GraphQLMappable<GraphQLPayment> for Payment {
         GraphQLPayment {
             id: get_key(key, "payments".to_owned()),
             total_amount: self.quantity,
+            account_num: (*self.account_number).to_string(),
             payment_date: (*self.date_created).to_string(),
             ticket_num: (*self.ticket_number).to_string(),
             commentary: (*self.comments).to_string(),

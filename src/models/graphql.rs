@@ -28,6 +28,7 @@ pub struct Payment {
     pub total_amount: f64,
     pub payment_date: String, // I'll pass it as a string, for not having parsing difficulties
     pub ticket_num: String,
+    pub account_num: String,
     //pub banco_deposito: String, //Like this the same as the as ticker_num
     pub commentary: String,
     pub photo: String, // For bucket use
