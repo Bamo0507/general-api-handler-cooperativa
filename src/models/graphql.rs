@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 // Fields are in spanish, for easier parsing in bryan's side
 #[derive(Clone, Serialize, Deserialize, GraphQLObject, Debug)]
 pub struct Loan {
+    pub id: String,
     pub quotas: i32, // total couta needed
     pub payed: f64,
     pub debt: f64,
@@ -16,13 +17,14 @@ pub struct Loan {
 
 #[derive(Clone, Serialize, Deserialize, GraphQLObject, Debug)]
 pub struct Fine {
+    pub id: String,
     pub quantity: f64,
     pub reason: String,
 }
 
 #[derive(Clone, Serialize, Deserialize, GraphQLObject, Debug)]
 pub struct Payment {
-    pub payment_id: String,
+    pub id: String,
     pub total_amount: f64,
     pub payment_date: String, // I'll pass it as a string, for not having parsing difficulties
     pub ticket_num: String,
@@ -34,7 +36,7 @@ pub struct Payment {
 
 #[derive(Clone, Serialize, Deserialize, GraphQLObject, Debug)]
 pub struct Affiliate {
-    pub usuario_id: i32,
+    pub user_id: String,
     pub name: String,
 }
 

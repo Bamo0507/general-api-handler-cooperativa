@@ -48,10 +48,6 @@ impl FineRepo {
                     // was just for getting the redis object, now I have to do the mapping
 
                     // now we do the payment mapping
-                    fine_list.push(Fine {
-                        quantity: user_fines_redis.amount as f64,
-                        reason: user_fines_redis.motive,
-                    });
                 }
 
                 Ok(fine_list)
