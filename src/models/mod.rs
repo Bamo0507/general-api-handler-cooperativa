@@ -1,7 +1,6 @@
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 pub mod auth;
-pub mod general;
 pub mod graphql;
 pub mod redis;
 
@@ -9,6 +8,11 @@ pub mod redis;
 #[derive(Debug, Clone, Serialize)]
 pub struct StatusMessage {
     pub message: String,
+}
+
+#[derive(Clone, Serialize, Deserialize)]
+pub struct GeneralInfo {
+    pub api_version: String,
 }
 
 /// trait for mapping redis values to graphql ones
