@@ -17,5 +17,5 @@
 - [ ] SCRUM-259: Implementar GraphQL query para obtener pagos de todos los socios. Validar que la query retorne todos los pagos y que los campos estén alineados con la tabla pagos.
 - [ ] SCRUM-260: Implementar GraphQL query para cambiar el estado de un pago y ponerle comentario. Validar que el estado se actualice correctamente y que el comentario se persista.
 - [ ] SCRUM-261: Implementar unit testing de obtención de pagos y sus revisiones. Validar que los pagos y sus revisiones se obtengan correctamente y que los datos sean consistentes.
-- [ ] SCRUM-262: Implementar unit testing para retorno de cuotas de usuarios por id. Validar que la query filtre correctamente y que los datos sean consistentes con la tabla cuotas.
-- [ ] SCRUM-268: Preparar apartado en Insomnia para pruebas de multas. Crear colección de pruebas para endpoints relacionados con multas y validar los casos de error.
+- [DONE] SCRUM-262: Implementar unit testing para retorno de cuotas de usuarios por id. Validar que la query filtre correctamente y que los datos sean consistentes con la tabla cuotas.
+- [IN_PROGRESS] SCRUM-268: Preparar apartado en Insomnia para pruebas de multas. Crear colección de pruebas para endpoints relacionados con multas y validar los casos de error.
