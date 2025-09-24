@@ -19,8 +19,8 @@ pub enum PaymentStatus {
     ParsedError,
 }
 
-impl FromString for PaymentStatus {
-    fn from_string(raw_status: String) -> PaymentStatus {
+impl PaymentStatus {
+    pub fn from_string(raw_status: String) -> PaymentStatus {
         match raw_status.to_uppercase().as_str() {
             "ON_REVISION" => PaymentStatus::OnRevision,
             "REJECTED" => PaymentStatus::Rejected,
@@ -39,8 +39,8 @@ pub enum LoanStatus {
     ParsedError,
 }
 
-impl FromString for LoanStatus {
-    fn from_string(raw_status: String) -> LoanStatus {
+impl LoanStatus {
+    pub fn from_string(raw_status: String) -> LoanStatus {
         match raw_status.to_uppercase().as_str() {
             "OVERDUE" => LoanStatus::Overdue,
             "PENDING" => LoanStatus::Pending,
@@ -58,7 +58,7 @@ pub struct Loan {
     pub payed: f64,
     pub debt: f64,
     pub total: f64,
-    pub status: LoanStatus,
+    pub status: LoanStatus, //TODO: ASk bryan how to do this
     pub reason: String,
 }
 

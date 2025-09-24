@@ -2,7 +2,10 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     models::{
-        graphql::{Fine as GraphQLFine, Loan as GraphQLLoan, Payment as GraphQLPayment, Status},
+        graphql::{
+            Fine as GraphQLFine, Loan as GraphQLLoan, LoanStatus, Payment as GraphQLPayment,
+            PaymentStatus,
+        },
         GraphQLMappable,
     },
     repos::graphql::utils::get_key,
@@ -45,7 +48,7 @@ impl GraphQLMappable<GraphQLPayment> for Payment {
             ticket_num: (*self.ticket_number).to_string(),
             commentary: (*self.comments).to_string(),
             photo: (*self.comprobante_bucket).to_string(),
-            state: Status::from_string((*self.status).to_string()),
+            state: PaymentStatus::from_string((*self.status).to_string()),
         }
     }
 }
@@ -83,7 +86,7 @@ impl GraphQLMappable<GraphQLLoan> for Loan {
             payed: self.payed,
             debt: self.debt,
             total: self.total,
-            status: Status::from_string((*self.status).to_string()),
+            status: LoanStatus::from_string((*self.status).to_string()),
             reason: (*self.reason).to_string(),
         }
     }
