@@ -14,6 +14,18 @@ pub enum Status {
     OnRevision,
     Rejected,
     Accepted,
+    ParsedError,
+}
+
+impl Status {
+    pub fn from_string(raw_status: String) -> Status {
+        match raw_status.as_str() {
+            "ON_REVISION" => Status::OnRevision,
+            "REJECTED" => Status::Rejected,
+            "ACCEPTED" => Status::Accepted,
+            _ => Status::ParsedError,
+        }
+    }
 }
 
 #[derive(Clone, Serialize, Deserialize, GraphQLObject, Debug)]
