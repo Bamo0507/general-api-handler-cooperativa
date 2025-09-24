@@ -3,6 +3,8 @@
 use juniper::{GraphQLEnum, GraphQLObject};
 use serde::{Deserialize, Serialize};
 
+use crate::models::FromString;
+
 #[derive(Clone, Serialize, Deserialize, Debug, GraphQLEnum, PartialEq)]
 pub enum QuotaType {
     Prestamo,
@@ -10,20 +12,41 @@ pub enum QuotaType {
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug, GraphQLEnum, PartialEq)]
-pub enum Status {
+pub enum PaymentStatus {
     OnRevision,
     Rejected,
     Accepted,
     ParsedError,
 }
 
-impl Status {
-    pub fn from_string(raw_status: String) -> Status {
-        match raw_status.as_str() {
-            "ON_REVISION" => Status::OnRevision,
-            "REJECTED" => Status::Rejected,
-            "ACCEPTED" => Status::Accepted,
-            _ => Status::ParsedError,
+impl FromString for PaymentStatus {
+    fn from_string(raw_status: String) -> PaymentStatus {
+        match raw_status.to_uppercase().as_str() {
+            "ON_REVISION" => PaymentStatus::OnRevision,
+            "REJECTED" => PaymentStatus::Rejected,
+            "ACCEPTED" => PaymentStatus::Accepted,
+            _ => PaymentStatus::ParsedError,
+        }
+    }
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug, GraphQLEnum, PartialEq)]
+pub enum LoanStatus {
+    Overdue,
+    Active,
+    Pending,
+    Payed,
+    ParsedError,
+}
+
+impl FromString for LoanStatus {
+    fn from_string(raw_status: String) -> LoanStatus {
+        match raw_status.to_uppercase().as_str() {
+            "OVERDUE" => LoanStatus::Overdue,
+            "PENDING" => LoanStatus::Pending,
+            "ACTIVE" => LoanStatus::Active,
+            "PAYED" => LoanStatus::Payed,
+            _ => LoanStatus::ParsedError,
         }
     }
 }
@@ -35,7 +58,7 @@ pub struct Loan {
     pub payed: f64,
     pub debt: f64,
     pub total: f64,
-    pub status: Status, //TODO: ASk bryan how to do this
+    pub status: LoanStatus,
     pub reason: String,
 }
 
@@ -54,8 +77,8 @@ pub struct Payment {
     pub ticket_num: String,
     pub account_num: String,
     pub commentary: String,
-    pub photo: String, // For bucket use
-    pub state: Status, // Following bryan's enums
+    pub photo: String,        // For bucket use
+    pub state: PaymentStatus, // Following bryan's enums
 }
 
 #[derive(Clone, Serialize, Deserialize, GraphQLObject, Debug)]

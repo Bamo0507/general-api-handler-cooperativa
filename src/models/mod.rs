@@ -21,3 +21,8 @@ pub trait GraphQLMappable<GraphQLType> {
     fn to_graphql_type(&self, key: String) -> GraphQLType; // adding the key
                                                            // argument for not doing multiple traits jus for those which don't hae
 }
+
+/// trait for enum mapping
+pub trait FromString {
+    fn from_string(raw_status: String) -> Self;
+}
