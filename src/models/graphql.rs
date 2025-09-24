@@ -29,7 +29,6 @@ pub struct Payment {
     pub payment_date: String, // I'll pass it as a string, for not having parsing difficulties
     pub ticket_num: String,
     pub account_num: String,
-    //pub banco_deposito: String, //Like this the same as the as ticker_num
     pub commentary: String,
     pub photo: String, // For bucket use
     pub state: String, // Following bryan's enums
@@ -80,7 +79,6 @@ pub struct Aporte {
 }
 
 
-// --- SCRUM-255: Modelo de Quota de préstamo ---
 #[derive(Clone, Serialize, Deserialize, GraphQLObject, Debug)]
 pub struct Quota {
     pub user_id: String,
@@ -92,7 +90,7 @@ pub struct Quota {
     pub tipo: TipoQuota,
     pub loan_id: Option<String>, // de acá se debería sacar el nombre del prestamo, pero todavía no está implementado (así lo pidió bryan)
     pub extraordinaria: Option<bool>, // esto al crear, por logica de negocio va cambiar el monto si es extraordinaria o no
-    pub pagada: Option<bool>, // SCRUM-255: campo para estado de pago
+    pub pagada: Option<bool>,     
     pub numero_quota: Option<i32>, // Solo para préstamo
 }
 
