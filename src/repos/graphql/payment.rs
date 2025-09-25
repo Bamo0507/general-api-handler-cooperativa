@@ -1,4 +1,5 @@
 use actix_web::web;
+use chrono::{Local, NaiveDateTime};
 use r2d2::Pool;
 use redis::{from_redis_value, Client, Commands, JsonCommands, Value as RedisValue};
 use regex::Regex;
@@ -6,7 +7,7 @@ use serde_json::from_str;
 
 use crate::{
     models::{
-        graphql::{Affiliate, Payment, PaymentHistory},
+        graphql::{Affiliate, Payment, PaymentHistory, PaymentStatus},
         redis::Payment as RedisPayment,
     },
     repos::{auth::utils::hashing_composite_key, graphql::utils::get_multiple_models},
@@ -54,8 +55,9 @@ impl PaymentRepo {
     pub fn create_payment(
         &self,
         access_token: String,
-        comment: String,
-        ammount: f32,
+        comments: String,
+        amount: f64,
+        ticket_number: String,
         account_number: String,
         // each type (String, T), referes to the key of it and it's value (which in this case it's
         // the amount)
@@ -83,16 +85,29 @@ impl PaymentRepo {
 
             let con = &mut self.pool.get().expect("Couldn't connect to pool");
 
-            //let _: () = con.json_set(format!(
-            //    "users:{access_token}:payments:{payment_hash_key}",
-            //    "$",
-            //    RedisPayment {}
-            //));
+            let date = Local::now().to_string();
 
-            todo!()
+            //TODO: implement relation for fines, quootas, etc
+
+            let _: () = con
+                .json_set(
+                    format!("users:{access_token}:payments:{payment_hash_key}"),
+                    "$",
+                    &RedisPayment {
+                        quantity: amount,
+                        ticket_number,
+                        date_created: date,
+                        comprobante_bucket: String::new(),
+                        account_number,
+                        comments,
+                        status: "ON_REVISION".to_owned(),
+                    },
+                )
+                .expect("PAYMENT CREATION: Couldn't Create payment");
+            return Ok("Payment Created".to_owned());
         }
 
-        todo!()
+        Err("PAYMENT CREATION: Couldn't Create payment".to_owned())
     }
 
     // This goes in the payment repo, only cause is an utililty endpoint for the Payments
