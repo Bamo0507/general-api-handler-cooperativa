@@ -47,11 +47,11 @@ pub fn clear_redis(context: &GeneralContext) {
 pub fn insert_payment_helper(context: &GeneralContext, payment: &Payment) {
     let pool = context.pool.clone();
     let mut con = pool.get().expect("No se pudo obtener conexión de Redis");
-    // Usar la misma clave que el repo: hash de "all" como parte de la clave
-    use crate::repos::graphql::utils::hashing_composite_key;
-    let all_str = String::from("all");
-    let key = hashing_composite_key(&[&all_str]);
+    use crate::repos::auth::utils::hashing_composite_key;
     use crate::models::redis::Payment as RedisPayment;
+    // Clave individual por pago, siguiendo el patrón: users:{hash("all")}:payments:{id}
+    let composite_key = hashing_composite_key(&[&String::from("all")]);
+    let redis_key = format!("users:{}:payments:{}", composite_key, payment.id);
     let redis_payment = RedisPayment {
         date_created: payment.payment_date.clone(),
         comprobante_bucket: payment.photo.clone(),
@@ -62,9 +62,9 @@ pub fn insert_payment_helper(context: &GeneralContext, payment: &Payment) {
         comments: payment.commentary.clone(),
     };
     let payment_json = serde_json::to_string(&redis_payment).unwrap();
-    let _ : redis::RedisResult<()> = redis::cmd("HSET")
-        .arg(&key)
-        .arg(payment.id.to_string())
+    let _: redis::RedisResult<()> = redis::cmd("JSON.SET")
+        .arg(&redis_key)
+        .arg("$")
         .arg(payment_json)
         .query(&mut con);
 }
