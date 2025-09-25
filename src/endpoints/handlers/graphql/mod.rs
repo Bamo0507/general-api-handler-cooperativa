@@ -1,7 +1,6 @@
-
+pub mod fine;
 pub mod loan;
 pub mod payment;
-pub mod fine;
 pub mod quota;
 
 use actix_web::{web, HttpResponse};
@@ -12,10 +11,10 @@ use redis::Client;
 use super::configs::schema::{GeneralContext, GeneralSchema};
 
 // Graphql creator schema generic
-pub async fn graphql<GenericQuery>(
+pub async fn graphql<GenericQuery, GenericMutation>(
     pool: web::Data<Pool<Client>>,
     data: web::Json<GraphQLRequest>,
-    schema: web::Data<GeneralSchema<GenericQuery>>,
+    schema: web::Data<GeneralSchema<GenericQuery, GenericMutation>>,
 ) -> HttpResponse
 where
     //Okay, first time using the where key word so time to explain
@@ -39,6 +38,13 @@ where
         + Send
         + Sync,
     GenericQuery::TypeInfo: Send + Sync,
+
+    GenericMutation: GraphQLTypeAsync<Context = GeneralContext, TypeInfo = ()>
+        //Also here in the context, a Trait with that specific Type/Struct
+        + GraphQLType<Context = GeneralContext>
+        + Send
+        + Sync,
+    GenericMutation::TypeInfo: Send + Sync,
 {
     let context = GeneralContext { pool };
 

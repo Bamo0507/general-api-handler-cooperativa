@@ -32,8 +32,14 @@ impl PaymentQuery {
     pub async fn get_all_memembers(context: &GeneralContext) -> Result<Vec<Affiliate>, String> {
         context.payment_repo().get_all_users_for_affiliates()
     }
+}
 
-    /// Create a payment and what it's paying
+pub struct PaymentMutation;
+
+#[juniper::graphql_object(
+    Context = GeneralContext,
+)]
+impl PaymentMutation {
     pub async fn create_user_payment(
         context: &GeneralContext,
         access_token: String,
