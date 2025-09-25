@@ -75,7 +75,7 @@ impl PaymentRepo {
         // we check how many payments we have
 
         if let Ok(keys) =
-            con.scan_match::<String, String>(format!("user:{}:payments:*", db_access_token))
+            con.scan_match::<String, String>(format!("users:{}:payments:*", db_access_token))
         {
             let keys_parsed: Vec<String> = keys.collect();
 
@@ -90,7 +90,7 @@ impl PaymentRepo {
 
             let _: () = con
                 .json_set(
-                    format!("users:{access_token}:payments:{payment_hash_key}"),
+                    format!("users:{db_access_token}:payments:{payment_hash_key}"),
                     "$",
                     &RedisPayment {
                         quantity: amount,
