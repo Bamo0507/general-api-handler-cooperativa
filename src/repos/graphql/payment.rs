@@ -53,6 +53,7 @@ impl PaymentRepo {
     // TODO: implement payment creation
     pub fn create_payment(
         &self,
+        access_token: String,
         comment: String,
         ammount: f32,
         account_number: String,
@@ -63,7 +64,23 @@ impl PaymentRepo {
         fines: Vec<(String, f32)>,
         affiliates_owed_capitals: Vec<(String, f32)>,
     ) -> Result<String, String> {
-        todo!();
+        // for the moment I'll just implement it as for creating a payment without the relation
+        // wich the other fields
+
+        let con = &mut self.pool.get().expect("Couldn't connect to pool");
+
+        let db_access_token = hashing_composite_key(&[&access_token]);
+
+        // we check how many payments we have
+
+        match con.scan_match::<String, String>(format!("user:{}:payments:*", db_access_token)) {
+            Ok(keys) => {
+                let keys_len: Vec<String> = keys.collect();
+            }
+            Err(_) => {}
+        }
+
+        todo!()
     }
 
     // This goes in the payment repo, only cause is an utililty endpoint for the Payments
