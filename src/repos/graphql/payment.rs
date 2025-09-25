@@ -73,11 +73,23 @@ impl PaymentRepo {
 
         // we check how many payments we have
 
-        match con.scan_match::<String, String>(format!("user:{}:payments:*", db_access_token)) {
-            Ok(keys) => {
-                let keys_len: Vec<String> = keys.collect();
-            }
-            Err(_) => {}
+        if let Ok(keys) =
+            con.scan_match::<String, String>(format!("user:{}:payments:*", db_access_token))
+        {
+            let keys_parsed: Vec<String> = keys.collect();
+
+            // for creating the payment and not having collissions
+            let payment_hash_key = hashing_composite_key(&[&keys_parsed.len().to_string()]);
+
+            let con = &mut self.pool.get().expect("Couldn't connect to pool");
+
+            //let _: () = con.json_set(format!(
+            //    "users:{access_token}:payments:{payment_hash_key}",
+            //    "$",
+            //    RedisPayment {}
+            //));
+
+            todo!()
         }
 
         todo!()
