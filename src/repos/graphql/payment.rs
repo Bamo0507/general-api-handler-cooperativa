@@ -1,5 +1,5 @@
 use actix_web::web;
-use chrono::{Local, NaiveDateTime};
+use chrono::{Local, NaiveDateTime, Utc};
 use r2d2::Pool;
 use redis::{from_redis_value, Client, Commands, JsonCommands, Value as RedisValue};
 use regex::Regex;
@@ -84,7 +84,7 @@ impl PaymentRepo {
 
             let con = &mut self.pool.get().expect("Couldn't connect to pool");
 
-            let date = Local::now().to_string();
+            let date = Utc::now().date_naive().to_string();
 
             //TODO: implement relation for fines, quootas, etc
 
