@@ -14,7 +14,7 @@
 ## RESTO
 - [X] SCRUM-204: Crear tests para GraphQL query que retorna historial de pagos de usuario individual. Validar que los cálculos de historial sean correctos y que los errores se manejen bien para usuarios inexistentes.
 - [X] SCRUM-199: Implementar unit testing para query de todos los socios. Verificar que la lista de socios se obtenga correctamente y que los campos estén alineados con la tabla usuarios.
-- [ ] SCRUM-259: Implementar GraphQL query para obtener pagos de todos los socios. Validar que la query retorne todos los pagos y que los campos estén alineados con la tabla pagos.
+- [X] SCRUM-259: Implementar GraphQL query para obtener pagos de todos los socios. Validar que la query retorne todos los pagos y que los campos estén alineados con la tabla pagos.
 - [ ] SCRUM-260: Implementar GraphQL query para cambiar el estado de un pago y ponerle comentario. Validar que el estado se actualice correctamente y que el comentario se persista.
 - [ ] SCRUM-261: Implementar unit testing de obtención de pagos y sus revisiones. Validar que los pagos y sus revisiones se obtengan correctamente y que los datos sean consistentes.
 - [DONE] SCRUM-262: Implementar unit testing para retorno de cuotas de usuarios por id. Validar que la query filtre correctamente y que los datos sean consistentes con la tabla cuotas.
