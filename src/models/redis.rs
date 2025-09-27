@@ -24,7 +24,7 @@ pub struct Payment {
     pub quantity: f64,
     pub comments: Option<String>, // it will be added if the directive sends it
     pub payment_type: String,     // will be map after
-    pub from: String,
+    pub model_key: String,
 }
 
 impl Default for Payment {
@@ -38,7 +38,7 @@ impl Default for Payment {
             status: "NOT_PROCESS".to_owned(),
             quantity: 0.00,
             comments: Some("".to_owned()),
-            from: "000000000".to_owned(),
+            model_key: "000000000".to_owned(),
             payment_type: "PAYMENT".to_owned(),
         }
     }

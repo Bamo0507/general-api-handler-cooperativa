@@ -55,16 +55,12 @@ impl PaymentRepo {
     pub fn create_payment(
         &self,
         access_token: String,
-        comments: String,
+        name: String,
         amount: f64,
         payment_type: PaymentType,
         ticket_number: String,
         account_number: String,
-        // TODO: refactor for being schema compliant
-        //quotas: Vec<(String, f32)>,
-        //loans: Vec<(String, f32)>,
-        //fines: Vec<(String, f32)>,
-        //affiliates_owed_capitals: Vec<(String, f32)>,
+        model_key:String
     ) -> Result<String, String> {
         // for the moment I'll just implement it as for creating a payment without the relation
         // wich the other fields
@@ -87,19 +83,21 @@ impl PaymentRepo {
 
             let date = Utc::now().date_naive().to_string();
 
-            //TODO: implement relation for fines, quootas, etc
+            //TODO: implement relation for fines, quotas, etc
 
             let _: () = con
                 .json_set(
                     format!("users:{db_access_token}:payments:{payment_hash_key}"),
                     "$",
                     &RedisPayment {
+                        name,
                         quantity: amount,
                         ticket_number,
                         date_created: date,
                         comprobante_bucket: String::new(),
                         account_number,
-                        comments,
+                        comments: None,
+                        payment_type
                         status: "ON_REVISION".to_owned(),
                     },
                 )
