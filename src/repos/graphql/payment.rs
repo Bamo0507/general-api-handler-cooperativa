@@ -7,7 +7,7 @@ use serde_json::from_str;
 
 use crate::{
     models::{
-        graphql::{Affiliate, Payment, PaymentHistory, PaymentStatus},
+        graphql::{Affiliate, Payment, PaymentHistory, PaymentStatus, PaymentType},
         redis::Payment as RedisPayment,
     },
     repos::{auth::utils::hashing_composite_key, graphql::utils::get_multiple_models},
@@ -57,6 +57,7 @@ impl PaymentRepo {
         access_token: String,
         comments: String,
         amount: f64,
+        payment_type: PaymentType,
         ticket_number: String,
         account_number: String,
         // TODO: refactor for being schema compliant

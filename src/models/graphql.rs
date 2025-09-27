@@ -19,6 +19,25 @@ pub enum PaymentStatus {
     ParsedError,
 }
 
+#[derive(Clone, Serialize, Deserialize, Debug, GraphQLEnum, PartialEq)]
+pub enum PaymentType {
+    Loan,
+    Quota,
+    Fine,
+    ParsedError,
+}
+
+impl PaymentType {
+    pub fn from_string(raw_status: String) -> PaymentType {
+        match raw_status.to_uppercase().as_str() {
+            "LOAN" => PaymentType::Loan,
+            "QUOTA" => PaymentType::Quota,
+            "FINE" => PaymentType::Fine,
+            _ => PaymentType::ParsedError,
+        }
+    }
+}
+
 impl PaymentStatus {
     pub fn from_string(raw_status: String) -> PaymentStatus {
         match raw_status.to_uppercase().as_str() {
@@ -76,7 +95,7 @@ pub struct Payment {
     pub payment_date: String, // I'll pass it as a string, for not having parsing difficulties
     pub ticket_num: String,
     pub account_num: String,
-    pub commentary: String,
+    pub commentary: Option<String>,
     pub photo: String,        // For bucket use
     pub state: PaymentStatus, // Following bryan's enums
 }

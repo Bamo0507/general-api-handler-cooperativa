@@ -16,24 +16,30 @@ use crate::{
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Payment {
     pub date_created: String,
+    pub name: String,
     pub comprobante_bucket: String,
     pub account_number: String,
     pub ticket_number: String,
     pub status: String,
     pub quantity: f64,
-    pub comments: String,
+    pub comments: Option<String>, // it will be added if the directive sends it
+    pub payment_type: String,     // will be map after
+    pub from: String,
 }
 
 impl Default for Payment {
     fn default() -> Self {
         Payment {
-            date_created: "0-00-0000".to_string(),
-            comprobante_bucket: "/".to_string(),
-            account_number: "000000000".to_string(),
-            ticket_number: "000000000".to_string(),
-            status: "NOT_PROCESS".to_string(),
+            name: "none".to_owned(),
+            date_created: "0-00-0000".to_owned(),
+            comprobante_bucket: "/".to_owned(),
+            account_number: "000000000".to_owned(),
+            ticket_number: "000000000".to_owned(),
+            status: "NOT_PROCESS".to_owned(),
             quantity: 0.00,
-            comments: "".to_string(),
+            comments: Some("".to_owned()),
+            from: "000000000".to_owned(),
+            payment_type: "PAYMENT".to_owned(),
         }
     }
 }
@@ -46,7 +52,7 @@ impl GraphQLMappable<GraphQLPayment> for Payment {
             account_num: (*self.account_number).to_string(),
             payment_date: (*self.date_created).to_string(),
             ticket_num: (*self.ticket_number).to_string(),
-            commentary: (*self.comments).to_string(),
+            commentary: self.comments.clone(), // f*** options, can't do low level stuff some times
             photo: (*self.comprobante_bucket).to_string(),
             state: PaymentStatus::from_string((*self.status).to_string()),
         }
