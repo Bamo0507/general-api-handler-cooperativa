@@ -1,6 +1,6 @@
 use crate::{
     endpoints::handlers::configs::schema::GeneralContext,
-    models::graphql::{Affiliate, Payment, PaymentHistory},
+    models::graphql::{Affiliate, Payment, PaymentHistory, PaymentType},
 };
 
 pub struct PaymentQuery {}
@@ -43,19 +43,21 @@ impl PaymentMutation {
     pub async fn create_user_payment(
         context: &GeneralContext,
         access_token: String,
-        comments: String,
+        name: String,
         amount: f64,
+        payment_type: PaymentType,
         ticket_number: String,
         account_number: String,
-        // each type (String, T), referes to the key of it and it's value (which in this case it's
-        // the amount)
+        model_key: String,
     ) -> Result<String, String> {
         context.payment_repo().create_payment(
             access_token,
-            comments,
+            name,
             amount,
+            payment_type,
             ticket_number,
             account_number,
+            model_key,
         )
     }
 }

@@ -60,7 +60,7 @@ impl PaymentRepo {
         payment_type: PaymentType,
         ticket_number: String,
         account_number: String,
-        model_key:String
+        model_key: String,
     ) -> Result<String, String> {
         // for the moment I'll just implement it as for creating a payment without the relation
         // wich the other fields
@@ -97,8 +97,9 @@ impl PaymentRepo {
                         comprobante_bucket: String::new(),
                         account_number,
                         comments: None,
-                        payment_type
+                        payment_type: payment_type.to_string(),
                         status: "ON_REVISION".to_owned(),
+                        model_key,
                     },
                 )
                 .expect("PAYMENT CREATION: Couldn't Create payment");

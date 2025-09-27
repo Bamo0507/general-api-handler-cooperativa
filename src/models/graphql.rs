@@ -38,6 +38,17 @@ impl PaymentType {
     }
 }
 
+impl ToString for PaymentType {
+    fn to_string(&self) -> String {
+        match self {
+            PaymentType::Loan => "LOAN".to_owned(),
+            PaymentType::Quota => "QUOTA".to_owned(),
+            PaymentType::Fine => "FINE".to_owned(),
+            PaymentType::ParsedError => "PARSED_ERROR".to_owned(),
+        }
+    }
+}
+
 impl PaymentStatus {
     pub fn from_string(raw_status: String) -> PaymentStatus {
         match raw_status.to_uppercase().as_str() {
