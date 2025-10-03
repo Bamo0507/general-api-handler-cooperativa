@@ -125,28 +125,37 @@ pub struct Aporte {
     pub monto: f64,
 }
 
-// TODO: Refactor Quota model to a single, global type for all quota-related logic
-// TODO: Remove legacy response types (QuotaAfiliadoMensualResponse, QuotaPrestamoResponse)
-// TODO: Review all fields for necessity and make optional where appropriate
-// TODO: Ensure full GraphQL compatibility and document each field
-// TODO: Add identifier, nombre_prestamo, nombre_usuario, etc. as Option<String> if needed for frontend or queries
+/// Modelo unificado de Quota para manejar tanto cuotas de afiliado como de préstamo
+/// Compatible con GraphQL y todas las operaciones del sistema
 #[derive(Clone, Serialize, Deserialize, GraphQLObject, Debug)]
 pub struct Quota {
+    /// ID del usuario (debe coincidir con access_token para dummy data)
     pub user_id: String,
+    /// Monto de la cuota
     pub amount: f64,
+    /// Fecha de vencimiento en formato YYYY-MM-DD
     pub exp_date: Option<String>,
-    pub monto_pagado: Option<f64>, // TODO: Confirm if always needed or only for prestamos
-    pub multa: Option<f64>,        // TODO: Confirm if always needed or only for prestamos
-    pub pay_by: Option<String>,    // TODO: Confirm if needed for third-party payments
+    /// Monto ya pagado de la cuota (0.0 para nuevas cuotas)
+    pub monto_pagado: Option<f64>,
+    /// Multa aplicada a la cuota (0.0 para nuevas cuotas)
+    pub multa: Option<f64>,
+    /// Usuario que pagó la cuota (para pagos por terceros)
+    pub pay_by: Option<String>,
+    /// Tipo de cuota: Prestamo o Afiliado
     pub quota_type: QuotaType,
+    /// ID del préstamo (solo para cuotas de préstamo, SHA256 para dummy data)
     pub loan_id: Option<String>,
+    /// Indica si es una cuota extraordinaria
     pub is_extraordinary: Option<bool>,
+    /// Estado de pago de la cuota
     pub payed: Option<bool>,
+    /// Número de la cuota dentro del préstamo (solo para préstamos)
     pub quota_number: Option<i32>,
-    // TODO: Add frontend/query-friendly fields below as Option<String>
-    pub nombre_prestamo: Option<String>, // TODO: Used for displaying loan name in frontend
-    pub nombre_usuario: Option<String>,  // TODO: Used for displaying user name in frontend
-    pub identifier: Option<String>,      // TODO: Used for unique identification in frontend
+    /// Nombre del préstamo para mostrar en frontend
+    pub nombre_prestamo: Option<String>,
+    /// Nombre del usuario para mostrar en frontend
+    pub nombre_usuario: Option<String>,
+    /// Identificador único para frontend (formato: "Nombre - Mes Año")
+    pub identifier: Option<String>,
 }
 
-// TODO: Remove QuotaAfiliadoMensualResponse and QuotaPrestamoResponse structs after refactor is complete

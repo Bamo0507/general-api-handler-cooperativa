@@ -6,7 +6,6 @@ use sha2::{Digest, Sha256};
 
 use crate::models::graphql::{Quota, QuotaType};
 use crate::repos::graphql::quota::QuotaRepo;
-use super::return_n_dummies;
 
 /// Genera un ID SHA256 basado en un contador para simular IDs únicos como en la documentación
 fn generate_sha256_id(counter: u32) -> String {
@@ -126,7 +125,7 @@ pub fn delete_all_quotas(
     pool: Data<Pool<Client>>,
     access_token: String,
 ) -> Result<String, String> {
-    use redis::{Commands, pipe};
+    use redis::Commands;
     use crate::repos::auth::utils::hashing_composite_key;
     
     let mut con = pool.get().map_err(|_| "Couldn't connect to pool")?;

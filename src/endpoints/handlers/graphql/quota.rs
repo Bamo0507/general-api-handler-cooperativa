@@ -1,5 +1,4 @@
 use crate::endpoints::handlers::configs::schema::GeneralContext;
-// TODO: Remove legacy response types imports (QuotaAfiliadoMensualResponse, QuotaPrestamoResponse)
 use crate::models::graphql::Quota;
 
 pub struct QuotaQuery {}
@@ -22,7 +21,7 @@ const MESES_ES: [&str; 12] = [
     Context = GeneralContext,
 )]
 impl QuotaQuery {
-    /// Retorna las quotas pendientes de préstamo para el usuario
+    /// Retorna todas las cuotas pendientes para el usuario usando el modelo Quota unificado
     pub async fn get_pending_quotas(
         context: &GeneralContext,
         access_token: String,
@@ -30,8 +29,7 @@ impl QuotaQuery {
         context.quota_repo().get_pending_quotas(access_token)
     }
 
-    /// TODO: Refactorizado: Retorna las quotas mensuales de afiliado pendientes usando solo el tipo Quota
-    /// TODO: Adaptar frontend para consumir el nuevo formato si es necesario
+    /// Retorna las cuotas mensuales de afiliado pendientes con campos adicionales para frontend
     pub async fn get_monthly_affiliate_quota(
         context: &GeneralContext,
         access_token: String,
@@ -41,7 +39,8 @@ impl QuotaQuery {
             .quota_repo()
             .get_monthly_affiliate_quota(afiliados, access_token)
     }
-    /// Retorna solo las quotas de préstamo pendientes para el usuario (SCRUM-255, lógica fundamentada)
+
+    /// Retorna solo las cuotas de préstamo pendientes filtradas por lógica de negocio
     pub async fn get_quotas_prestamo_pendientes(
         context: &GeneralContext,
         access_token: String,
@@ -51,8 +50,7 @@ impl QuotaQuery {
             .get_quotas_prestamo_pendientes(access_token)
     }
 
-    /// TODO: Refactorizado: Retorna las quotas de préstamo pendientes usando solo el tipo Quota
-    /// TODO: Adaptar frontend para consumir el nuevo formato si es necesario
+    /// Retorna las cuotas de préstamo pendientes con campos adicionales para frontend
     pub async fn get_pending_loans_quotas(
         context: &GeneralContext,
         access_token: String,
@@ -67,13 +65,13 @@ pub struct QuotaMutation;
     Context = GeneralContext,
 )]
 impl QuotaMutation {
+    /// Crea una nueva cuota en el sistema (implementación pendiente)
     pub async fn create_quota() -> Result<String, String> {
         todo!()
     }
 
-    /// MUTACIÓN TEMPORAL PARA INSERTAR DATOS DUMMY - SOLO PARA TESTING/DESARROLLO
-    /// Inserta 10 cuotas de afiliado + 10 cuotas de préstamo con fechas aleatorias de 2025
-    /// Siguiendo las convenciones exactas del código (user_id = access_token, SHA256 loan_id)
+    /// DESARROLLO: Inserta 20 cuotas dummy (10 afiliado + 10 préstamo) para testing
+    /// Usa convenciones: user_id = access_token, loan_id SHA256, fechas 2025
     pub async fn insert_dummy_quotas(
         context: &GeneralContext,
         access_token: String,
@@ -83,8 +81,7 @@ impl QuotaMutation {
         insert_20_dummy_quotas(pool, access_token)
     }
 
-    /// MUTACIÓN PARA BORRAR TODAS LAS CUOTAS DE UN USUARIO - SOLO PARA TESTING/DESARROLLO
-    /// Borra todas las cuotas existentes de un access_token (para limpiar datos incorretos)
+    /// DESARROLLO: Borra todas las cuotas de un usuario para limpiar datos de testing
     pub async fn delete_all_user_quotas(
         context: &GeneralContext,
         access_token: String,
