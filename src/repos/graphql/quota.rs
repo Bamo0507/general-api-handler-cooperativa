@@ -318,4 +318,10 @@ impl QuotaRepo {
         }
         Ok(quotas)
     }
+
+    /// MÉTODO TEMPORAL PARA INSERTAR DATOS DUMMY - SOLO PARA TESTING/DESARROLLO
+    pub fn insert_dummy_data(&self, access_token: String) -> Result<String, String> {
+        use super::utils::dummy_data::insert_20_dummy_quotas;
+        insert_20_dummy_quotas(self.pool.clone(), access_token)
+    }
 }

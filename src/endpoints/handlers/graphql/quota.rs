@@ -70,4 +70,27 @@ impl QuotaMutation {
     pub async fn create_quota() -> Result<String, String> {
         todo!()
     }
+
+    /// MUTACIÓN TEMPORAL PARA INSERTAR DATOS DUMMY - SOLO PARA TESTING/DESARROLLO
+    /// Inserta 10 cuotas de afiliado + 10 cuotas de préstamo con fechas aleatorias de 2025
+    /// Siguiendo las convenciones exactas del código (user_id = access_token, SHA256 loan_id)
+    pub async fn insert_dummy_quotas(
+        context: &GeneralContext,
+        access_token: String,
+    ) -> Result<String, String> {
+        use crate::repos::graphql::utils::dummy_data::insert_20_dummy_quotas;
+        let pool = context.pool.clone();
+        insert_20_dummy_quotas(pool, access_token)
+    }
+
+    /// MUTACIÓN PARA BORRAR TODAS LAS CUOTAS DE UN USUARIO - SOLO PARA TESTING/DESARROLLO
+    /// Borra todas las cuotas existentes de un access_token (para limpiar datos incorretos)
+    pub async fn delete_all_user_quotas(
+        context: &GeneralContext,
+        access_token: String,
+    ) -> Result<String, String> {
+        use crate::repos::graphql::utils::dummy_data::delete_all_quotas;
+        let pool = context.pool.clone();
+        delete_all_quotas(pool, access_token)
+    }
 }
