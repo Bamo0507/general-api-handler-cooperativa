@@ -15,3 +15,14 @@ impl FineQuery {
         context.fine_repo().get_user_fines(access_token)
     }
 }
+
+pub struct FineMutation;
+
+#[juniper::graphql_object(
+    Context = GeneralContext,
+)]
+impl FineMutation {
+    pub async fn creat_fine() -> Result<String, String> {
+        todo!()
+    }
+}

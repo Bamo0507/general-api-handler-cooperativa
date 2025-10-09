@@ -18,3 +18,14 @@ impl LoanQuery {
         context.loan_repo().get_user_loans(access_token)
     }
 }
+
+pub struct LoanMutation;
+
+#[juniper::graphql_object(
+    Context = GeneralContext,
+)]
+impl LoanMutation {
+    pub async fn create_user_loan() -> Result<String, String> {
+        todo!()
+    }
+}

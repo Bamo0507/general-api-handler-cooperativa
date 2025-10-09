@@ -36,9 +36,30 @@ impl PaymentQuery {
     pub async fn get_all_memembers(context: &GeneralContext) -> Result<Vec<Affiliate>, String> {
         context.payment_repo().get_all_users_for_affiliates()
     }
+}
 
-    pub async fn create_user_payment(context: &GeneralContext) -> Result<String, String> {
-        //TODO: implement repo method call
-        todo!()
+pub struct PaymentMutation;
+
+#[juniper::graphql_object(
+    Context = GeneralContext,
+)]
+impl PaymentMutation {
+    pub async fn create_user_payment(
+        context: &GeneralContext,
+        access_token: String,
+        comments: String,
+        amount: f64,
+        ticket_number: String,
+        account_number: String,
+        // each type (String, T), referes to the key of it and it's value (which in this case it's
+        // the amount)
+    ) -> Result<String, String> {
+        context.payment_repo().create_payment(
+            access_token,
+            comments,
+            amount,
+            ticket_number,
+            account_number,
+        )
     }
 }

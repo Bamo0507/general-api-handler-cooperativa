@@ -3,8 +3,8 @@ use juniper::{EmptyMutation, EmptySubscription, GraphQLType, GraphQLTypeAsync, R
 use r2d2::Pool;
 use redis::Client;
 
-use crate::repos::graphql::{fine::FineRepo, loan::LoanRepo, payment::PaymentRepo};
 use crate::repos::graphql::quota::QuotaRepo;
+use crate::repos::graphql::{fine::FineRepo, loan::LoanRepo, payment::PaymentRepo};
 
 //Context Related
 #[derive(Clone)]
@@ -39,10 +39,13 @@ impl GeneralContext {
 impl juniper::Context for GeneralContext {}
 
 //Schema Related
-pub type GeneralSchema<T> =
-    RootNode<'static, T, EmptyMutation<GeneralContext>, EmptySubscription<GeneralContext>>;
+pub type GeneralSchema<Query, Mutation> =
+    RootNode<'static, Query, Mutation, EmptySubscription<GeneralContext>>;
 
-pub fn create_schema<GenericQuery>(query: GenericQuery) -> Data<GeneralSchema<GenericQuery>>
+pub fn create_schema<GenericQuery, GenericMutation>(
+    query: GenericQuery,
+    mutation: GenericMutation,
+) -> Data<GeneralSchema<GenericQuery, GenericMutation>>
 where
     //Here we are putting specifics Types
     GenericQuery: GraphQLTypeAsync<Context = GeneralContext, TypeInfo = ()>
@@ -51,8 +54,15 @@ where
         + Send
         + Sync,
     GenericQuery::TypeInfo: Send + Sync,
+
+    GenericMutation: GraphQLTypeAsync<Context = GeneralContext, TypeInfo = ()>
+        //Also here in the context, a Trait with that specific Type/Struct
+        + GraphQLType<Context = GeneralContext>
+        + Send
+        + Sync,
+    GenericMutation::TypeInfo: Send + Sync,
 {
-    let schema = RootNode::new(query, EmptyMutation::new(), EmptySubscription::new());
+    let schema = RootNode::new(query, mutation, EmptySubscription::new());
 
     // I always need for passing the squema to actix
     Data::new(schema)

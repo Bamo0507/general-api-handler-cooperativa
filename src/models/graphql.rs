@@ -1,9 +1,56 @@
 // TODO: Refactor all of them with default imp
 
-use juniper::GraphQLObject;
+use juniper::{GraphQLEnum, GraphQLObject};
 use serde::{Deserialize, Serialize};
 
-// Fields are in spanish, for easier parsing in bryan's side
+use crate::models::FromString;
+
+#[derive(Clone, Serialize, Deserialize, Debug, GraphQLEnum, PartialEq)]
+pub enum QuotaType {
+    Prestamo,
+    Afiliado,
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug, GraphQLEnum, PartialEq)]
+pub enum PaymentStatus {
+    OnRevision,
+    Rejected,
+    Accepted,
+    ParsedError,
+}
+
+impl PaymentStatus {
+    pub fn from_string(raw_status: String) -> PaymentStatus {
+        match raw_status.to_uppercase().as_str() {
+            "ON_REVISION" => PaymentStatus::OnRevision,
+            "REJECTED" => PaymentStatus::Rejected,
+            "ACCEPTED" => PaymentStatus::Accepted,
+            _ => PaymentStatus::ParsedError,
+        }
+    }
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug, GraphQLEnum, PartialEq)]
+pub enum LoanStatus {
+    Overdue,
+    Active,
+    Pending,
+    Payed,
+    ParsedError,
+}
+
+impl LoanStatus {
+    pub fn from_string(raw_status: String) -> LoanStatus {
+        match raw_status.to_uppercase().as_str() {
+            "OVERDUE" => LoanStatus::Overdue,
+            "PENDING" => LoanStatus::Pending,
+            "ACTIVE" => LoanStatus::Active,
+            "PAYED" => LoanStatus::Payed,
+            _ => LoanStatus::ParsedError,
+        }
+    }
+}
+
 #[derive(Clone, Serialize, Deserialize, GraphQLObject, Debug)]
 pub struct Loan {
     pub id: String,
@@ -11,7 +58,7 @@ pub struct Loan {
     pub payed: f64,
     pub debt: f64,
     pub total: f64,
-    pub status: String, //TODO: ASk bryan how to do this
+    pub status: LoanStatus, //TODO: ASk bryan how to do this
     pub reason: String,
 }
 
@@ -29,10 +76,9 @@ pub struct Payment {
     pub payment_date: String, // I'll pass it as a string, for not having parsing difficulties
     pub ticket_num: String,
     pub account_num: String,
-    //pub banco_deposito: String, //Like this the same as the as ticker_num
     pub commentary: String,
-    pub photo: String, // For bucket use
-    pub state: String, // Following bryan's enums
+    pub photo: String,        // For bucket use
+    pub state: PaymentStatus, // Following bryan's enums
 }
 
 #[derive(Clone, Serialize, Deserialize, GraphQLObject, Debug)]
@@ -79,21 +125,19 @@ pub struct Aporte {
     pub monto: f64,
 }
 
-
-// --- SCRUM-255: Modelo de Quota de préstamo ---
 #[derive(Clone, Serialize, Deserialize, GraphQLObject, Debug)]
 pub struct Quota {
     pub user_id: String,
-    pub monto: f64,
-    pub fecha_vencimiento: Option<String>,
+    pub amount: f64,
+    pub exp_date: Option<String>,
     pub monto_pagado: f64,
     pub multa: f64,
-    pub pagada_por: Option<String>, // bryan lo dijo porque en caso de que la Quota la pague otro usuario
-    pub tipo: TipoQuota,
+    pub pay_by: Option<String>, // bryan lo dijo porque en caso de que la Quota la pague otro usuario
+    pub qouta_type: QuotaType,
     pub loan_id: Option<String>, // de acá se debería sacar el nombre del prestamo, pero todavía no está implementado (así lo pidió bryan)
-    pub extraordinaria: Option<bool>, // esto al crear, por logica de negocio va cambiar el monto si es extraordinaria o no
-    pub pagada: Option<bool>, // SCRUM-255: campo para estado de pago
-    pub numero_quota: Option<i32>, // Solo para préstamo
+    pub is_extraordinary: Option<bool>, // esto al crear, por logica de negocio va cambiar el monto si es extraordinaria o no
+    pub payed: Option<bool>,
+    pub quota_number: Option<i32>, // Solo para préstamo
 }
 
 #[derive(Clone, Serialize, Deserialize, GraphQLObject, Debug)]
@@ -119,10 +163,4 @@ pub struct QuotaPrestamoResponse {
     pub pagada: bool,
     pub numero_quota: Option<i32>,
     pub nombre_prestamo: Option<String>,
-}
-
-#[derive(Clone, Serialize, Deserialize, Debug, juniper::GraphQLEnum, PartialEq)]
-pub enum TipoQuota {
-    Prestamo,
-    Afiliado,
 }

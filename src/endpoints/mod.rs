@@ -4,7 +4,7 @@ use actix_web::{
 };
 use serde_json::json;
 
-use crate::models::general::GeneralInfo;
+use crate::models::GeneralInfo;
 
 pub mod auth_endpoints;
 pub mod graphql_endpoints;
@@ -17,7 +17,7 @@ pub fn health_config(config: &mut web::ServiceConfig) {
 
 async fn general_endpoint_info() -> HttpResponse {
     let general_info = Json(GeneralInfo {
-        api_version: "v 0.0.1".to_string(),
+        api_version: "v 0.10.0".to_owned(),
     });
 
     HttpResponse::Ok().json(Json(json!(general_info)))
