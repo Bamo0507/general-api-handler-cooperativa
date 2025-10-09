@@ -7,47 +7,33 @@ use general_api::repos::graphql::utils::{create_test_context, clear_redis, inser
 
 #[tokio::test]
 async fn test_get_all_payments_returns_all_inserted_payments() {
-    // Crear contexto y limpiar Redis
-    let context = create_test_context();
-    clear_redis(&context);
-
-    // Debug: mostrar la clave global y su contenido en Redis
-    {
-        use general_api::repos::auth::utils::hashing_composite_key;
-        let all_str = String::from("all");
-        let key = hashing_composite_key(&[&all_str]);
-        let pool = context.pool.clone();
-        let mut con = pool.get().expect("No se pudo obtener conexión de Redis");
-        let exists: bool = redis::cmd("EXISTS").arg(&key).query(&mut con).unwrap_or(false);
-        println!("Clave global generada: {} (¿existe?: {})", key, exists);
-        let hash: Option<Vec<(String, String)>> = redis::cmd("HGETALL").arg(&key).query(&mut con).ok();
-        println!("Contenido de la clave global: {:?}", hash);
-    }
-    // Crear contexto y limpiar Redis
+    // Crear contexto y limpiar Redis SOLO UNA VEZ
     let context = create_test_context();
     clear_redis(&context);
 
     // Insertar pagos de prueba
+    use general_api::models::graphql::PaymentStatus;
+    let now = chrono::Utc::now().timestamp();
     let payments = vec![
         Payment {
-            id: "1".to_string(),
+            id: format!("test_pago_{}_1", now),
             total_amount: 100.0,
-            payment_date: "2025-09-25".to_string(),
+            payment_date: "2025-10-09".to_string(),
             ticket_num: "A123".to_string(),
             account_num: "ACC1".to_string(),
             commentary: "Pago test 1".to_string(),
             photo: "url1".to_string(),
-            state: "aprobado".to_string(),
+            state: PaymentStatus::from_string("aprobado".to_string()),
         },
         Payment {
-            id: "2".to_string(),
+            id: format!("test_pago_{}_2", now),
             total_amount: 200.0,
-            payment_date: "2025-09-26".to_string(),
+            payment_date: "2025-10-10".to_string(),
             ticket_num: "B456".to_string(),
             account_num: "ACC2".to_string(),
             commentary: "Pago test 2".to_string(),
             photo: "url2".to_string(),
-            state: "pendiente".to_string(),
+            state: PaymentStatus::from_string("pendiente".to_string()),
         },
     ];
 
@@ -64,19 +50,14 @@ async fn test_get_all_payments_returns_all_inserted_payments() {
             .query(&mut con)
             .unwrap_or_default();
         println!("Claves en Redis tras inserción: {:?}", keys);
-    }
-        // Debug: obtener claves y pagos desde Redis usando el pool y el helper
-        {
-            use general_api::repos::auth::utils::hashing_composite_key;
-            let pool = context.pool.clone();
-            let mut con = pool.get().expect("No se pudo obtener conexión de Redis");
-            let redis_keys: Vec<String> = redis::cmd("KEYS").arg("*").query(&mut con).unwrap_or_default();
-            println!("Redis keys: {:?}", redis_keys);
+        // Verificar que existen ambas claves de pago
         let all_str = String::from("all");
-        let global_payments_key = hashing_composite_key(&[&all_str]);
-            let payments_in_redis: Vec<String> = redis::cmd("HKEYS").arg(&global_payments_key).query(&mut con).unwrap_or_default();
-            println!("Payments in Redis under global key: {:?}", payments_in_redis);
-        }
+        let composite_key = general_api::repos::auth::utils::hashing_composite_key(&[&all_str]);
+    let key1 = format!("users:{}:payments:{}", composite_key, payments[0].id);
+    let key2 = format!("users:{}:payments:{}", composite_key, payments[1].id);
+    assert!(keys.contains(&key1), "No se encontró la clave del pago 1 en Redis");
+    assert!(keys.contains(&key2), "No se encontró la clave del pago 2 en Redis");
+    }
 
     // Ejecutar la query
     let result = PaymentQuery::get_all_payments(&context).await.unwrap();

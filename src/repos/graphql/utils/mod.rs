@@ -57,7 +57,7 @@ pub fn insert_payment_helper(context: &GeneralContext, payment: &Payment) {
         comprobante_bucket: payment.photo.clone(),
         account_number: payment.account_num.clone(),
         ticket_number: payment.ticket_num.clone(),
-        status: payment.state.clone(),
+        status: payment.state.to_string(),
         quantity: payment.total_amount,
         comments: payment.commentary.clone(),
     };
