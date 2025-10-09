@@ -1,5 +1,5 @@
-    use serde_json;
 use std::fmt::Debug;
+    use serde_json;
 
 use actix_web::web::Data;
 use r2d2::Pool;
@@ -57,7 +57,7 @@ pub fn insert_payment_helper(context: &GeneralContext, payment: &Payment) {
         comprobante_bucket: payment.photo.clone(),
         account_number: payment.account_num.clone(),
         ticket_number: payment.ticket_num.clone(),
-        status: payment.state.to_string(),
+        status: payment.state.as_str().to_string(),
         quantity: payment.total_amount,
         comments: payment.commentary.clone(),
     };
