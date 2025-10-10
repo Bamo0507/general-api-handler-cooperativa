@@ -106,7 +106,7 @@ async fn test_rechazar_pago_pendiente_sin_comentario() {
         "".to_string(),
     ).await;
     assert!(result.is_err());
-    assert_eq!(result.unwrap_err(), "Commentary required when rejecting payment");
+    assert_eq!(result.unwrap_err(), "Se requiere comentario al rechazar el pago");
 }
 
 #[tokio::test]
@@ -133,7 +133,7 @@ async fn test_mutar_pago_ya_finalizado() {
         "Intento mutar pago finalizado".to_string(),
     ).await;
     assert!(result.is_err());
-    assert_eq!(result.unwrap_err(), "Payment already finalized");
+    assert_eq!(result.unwrap_err(), "El pago ya está finalizado");
 }
 
 #[tokio::test]
@@ -160,5 +160,5 @@ async fn test_mutar_con_estado_invalido() {
         "".to_string(),
     ).await;
     assert!(result.is_err());
-    assert_eq!(result.unwrap_err(), "Invalid new state, must be ACCEPTED or REJECTED");
+    assert_eq!(result.unwrap_err(), "Estado inválido, debe ser ACCEPTED o REJECTED");
 }

@@ -29,17 +29,14 @@ pub fn create_test_context() -> GeneralContext {
 pub fn clear_redis(context: &GeneralContext) {
     let pool = context.pool.clone();
     let mut con = pool.get().expect("No se pudo obtener conexión de Redis");
-    // Borrar claves individuales de pagos
-    let keys_iter = con.scan_match("users:*:payments:*").unwrap();
-    let keys: Vec<String> = keys_iter.collect();
+    // Borrar todas las claves de Redis
+    let keys: Vec<String> = redis::cmd("KEYS")
+        .arg("*")
+        .query(&mut con)
+        .unwrap_or_default();
     for key in keys {
         let _: () = con.del(&key).unwrap_or(());
     }
-    // Borrar la clave global de pagos (hash de 'all')
-    use crate::repos::graphql::utils::hashing_composite_key;
-    let all_str = String::from("all");
-    let global_key = hashing_composite_key(&[&all_str]);
-    let _: () = con.del(&global_key).unwrap_or(());
 }
 
 

@@ -182,7 +182,7 @@ impl PaymentRepo {
         // Validar estado actual
         let current_status = PaymentStatus::from_string(redis_payment.status.clone());
         if current_status == PaymentStatus::Accepted || current_status == PaymentStatus::Rejected {
-            return Err("Payment already finalized".to_string());
+            return Err("El pago ya está finalizado".to_string());
         }
 
         // Validar nuevo estado
@@ -191,10 +191,10 @@ impl PaymentRepo {
             PaymentStatus::Accepted => {}
             PaymentStatus::Rejected => {
                 if commentary.trim().is_empty() {
-                    return Err("Commentary required when rejecting payment".to_string());
+                    return Err("Se requiere comentario al rechazar el pago".to_string());
                 }
             }
-            _ => return Err("Invalid new state, must be ACCEPTED or REJECTED".to_string()),
+            _ => return Err("Estado inválido, debe ser ACCEPTED o REJECTED".to_string()),
         }
 
         // Actualizar y persistir
