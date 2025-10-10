@@ -4,11 +4,18 @@
 use general_api::models::graphql::Payment;
 use general_api::endpoints::handlers::graphql::payment::PaymentQuery;
 use general_api::repos::graphql::utils::{create_test_context, clear_redis, insert_payment_helper};
+use std::sync::OnceLock;
+use tokio::sync::Mutex;
+
+static REDIS_TEST_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
 
 #[tokio::test]
 async fn test_get_all_payments_returns_all_inserted_payments() {
+    // Serializar pruebas que tocan Redis sin dependencias externas
+    let _guard = REDIS_TEST_LOCK.get_or_init(|| Mutex::new(())).lock().await;
     // Crear contexto y limpiar Redis SOLO UNA VEZ
     let context = create_test_context();
+    // Limpiar redis para evitar interferencia de otros tests
     clear_redis(&context);
 
     // Insertar pagos de prueba
@@ -23,7 +30,7 @@ async fn test_get_all_payments_returns_all_inserted_payments() {
             account_num: "ACC1".to_string(),
             commentary: "Pago test 1".to_string(),
             photo: "url1".to_string(),
-            state: PaymentStatus::from_string("aprobado".to_string()),
+            state: PaymentStatus::from_string("ACCEPTED".to_string()),
         },
         Payment {
             id: format!("test_pago_{}_2", now),
@@ -33,7 +40,7 @@ async fn test_get_all_payments_returns_all_inserted_payments() {
             account_num: "ACC2".to_string(),
             commentary: "Pago test 2".to_string(),
             photo: "url2".to_string(),
-            state: PaymentStatus::from_string("pendiente".to_string()),
+            state: PaymentStatus::from_string("ON_REVISION".to_string()),
         },
     ];
 
@@ -60,11 +67,16 @@ async fn test_get_all_payments_returns_all_inserted_payments() {
     }
 
     // Ejecutar la query
-    let result = PaymentQuery::get_all_payments(&context).await.unwrap();
+    let mut result = PaymentQuery::get_all_payments(&context).await.unwrap();
+
+    // Ordenar ambos vectores por id para evitar dependencia del orden de Redis
+    let mut expected_sorted = payments.clone();
+    expected_sorted.sort_by(|a, b| a.id.cmp(&b.id));
+    result.sort_by(|a, b| a.id.cmp(&b.id));
 
     // Validar que retorna todos los pagos insertados
-    assert_eq!(result.len(), payments.len());
-    for (expected, actual) in payments.iter().zip(result.iter()) {
+    assert_eq!(result.len(), expected_sorted.len());
+    for (expected, actual) in expected_sorted.iter().zip(result.iter()) {
         assert_eq!(expected.id, actual.id);
         assert_eq!(expected.total_amount, actual.total_amount);
         assert_eq!(expected.payment_date, actual.payment_date);
