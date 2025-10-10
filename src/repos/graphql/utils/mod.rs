@@ -1,4 +1,5 @@
 use std::fmt::Debug;
+    use serde_json;
 
 use actix_web::web::Data;
 use r2d2::Pool;
@@ -8,6 +9,62 @@ use serde::de::DeserializeOwned;
 use serde_json::from_str;
 
 use crate::{models::GraphQLMappable, repos::auth::utils::hashing_composite_key};
+
+use crate::models::graphql::Payment;
+use crate::endpoints::handlers::configs::schema::GeneralContext;
+
+
+/// Crea un contexto de test con pool de Redis real (localhost)
+pub fn create_test_context() -> GeneralContext {
+    // Conexión a Redis local para testing
+    let client = redis::Client::open("redis://127.0.0.1/").expect("No se pudo conectar a Redis");
+    let pool = Pool::builder().build(client).expect("No se pudo crear el pool de Redis");
+    GeneralContext {
+        pool: Data::new(pool),
+    }
+}
+
+
+/// Limpia todas las claves de pagos en Redis para tests
+pub fn clear_redis(context: &GeneralContext) {
+    let pool = context.pool.clone();
+    let mut con = pool.get().expect("No se pudo obtener conexión de Redis");
+    // Borrar todas las claves de Redis
+    let keys: Vec<String> = redis::cmd("KEYS")
+        .arg("*")
+        .query(&mut con)
+        .unwrap_or_default();
+    for key in keys {
+        let _: () = con.del(&key).unwrap_or(());
+    }
+}
+
+
+/// Inserta un pago en Redis usando el pool del contexto
+pub fn insert_payment_helper(context: &GeneralContext, payment: &Payment) {
+    let pool = context.pool.clone();
+    let mut con = pool.get().expect("No se pudo obtener conexión de Redis");
+    use crate::repos::auth::utils::hashing_composite_key;
+    use crate::models::redis::Payment as RedisPayment;
+    // Clave individual por pago, siguiendo el patrón: users:{hash("all")}:payments:{id}
+    let composite_key = hashing_composite_key(&[&String::from("all")]);
+    let redis_key = format!("users:{}:payments:{}", composite_key, payment.id);
+    let redis_payment = RedisPayment {
+        date_created: payment.payment_date.clone(),
+        comprobante_bucket: payment.photo.clone(),
+        account_number: payment.account_num.clone(),
+        ticket_number: payment.ticket_num.clone(),
+        status: payment.state.as_str().to_string(),
+        quantity: payment.total_amount,
+        comments: payment.commentary.clone(),
+    };
+    let payment_json = serde_json::to_string(&redis_payment).unwrap();
+    let _: redis::RedisResult<()> = redis::cmd("JSON.SET")
+        .arg(&redis_key)
+        .arg("$")
+        .arg(payment_json)
+        .query(&mut con);
+}
 
 ///Function for returning n number of any type value, having a function as a generator
 //(Ik syntaxis looks scary in the parameters, but it ain't)
