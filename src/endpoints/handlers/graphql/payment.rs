@@ -62,4 +62,14 @@ impl PaymentMutation {
             account_number,
         )
     }
+
+    /// Mutation para aprobar o rechazar un pago
+    pub async fn approve_or_reject_payment(
+        context: &GeneralContext,
+        id: String,
+        new_state: String,
+        commentary: String,
+    ) -> Result<Payment, String> {
+        context.payment_repo().approve_or_reject_payment(id, new_state, commentary).await
+    }
 }
