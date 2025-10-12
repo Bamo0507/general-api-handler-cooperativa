@@ -1,4 +1,4 @@
-use std::fmt::Debug;
+use std::fmt::{format, Debug};
 
 use actix_web::web::Data;
 use r2d2::Pool;
@@ -33,6 +33,22 @@ pub fn get_key(raw_key: String, key_type: String) -> String {
     let split_key = re.captures(&raw_key).unwrap();
 
     split_key["key"].to_string()
+}
+
+// this method could be really slow, I'll see a way for optimizing later
+pub fn get_db_access_token_with_affiliate_key(
+    affiliate_key: String,
+    pool: Data<Pool<Client>>,
+) -> Result<String, String> {
+    let mut con = pool.get().expect("Couldn't connect to pool");
+
+    match con.get::<String, String>(format!("affiliate_key_to_db_access:{}", affiliate_key)) {
+        Ok(db_key) => Ok(db_key),
+        Err(err) => {
+            println!("{err:?}");
+            Err("Couldn't Get Db Token".to_owned())
+        }
+    }
 }
 
 /// Function for generalizing the fetching for redis values and turnining them in to GraphQLObject

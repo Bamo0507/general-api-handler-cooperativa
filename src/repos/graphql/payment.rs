@@ -100,11 +100,11 @@ impl PaymentRepo {
                         being_payed,
                     },
                 )
-                .expect("PAYMENT CREATION: Couldn't Create payment");
+                .expect("PAYMENT CREATION: Couldn't Create Payment");
             return Ok("Payment Created".to_owned());
         }
 
-        Err("PAYMENT CREATION: Couldn't Create payment".to_owned())
+        Err("PAYMENT CREATION: Couldn't Create Payment".to_owned())
     }
 
     // This goes in the payment repo, only cause is an utililty endpoint for the Payments

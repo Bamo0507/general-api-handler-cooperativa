@@ -65,8 +65,8 @@ pub fn create_user_with_access_token(
 
             let _: () = con
                 .set(
-                    format!("affiliate_key_to_db_acess:{}", &db_composite_key),
-                    affiliate_key,
+                    format!("affiliate_key_to_db_access:{}", &affiliate_key),
+                    &db_composite_key,
                 )
                 .expect("ACCESS TOKEN CREATION: Couldn't create field");
 
@@ -92,12 +92,8 @@ pub fn create_user_with_access_token(
                 .expect("BASE LOANS CREATION: Couldn't create field");
 
             let _: () = con
-                .set(format!("users:{}:loans", &db_composite_key), false)
-                .expect("BASE LOANS CREATION: Couldn't create field");
-
-            let _: () = con
-                .set(format!("users:{}:loans", &db_composite_key), false)
-                .expect("BASE LOANS CREATION: Couldn't create field");
+                .set(format!("users:{}:fines", &db_composite_key), false)
+                .expect("BASE FINES CREATION: Couldn't create field");
 
             Ok(TokenInfo {
                 user_name,
