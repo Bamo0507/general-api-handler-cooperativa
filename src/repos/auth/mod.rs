@@ -11,7 +11,7 @@ use crate::{
 
 pub mod utils;
 
-//TODO: Set for ALC
+//TODO: ~Set for ALC (ALC is out of scoope)~
 pub fn create_user_with_access_token(
     user_name: String,
     pass: String,
@@ -64,6 +64,13 @@ pub fn create_user_with_access_token(
                 .expect("USERNAME CREATION : Couldn't filled username");
 
             let _: () = con
+                .set(
+                    format!("affiliate_key_to_db_acess:{}", &db_composite_key),
+                    affiliate_key,
+                )
+                .expect("ACCESS TOKEN CREATION: Couldn't create field");
+
+            let _: () = con
                 .set(format!("users:{}:payed_to_capital", &db_composite_key), 0.0)
                 .expect("ACCESS TOKEN CREATION: Couldn't create field");
 
@@ -79,6 +86,14 @@ pub fn create_user_with_access_token(
             let _: () = con
                 .set(format!("users:{}:payments", &db_composite_key), false)
                 .expect("BASE PAYMENTS CREATION: Couldn't create field");
+
+            let _: () = con
+                .set(format!("users:{}:loans", &db_composite_key), false)
+                .expect("BASE LOANS CREATION: Couldn't create field");
+
+            let _: () = con
+                .set(format!("users:{}:loans", &db_composite_key), false)
+                .expect("BASE LOANS CREATION: Couldn't create field");
 
             let _: () = con
                 .set(format!("users:{}:loans", &db_composite_key), false)

@@ -76,7 +76,8 @@ impl PaymentRepo {
             let keys_parsed: Vec<String> = keys.collect();
 
             // for creating the payment and not having collissions
-            let payment_hash_key = hashing_composite_key(&[&keys_parsed.len().to_string()]);
+            let payment_hash_key =
+                hashing_composite_key(&[&keys_parsed.len().to_string(), &db_access_token]);
 
             let con = &mut self.pool.get().expect("Couldn't connect to pool");
 
