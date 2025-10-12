@@ -3,8 +3,6 @@
 use juniper::{GraphQLEnum, GraphQLObject};
 use serde::{Deserialize, Serialize};
 
-use crate::models::FromString;
-
 #[derive(Clone, Serialize, Deserialize, Debug, GraphQLEnum, PartialEq)]
 pub enum QuotaType {
     Prestamo,

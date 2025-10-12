@@ -11,20 +11,24 @@ use crate::{
     repos::graphql::utils::get_key,
 };
 
-//TODO: refactor for different files
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PayedTo {
+    model_type: String,
+    amount: f64,
+    model_key: String,
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Payment {
     pub date_created: String,
-    pub name: String,
-    pub comprobante_bucket: String,
     pub account_number: String,
+    pub total_amount: f64,
+    pub name: String,
+    pub comments: Option<String>, // it will be added if the directive sends it
+    pub comprobante_bucket: String,
     pub ticket_number: String,
     pub status: String,
-    pub quantity: f64,
-    pub comments: Option<String>, // it will be added if the directive sends it
-    pub payment_type: String,     // will be map after
-    pub model_key: String,
+    pub being_payed: Vec<PayedTo>,
 }
 
 impl Default for Payment {
