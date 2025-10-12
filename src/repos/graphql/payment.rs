@@ -83,8 +83,6 @@ impl PaymentRepo {
 
             let date = Utc::now().date_naive().to_string();
 
-            //TODO: implement relation for fines, quotas, etc
-
             let _: () = con
                 .json_set(
                     format!("users:{db_access_token}:payments:{payment_hash_key}"),
@@ -94,6 +92,7 @@ impl PaymentRepo {
                         total_amount,
                         ticket_number,
                         date_created: date,
+                        //TODO: add impl for bucket paths
                         comprobante_bucket: String::new(),
                         account_number,
                         comments: None,

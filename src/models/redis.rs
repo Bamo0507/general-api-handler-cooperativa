@@ -44,6 +44,7 @@ impl GraphQLMappable<GraphQLPayment> for Payment {
     fn to_graphql_type(&self, key: String) -> GraphQLPayment {
         GraphQLPayment {
             id: get_key(key, "payments".to_owned()),
+            name: (*self.name).to_owned(),
             total_amount: self.total_amount,
             account_num: (*self.account_number).to_string(),
             payment_date: (*self.date_created).to_string(),

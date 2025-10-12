@@ -100,6 +100,7 @@ pub struct Fine {
 #[derive(Clone, Serialize, Deserialize, GraphQLObject, Debug)]
 pub struct Payment {
     pub id: String,
+    pub name: String,
     pub total_amount: f64,
     pub payment_date: String, // I'll pass it as a string, for not having parsing difficulties
     pub ticket_num: String,
