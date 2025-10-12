@@ -3,8 +3,8 @@ use serde::{Deserialize, Serialize};
 use crate::{
     models::{
         graphql::{
-            Fine as GraphQLFine, Loan as GraphQLLoan, LoanStatus, Payment as GraphQLPayment,
-            PaymentStatus,
+            Fine as GraphQLFine, FineStatus, Loan as GraphQLLoan, LoanStatus,
+            Payment as GraphQLPayment, PaymentStatus,
         },
         GraphQLMappable, PayedTo,
     },
@@ -99,12 +99,14 @@ impl GraphQLMappable<GraphQLLoan> for Loan {
 pub struct Fine {
     pub amount: f32,
     pub motive: String,
+    pub status: String,
 }
 
 impl Default for Fine {
     fn default() -> Self {
         Fine {
             amount: 0.,
+            status: "UNPAID".to_owned(),
             motive: "nu uh".to_owned(),
         }
     }
@@ -114,7 +116,8 @@ impl GraphQLMappable<GraphQLFine> for Fine {
     fn to_graphql_type(&self, key: String) -> GraphQLFine {
         GraphQLFine {
             id: get_key(key, "fines".to_owned()),
-            quantity: self.amount as f64,
+            status: FineStatus::from_string((*self.status).to_string()),
+            amount: self.amount as f64,
             reason: (*self.motive).to_string(),
         }
     }
