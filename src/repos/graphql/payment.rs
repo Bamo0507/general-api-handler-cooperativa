@@ -1,13 +1,12 @@
 use actix_web::web;
-use chrono::{Local, NaiveDateTime, Utc};
+use chrono::Utc;
 use r2d2::Pool;
-use redis::{from_redis_value, Client, Commands, JsonCommands, Value as RedisValue};
+use redis::{Client, Commands, JsonCommands};
 use regex::Regex;
-use serde_json::from_str;
 
 use crate::{
     models::{
-        graphql::{Affiliate, Payment, PaymentHistory, PaymentStatus, PaymentType},
+        graphql::{Affiliate, Payment, PaymentHistory},
         redis::Payment as RedisPayment,
         PayedTo,
     },

@@ -61,10 +61,7 @@ impl QuotaRepo {
     }
 
     /// Obtiene cuotas de préstamo pendientes con campos adicionales para frontend
-    pub fn get_pending_loans_quotas(
-        &self,
-        access_token: String,
-    ) -> Result<Vec<Quota>, String> {
+    pub fn get_pending_loans_quotas(&self, access_token: String) -> Result<Vec<Quota>, String> {
         let quotas = self.get_quotas_prestamo_pendientes(access_token.clone())?;
         let mut resultado = Vec::new();
         for quota in quotas {
@@ -312,11 +309,5 @@ impl QuotaRepo {
             }
         }
         Ok(quotas)
-    }
-
-    /// MÉTODO TEMPORAL PARA INSERTAR DATOS DUMMY - SOLO PARA TESTING/DESARROLLO
-    pub fn insert_dummy_data(&self, access_token: String) -> Result<String, String> {
-        use super::utils::dummy_data::insert_20_dummy_quotas;
-        insert_20_dummy_quotas(self.pool.clone(), access_token)
     }
 }

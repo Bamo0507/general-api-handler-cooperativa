@@ -9,8 +9,6 @@ use serde_json::from_str;
 
 use crate::{models::GraphQLMappable, repos::auth::utils::hashing_composite_key};
 
-pub mod dummy_data;
-
 ///Function for returning n number of any type value, having a function as a generator
 //(Ik syntaxis looks scary in the parameters, but it ain't)
 pub fn return_n_dummies<Value>(dummy_generator: &dyn Fn() -> Value, n: i32) -> Vec<Value> {
