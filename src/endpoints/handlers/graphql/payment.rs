@@ -28,8 +28,8 @@ impl PaymentQuery {
         context.payment_repo().get_user_payments(access_token)
     }
 
-    /// Get's all the members names with pg_id (mostly for payments and affiliates)
-    pub async fn get_all_memembers(context: &GeneralContext) -> Result<Vec<Affiliate>, String> {
+    /// Get's all the members names with there affiliate_keys
+    pub async fn get_all_members(context: &GeneralContext) -> Result<Vec<Affiliate>, String> {
         context.payment_repo().get_all_users_for_affiliates()
     }
 }
