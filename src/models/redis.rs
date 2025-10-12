@@ -18,6 +18,16 @@ pub struct PayedTo {
     model_key: String,
 }
 
+impl Default for PayedTo {
+    fn default() -> Self {
+        PayedTo {
+            model_type: "LOAN".to_owned(),
+            amount: 0.00,
+            model_key: "000000000000".to_owned(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Payment {
     pub date_created: String,
@@ -40,10 +50,9 @@ impl Default for Payment {
             account_number: "000000000".to_owned(),
             ticket_number: "000000000".to_owned(),
             status: "NOT_PROCESS".to_owned(),
-            quantity: 0.00,
+            total_amount: 0.00,
             comments: Some("".to_owned()),
-            model_key: "000000000".to_owned(),
-            payment_type: "PAYMENT".to_owned(),
+            being_payed: vec![PayedTo::default()],
         }
     }
 }
@@ -52,7 +61,7 @@ impl GraphQLMappable<GraphQLPayment> for Payment {
     fn to_graphql_type(&self, key: String) -> GraphQLPayment {
         GraphQLPayment {
             id: get_key(key, "payments".to_owned()),
-            total_amount: self.quantity,
+            total_amount: self.total_amount,
             account_num: (*self.account_number).to_string(),
             payment_date: (*self.date_created).to_string(),
             ticket_num: (*self.ticket_number).to_string(),
