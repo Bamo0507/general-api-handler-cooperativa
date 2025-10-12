@@ -3,8 +3,6 @@
 use juniper::{GraphQLEnum, GraphQLObject};
 use serde::{Deserialize, Serialize};
 
-use crate::models::FromString;
-
 #[derive(Clone, Serialize, Deserialize, Debug, GraphQLEnum, PartialEq)]
 pub enum QuotaType {
     Prestamo,
@@ -17,6 +15,36 @@ pub enum PaymentStatus {
     Rejected,
     Accepted,
     ParsedError,
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug, GraphQLEnum, PartialEq)]
+pub enum PaymentType {
+    Loan,
+    Quota,
+    Fine,
+    ParsedError,
+}
+
+impl PaymentType {
+    pub fn from_string(raw_status: String) -> PaymentType {
+        match raw_status.to_uppercase().as_str() {
+            "LOAN" => PaymentType::Loan,
+            "QUOTA" => PaymentType::Quota,
+            "FINE" => PaymentType::Fine,
+            _ => PaymentType::ParsedError,
+        }
+    }
+}
+
+impl ToString for PaymentType {
+    fn to_string(&self) -> String {
+        match self {
+            PaymentType::Loan => "LOAN".to_owned(),
+            PaymentType::Quota => "QUOTA".to_owned(),
+            PaymentType::Fine => "FINE".to_owned(),
+            PaymentType::ParsedError => "PARSED_ERROR".to_owned(),
+        }
+    }
 }
 
 impl PaymentStatus {
@@ -72,11 +100,12 @@ pub struct Fine {
 #[derive(Clone, Serialize, Deserialize, GraphQLObject, Debug)]
 pub struct Payment {
     pub id: String,
+    pub name: String,
     pub total_amount: f64,
     pub payment_date: String, // I'll pass it as a string, for not having parsing difficulties
     pub ticket_num: String,
     pub account_num: String,
-    pub commentary: String,
+    pub commentary: Option<String>,
     pub photo: String,        // For bucket use
     pub state: PaymentStatus, // Following bryan's enums
 }

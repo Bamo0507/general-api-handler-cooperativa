@@ -1,3 +1,4 @@
+use juniper::{GraphQLInputObject, GraphQLObject};
 use serde::{Deserialize, Serialize};
 
 pub mod auth;
@@ -13,6 +14,24 @@ pub struct StatusMessage {
 #[derive(Clone, Serialize, Deserialize)]
 pub struct GeneralInfo {
     pub api_version: String,
+}
+
+//for simplicity will use the same model for graphQL and redis
+#[derive(Debug, Clone, Serialize, Deserialize, GraphQLInputObject)]
+pub struct PayedTo {
+    model_type: String,
+    amount: f64,
+    model_key: String,
+}
+
+impl Default for PayedTo {
+    fn default() -> Self {
+        PayedTo {
+            model_type: "LOAN".to_owned(),
+            amount: 0.00,
+            model_key: "000000000000".to_owned(),
+        }
+    }
 }
 
 /// trait for mapping redis values to graphql ones

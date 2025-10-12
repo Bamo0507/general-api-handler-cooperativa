@@ -7,8 +7,9 @@ use serde_json::from_str;
 
 use crate::{
     models::{
-        graphql::{Affiliate, Payment, PaymentHistory, PaymentStatus},
+        graphql::{Affiliate, Payment, PaymentHistory, PaymentStatus, PaymentType},
         redis::Payment as RedisPayment,
+        PayedTo,
     },
     repos::{auth::utils::hashing_composite_key, graphql::utils::get_multiple_models},
 };
@@ -55,15 +56,11 @@ impl PaymentRepo {
     pub fn create_payment(
         &self,
         access_token: String,
-        comments: String,
-        amount: f64,
+        name: String,
+        total_amount: f64,
         ticket_number: String,
         account_number: String,
-        // TODO: refactor for being schema compliant
-        //quotas: Vec<(String, f32)>,
-        //loans: Vec<(String, f32)>,
-        //fines: Vec<(String, f32)>,
-        //affiliates_owed_capitals: Vec<(String, f32)>,
+        being_payed: Vec<PayedTo>,
     ) -> Result<String, String> {
         // for the moment I'll just implement it as for creating a payment without the relation
         // wich the other fields
@@ -86,20 +83,21 @@ impl PaymentRepo {
 
             let date = Utc::now().date_naive().to_string();
 
-            //TODO: implement relation for fines, quootas, etc
-
             let _: () = con
                 .json_set(
                     format!("users:{db_access_token}:payments:{payment_hash_key}"),
                     "$",
                     &RedisPayment {
-                        quantity: amount,
+                        name,
+                        total_amount,
                         ticket_number,
                         date_created: date,
+                        //TODO: add impl for bucket paths
                         comprobante_bucket: String::new(),
                         account_number,
-                        comments,
+                        comments: None,
                         status: "ON_REVISION".to_owned(),
+                        being_payed,
                     },
                 )
                 .expect("PAYMENT CREATION: Couldn't Create payment");
