@@ -7,10 +7,7 @@ use serde_json::from_str;
 
 use crate::repos::graphql::utils::get_multiple_models;
 use crate::{
-    models::{
-        graphql::{Loan},
-        redis::Loan as RedisLoan,
-    },
+    models::{graphql::Loan, redis::Loan as RedisLoan},
     repos::auth::utils::hashing_composite_key,
 };
 
@@ -32,8 +29,6 @@ impl LoanRepo {
             "loans".to_owned(), // TODO: see a way to don't burn the keys
         )
     }
-
-    //TODO: add later
 
     //pub fn add_ill_pay(&self, loan_id: String, ill_pay: Pagare) -> () {}
 
