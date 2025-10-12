@@ -9,6 +9,7 @@ use crate::{
     models::{
         graphql::{Affiliate, Payment, PaymentHistory, PaymentStatus, PaymentType},
         redis::Payment as RedisPayment,
+        PayedTo,
     },
     repos::{auth::utils::hashing_composite_key, graphql::utils::get_multiple_models},
 };
@@ -56,11 +57,10 @@ impl PaymentRepo {
         &self,
         access_token: String,
         name: String,
-        amount: f64,
-        payment_type: PaymentType,
+        total_amount: f64,
         ticket_number: String,
         account_number: String,
-        model_key: String,
+        being_payed: Vec<PayedTo>,
     ) -> Result<String, String> {
         // for the moment I'll just implement it as for creating a payment without the relation
         // wich the other fields
@@ -91,15 +91,14 @@ impl PaymentRepo {
                     "$",
                     &RedisPayment {
                         name,
-                        quantity: amount,
+                        total_amount,
                         ticket_number,
                         date_created: date,
                         comprobante_bucket: String::new(),
                         account_number,
                         comments: None,
-                        payment_type: payment_type.to_string(),
                         status: "ON_REVISION".to_owned(),
-                        model_key,
+                        being_payed,
                     },
                 )
                 .expect("PAYMENT CREATION: Couldn't Create payment");

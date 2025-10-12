@@ -6,27 +6,10 @@ use crate::{
             Fine as GraphQLFine, Loan as GraphQLLoan, LoanStatus, Payment as GraphQLPayment,
             PaymentStatus,
         },
-        GraphQLMappable,
+        GraphQLMappable, PayedTo,
     },
     repos::graphql::utils::get_key,
 };
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PayedTo {
-    model_type: String,
-    amount: f64,
-    model_key: String,
-}
-
-impl Default for PayedTo {
-    fn default() -> Self {
-        PayedTo {
-            model_type: "LOAN".to_owned(),
-            amount: 0.00,
-            model_key: "000000000000".to_owned(),
-        }
-    }
-}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Payment {
