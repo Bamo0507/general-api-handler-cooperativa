@@ -4,15 +4,13 @@
 use general_api::models::graphql::Payment;
 use general_api::endpoints::handlers::graphql::payment::PaymentQuery;
 use general_api::repos::graphql::utils::{create_test_context, clear_redis, insert_payment_helper};
-use std::sync::OnceLock;
-use tokio::sync::Mutex;
+use general_api::test_sync::REDIS_TEST_LOCK;
 
-static REDIS_TEST_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
-
-#[tokio::test]
-async fn test_get_all_payments_returns_all_inserted_payments() {
+#[test]
+fn test_get_all_payments_returns_all_inserted_payments() {
     // Serializar pruebas que tocan Redis sin dependencias externas
-    let _guard = REDIS_TEST_LOCK.get_or_init(|| Mutex::new(())).lock().await;
+    // Acquire a blocking mutex guard to serialize access across tests
+    let _guard = REDIS_TEST_LOCK.get_or_init(|| std::sync::Mutex::new(())).lock().unwrap();
     // Crear contexto y limpiar Redis SOLO UNA VEZ
     let context = create_test_context();
     // Limpiar redis para evitar interferencia de otros tests
@@ -58,7 +56,6 @@ async fn test_get_all_payments_returns_all_inserted_payments() {
             .arg("*")
             .query(&mut con)
             .unwrap_or_default();
-        println!("Claves en Redis tras inserción: {:?}", keys);
         // Verificar que existen ambas claves de pago
         let all_str = String::from("all");
         let composite_key = general_api::repos::auth::utils::hashing_composite_key(&[&all_str]);
@@ -69,7 +66,9 @@ async fn test_get_all_payments_returns_all_inserted_payments() {
     }
 
     // Ejecutar la query
-    let mut result = PaymentQuery::get_all_payments(&context).await.unwrap();
+    let mut result = tokio::runtime::Runtime::new().unwrap().block_on(async {
+        PaymentQuery::get_all_payments(&context).await.unwrap()
+    });
 
     // Ordenar ambos vectores por id para evitar dependencia del orden de Redis
     let mut expected_sorted = payments.clone();

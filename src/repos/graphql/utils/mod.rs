@@ -170,25 +170,31 @@ where
                     }
                 };
 
+                // Intentar deserializar como array; si falla, intentar como objeto individual
                 let parsed_vec_res = from_str::<Vec<RedisType>>(nested_data.as_str());
-                let parsed_vec = match parsed_vec_res {
+                let mut parsed_objects: Vec<RedisType> = match parsed_vec_res {
                     Ok(v) => v,
-                    Err(e) => {
-                        println!("DEBUG get_multiple_models - JSON parse failed for key {}: {} -> {}", key, nested_data, e);
-                        continue
+                    Err(_) => {
+                        // Si no es array, intentar como objeto individual
+                        match from_str::<RedisType>(nested_data.as_str()) {
+                            Ok(obj) => vec![obj],
+                            Err(e) => {
+                                println!("DEBUG get_multiple_models - JSON parse failed for key {}: {} -> {}", key, nested_data, e);
+                                continue;
+                            }
+                        }
                     }
                 };
 
-                if parsed_vec.is_empty() {
+                if parsed_objects.is_empty() {
                     continue;
                 }
 
-                let redis_object_parsed = parsed_vec[0].clone();
-
-                println!("DEBUG get_multiple_models - parsed key {} into object", key);
-
-                // now we do the graphql mapping
-                graphql_object_list.push(redis_object_parsed.to_graphql_type(key));
+                for redis_object_parsed in parsed_objects {
+                    println!("DEBUG get_multiple_models - parsed key {} into object", key);
+                    // now we do the graphql mapping
+                    graphql_object_list.push(redis_object_parsed.to_graphql_type(key.clone()));
+                }
             }
 
             Ok(graphql_object_list)

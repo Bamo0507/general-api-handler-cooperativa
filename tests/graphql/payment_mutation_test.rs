@@ -5,14 +5,11 @@ use general_api::models::graphql::{Payment, PaymentStatus};
 use general_api::endpoints::handlers::graphql::payment::PaymentMutation;
 use general_api::repos::graphql::utils::{create_test_context, clear_redis, insert_payment_helper};
 use redis::JsonCommands;
-use std::sync::OnceLock;
-use tokio::sync::Mutex;
+use general_api::test_sync::REDIS_TEST_LOCK;
 
-static REDIS_TEST_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
-
-#[tokio::test]
-async fn test_aprobar_pago_pendiente() {
-    let _guard = REDIS_TEST_LOCK.get_or_init(|| Mutex::new(())).lock().await;
+#[test]
+fn test_aprobar_pago_pendiente() {
+    let _guard = REDIS_TEST_LOCK.get_or_init(|| std::sync::Mutex::new(())).lock().unwrap();
     let context = create_test_context();
     clear_redis(&context);
     let now = chrono::Utc::now().timestamp_nanos();
@@ -47,19 +44,21 @@ async fn test_aprobar_pago_pendiente() {
         "$",
         &redis_payment,
     ).expect("No se pudo insertar el pago en la clave global 'all'");
-    let result = PaymentMutation::approve_or_reject_payment(
-        &context,
-        payment.id.clone(),
-        "ACCEPTED".to_string(),
-        "".to_string(),
-    ).await.unwrap();
+    let result = tokio::runtime::Runtime::new().unwrap().block_on(async {
+        PaymentMutation::approve_or_reject_payment(
+            &context,
+            payment.id.clone(),
+            "ACCEPTED".to_string(),
+            "".to_string(),
+        ).await
+    }).unwrap();
     assert_eq!(result.state, PaymentStatus::Accepted);
     assert_eq!(result.commentary, payment.commentary);
 }
 
-#[tokio::test]
-async fn test_rechazar_pago_pendiente_con_comentario() {
-    let _guard = REDIS_TEST_LOCK.get_or_init(|| Mutex::new(())).lock().await;
+#[test]
+fn test_rechazar_pago_pendiente_con_comentario() {
+    let _guard = REDIS_TEST_LOCK.get_or_init(|| std::sync::Mutex::new(())).lock().unwrap();
     let context = create_test_context();
     clear_redis(&context);
     let now = chrono::Utc::now().timestamp_nanos();
@@ -76,19 +75,21 @@ async fn test_rechazar_pago_pendiente_con_comentario() {
     };
     insert_payment_helper(&context, &payment);
     let comentario = "Pago rechazado por pruebas".to_string();
-    let result = PaymentMutation::approve_or_reject_payment(
-        &context,
-        payment.id.clone(),
-        "REJECTED".to_string(),
-        comentario.clone(),
-    ).await.unwrap();
+    let result = tokio::runtime::Runtime::new().unwrap().block_on(async {
+        PaymentMutation::approve_or_reject_payment(
+            &context,
+            payment.id.clone(),
+            "REJECTED".to_string(),
+            comentario.clone(),
+        ).await
+    }).unwrap();
     assert_eq!(result.state, PaymentStatus::Rejected);
     assert_eq!(result.commentary, Some(comentario));
 }
 
-#[tokio::test]
-async fn test_rechazar_pago_pendiente_sin_comentario() {
-    let _guard = REDIS_TEST_LOCK.get_or_init(|| Mutex::new(())).lock().await;
+#[test]
+fn test_rechazar_pago_pendiente_sin_comentario() {
+    let _guard = REDIS_TEST_LOCK.get_or_init(|| std::sync::Mutex::new(())).lock().unwrap();
     let context = create_test_context();
     clear_redis(&context);
     let now = chrono::Utc::now().timestamp_nanos();
@@ -104,19 +105,21 @@ async fn test_rechazar_pago_pendiente_sin_comentario() {
         state: PaymentStatus::OnRevision,
     };
     insert_payment_helper(&context, &payment);
-    let result = PaymentMutation::approve_or_reject_payment(
-        &context,
-        payment.id.clone(),
-        "REJECTED".to_string(),
-        "".to_string(),
-    ).await;
+    let result = tokio::runtime::Runtime::new().unwrap().block_on(async {
+        PaymentMutation::approve_or_reject_payment(
+            &context,
+            payment.id.clone(),
+            "REJECTED".to_string(),
+            "".to_string(),
+        ).await
+    });
     assert!(result.is_err());
     assert_eq!(result.unwrap_err(), "Se requiere comentario al rechazar el pago");
 }
 
-#[tokio::test]
-async fn test_mutar_pago_ya_finalizado() {
-    let _guard = REDIS_TEST_LOCK.get_or_init(|| Mutex::new(())).lock().await;
+#[test]
+fn test_mutar_pago_ya_finalizado() {
+    let _guard = REDIS_TEST_LOCK.get_or_init(|| std::sync::Mutex::new(())).lock().unwrap();
     let context = create_test_context();
     clear_redis(&context);
     let now = chrono::Utc::now().timestamp_nanos();
@@ -132,19 +135,21 @@ async fn test_mutar_pago_ya_finalizado() {
         state: PaymentStatus::Accepted,
     };
     insert_payment_helper(&context, &payment);
-    let result = PaymentMutation::approve_or_reject_payment(
-        &context,
-        payment.id.clone(),
-        "REJECTED".to_string(),
-        "Intento mutar pago finalizado".to_string(),
-    ).await;
+    let result = tokio::runtime::Runtime::new().unwrap().block_on(async {
+        PaymentMutation::approve_or_reject_payment(
+            &context,
+            payment.id.clone(),
+            "REJECTED".to_string(),
+            "Intento mutar pago finalizado".to_string(),
+        ).await
+    });
     assert!(result.is_err());
     assert_eq!(result.unwrap_err(), "El pago ya está finalizado");
 }
 
-#[tokio::test]
-async fn test_mutar_con_estado_invalido() {
-    let _guard = REDIS_TEST_LOCK.get_or_init(|| Mutex::new(())).lock().await;
+#[test]
+fn test_mutar_con_estado_invalido() {
+    let _guard = REDIS_TEST_LOCK.get_or_init(|| std::sync::Mutex::new(())).lock().unwrap();
     let context = create_test_context();
     clear_redis(&context);
     let now = chrono::Utc::now().timestamp_nanos();
@@ -160,12 +165,14 @@ async fn test_mutar_con_estado_invalido() {
         state: PaymentStatus::OnRevision,
     };
     insert_payment_helper(&context, &payment);
-    let result = PaymentMutation::approve_or_reject_payment(
-        &context,
-        payment.id.clone(),
-        "INVALIDO".to_string(),
-        "".to_string(),
-    ).await;
+    let result = tokio::runtime::Runtime::new().unwrap().block_on(async {
+        PaymentMutation::approve_or_reject_payment(
+            &context,
+            payment.id.clone(),
+            "INVALIDO".to_string(),
+            "".to_string(),
+        ).await
+    });
     assert!(result.is_err());
     assert_eq!(result.unwrap_err(), "Estado inválido, debe ser ACCEPTED o REJECTED");
 }
