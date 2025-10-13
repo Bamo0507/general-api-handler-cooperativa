@@ -8,18 +8,14 @@ use general_api::models::graphql::{Quota, TipoQuota};
 use general_api::repos::graphql::Quota::QuotaRepo;
 use general_api::repos::auth::utils::hashing_composite_key;
 use general_api::endpoints::handlers::configs::schema::GeneralContext;
+use general_api::repos::graphql::utils::create_test_context;
 use general_api::endpoints::handlers::graphql::Quota::{QuotaQuery, QuotaPrestamoResponse};
 use chrono::Local;
 use dotenv::dotenv;
 
 // Helper para crear contexto siguiendo patrón del proyecto
-fn setup_context() -> GeneralContext {
-    dotenv().ok();
-    let redis_url = std::env::var("REDIS_URL").unwrap_or_else(|_| "redis://127.0.0.1/".to_string());
-    let client = Client::open(redis_url).unwrap();
-    let pool = Pool::builder().build(client).unwrap();
-    GeneralContext { pool: Data::new(pool) }
-}
+// Use the project's canonical test context helper to centralize Redis test setup
+// and avoid duplicated pool creation logic.
 
 // Helper para crear repo siguiendo patrón del proyecto
 fn get_test_repo() -> QuotaRepo {

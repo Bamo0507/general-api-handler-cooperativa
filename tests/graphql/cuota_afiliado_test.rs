@@ -9,13 +9,10 @@ mod tests {
     use actix_web::web::Data;
     use r2d2::Pool;
     use redis::Client;
+    use general_api::repos::graphql::utils::create_test_context;
 
-    fn setup_context() -> GeneralContext {
-        // Configura un pool de Redis para pruebas (puede ser mock o real)
-        let client = Client::open("redis://127.0.0.1/").unwrap();
-        let pool = Pool::builder().build(client).unwrap();
-        GeneralContext { pool: Data::new(pool) }
-    }
+        // Use the project's canonical test context helper instead of duplicating pool creation
+        // This keeps test setup centralized and easier to maintain.
 
     #[test]
     fn test_get_monthly_affiliate_quota() {
