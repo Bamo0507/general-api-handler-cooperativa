@@ -29,14 +29,8 @@ pub fn create_test_context() -> GeneralContext {
 pub fn clear_redis(context: &GeneralContext) {
     let pool = context.pool.clone();
     let mut con = pool.get().expect("No se pudo obtener conexión de Redis");
-    // Nota para reviewers: aquí respondemos al comentario del PR sobre deletes riesgosos.
-    // Evitamos hacer `KEYS "*" -> DEL *` por seguridad. Solo borramos claves de pagos
-    // que se usan en pruebas (patrón `test_pago_...`) y la colección bajo la clave
-    // compuesta "all". Esto mantiene los tests aislados sin arriesgar datos reales.
-    // (Comentario casual: sí, sé que usar KEYS es rápido, pero mejor prevenir sorpresas.)
-
-    // First, delete any payments stored under the special composite key for "all"
-    // This is the standard place tests insert payments so removing them is safe in test runs.
+    
+    // borra la colección 'all' usada en tests; solo elimina claves de pruebas
     let composite_key = hashing_composite_key(&[&String::from("all")]);
     let pattern_all_composite = format!("users:{}:payments:*", composite_key);
     let keys_for_all: Vec<String> = redis::cmd("KEYS")
