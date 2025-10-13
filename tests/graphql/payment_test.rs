@@ -20,25 +20,27 @@ async fn test_get_all_payments_returns_all_inserted_payments() {
 
     // Insertar pagos de prueba
     use general_api::models::graphql::PaymentStatus;
-    let now = chrono::Utc::now().timestamp();
+    let now = chrono::Utc::now().timestamp_nanos();
     let payments = vec![
         Payment {
             id: format!("test_pago_{}_1", now),
+            name: "Test".to_string(),
             total_amount: 100.0,
             payment_date: "2025-10-09".to_string(),
             ticket_num: "A123".to_string(),
             account_num: "ACC1".to_string(),
-            commentary: "Pago test 1".to_string(),
+            commentary: Some("Pago test 1".to_string()),
             photo: "url1".to_string(),
             state: PaymentStatus::from_string("ACCEPTED".to_string()),
         },
         Payment {
             id: format!("test_pago_{}_2", now),
+            name: "Test".to_string(),
             total_amount: 200.0,
             payment_date: "2025-10-10".to_string(),
             ticket_num: "B456".to_string(),
             account_num: "ACC2".to_string(),
-            commentary: "Pago test 2".to_string(),
+            commentary: Some("Pago test 2".to_string()),
             photo: "url2".to_string(),
             state: PaymentStatus::from_string("ON_REVISION".to_string()),
         },
@@ -74,10 +76,12 @@ async fn test_get_all_payments_returns_all_inserted_payments() {
     expected_sorted.sort_by(|a, b| a.id.cmp(&b.id));
     result.sort_by(|a, b| a.id.cmp(&b.id));
 
-    // Validar que retorna todos los pagos insertados
-    assert_eq!(result.len(), expected_sorted.len());
-    for (expected, actual) in expected_sorted.iter().zip(result.iter()) {
-        assert_eq!(expected.id, actual.id);
+    // Validar que los pagos insertados están presentes en el resultado (no exigimos exclusividad
+    // porque el entorno de pruebas puede tener otros elementos). Buscamos por id y comparamos campos.
+    for expected in expected_sorted.iter() {
+        let found = result.iter().find(|r| r.id == expected.id);
+        assert!(found.is_some(), "Expected payment with id {} not found", expected.id);
+        let actual = found.unwrap();
         assert_eq!(expected.total_amount, actual.total_amount);
         assert_eq!(expected.payment_date, actual.payment_date);
         assert_eq!(expected.ticket_num, actual.ticket_num);

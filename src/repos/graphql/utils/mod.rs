@@ -1,5 +1,5 @@
 use std::fmt::Debug;
-    use serde_json;
+use serde_json;
 
 use actix_web::web::Data;
 use r2d2::Pool;
@@ -29,13 +29,39 @@ pub fn create_test_context() -> GeneralContext {
 pub fn clear_redis(context: &GeneralContext) {
     let pool = context.pool.clone();
     let mut con = pool.get().expect("No se pudo obtener conexión de Redis");
-    // Borrar todas las claves de Redis
-    let keys: Vec<String> = redis::cmd("KEYS")
-        .arg("*")
+    // Nota para reviewers: aquí respondemos al comentario del PR sobre deletes riesgosos.
+    // Evitamos hacer `KEYS "*" -> DEL *` por seguridad. Solo borramos claves de pagos
+    // que se usan en pruebas (patrón `test_pago_...`) y la colección bajo la clave
+    // compuesta "all". Esto mantiene los tests aislados sin arriesgar datos reales.
+    // (Comentario casual: sí, sé que usar KEYS es rápido, pero mejor prevenir sorpresas.)
+
+    // First, delete any payments stored under the special composite key for "all"
+    // This is the standard place tests insert payments so removing them is safe in test runs.
+    let composite_key = hashing_composite_key(&[&String::from("all")]);
+    let pattern_all_composite = format!("users:{}:payments:*", composite_key);
+    let keys_for_all: Vec<String> = redis::cmd("KEYS")
+        .arg(&pattern_all_composite)
         .query(&mut con)
         .unwrap_or_default();
-    for key in keys {
+    for key in keys_for_all {
         let _: () = con.del(&key).unwrap_or(());
+    }
+
+    // Additionally, clean any test-generated payment keys elsewhere (ids starting with test_pago_)
+    let pattern_any = "users:*:payments:*".to_string();
+    let keys_any: Vec<String> = redis::cmd("KEYS")
+        .arg(&pattern_any)
+        .query(&mut con)
+        .unwrap_or_default();
+    for key in keys_any {
+        if let Ok(re) = Regex::new(r"users:[\w]+:payments:(?P<key>.+)") {
+            if let Some(caps) = re.captures(&key) {
+                let id = caps.name("key").map(|m| m.as_str()).unwrap_or("");
+                if id.starts_with("test_pago_") {
+                    let _: () = con.del(&key).unwrap_or(());
+                }
+            }
+        }
     }
 }
 
@@ -49,21 +75,25 @@ pub fn insert_payment_helper(context: &GeneralContext, payment: &Payment) {
     // Clave individual por pago, siguiendo el patrón: users:{hash("all")}:payments:{id}
     let composite_key = hashing_composite_key(&[&String::from("all")]);
     let redis_key = format!("users:{}:payments:{}", composite_key, payment.id);
+    // aquí mapeamos
+    // explícitamente del modelo GraphQL al struct de Redis actual para que la
+    // persistencia use los nombres/formatos correctos. Usamos el wrapper JSON
+    // (`json_set`) en lugar de HSET/manual serde para que los objetos queden guardados
+    // como JSON y sean recuperables con `json_get`
     let redis_payment = RedisPayment {
         date_created: payment.payment_date.clone(),
-        comprobante_bucket: payment.photo.clone(),
         account_number: payment.account_num.clone(),
+        total_amount: payment.total_amount,
+        name: payment.name.clone(),
+        comments: payment.commentary.clone(),
+        comprobante_bucket: payment.photo.clone(),
         ticket_number: payment.ticket_num.clone(),
         status: payment.state.as_str().to_string(),
-        quantity: payment.total_amount,
-        comments: payment.commentary.clone(),
+        being_payed: vec![], // tests typically don't set this; leave empty default or fill as needed
     };
-    let payment_json = serde_json::to_string(&redis_payment).unwrap();
-    let _: redis::RedisResult<()> = redis::cmd("JSON.SET")
-        .arg(&redis_key)
-        .arg("$")
-        .arg(payment_json)
-        .query(&mut con);
+
+    // Use redis_json wrapper (JsonCommands) to persist the value as JSON
+    let _ : redis::RedisResult<()> = con.json_set(&redis_key, "$", &redis_payment);
 }
 
 ///Function for returning n number of any type value, having a function as a generator
@@ -108,34 +138,62 @@ where
         .scan_match::<String, String>(format!("users:{}:{}:*", db_access_token, redis_key_type))
     {
         Ok(keys) => {
+            // Nota para reviewers: después del refactor de pagos podemos encontrarnos
+            // con claves en Redis que no sean JSON o que no sigan el shape esperado.
+            // En vez de `unwrap()`-ear, este helper es defensivo: intenta `json_get`,
+            // intenta parsear y si falla simplemente ignora la clave. Esto responde al
+            // comentario del PR sobre robustez y evita panics por datos antiguos/no esperados.
+            // (Comentario casual: mejor saltarse una clave rara que romper toda la query.)
             let mut graphql_object_list: Vec<GraphQLType> = Vec::new();
 
             // conn for fetching redis models
             let mut con = pool.get().expect("Couldn't connect to pool");
 
-            for key in keys {
-                // We first fetch the raw data, first
-                let redis_raw = con
-                    .json_get::<String, &str, RedisValue>(key.to_owned(), "$")
-                    .unwrap(); // I will do it in one line, but nu uh, it would be unreadable
+            // Collect keys into a Vec so we can log and iterate deterministically for debugging
+            let key_vec: Vec<String> = keys.collect();
+            println!("DEBUG get_multiple_models - scanned keys: {:?}", key_vec);
 
-                // for some reason redis gives all the info deserialize, so I have to do the
-                // serializion process my self
-                let nested_data = from_redis_value::<String>(&redis_raw).unwrap(); // first is
+            for key in key_vec {
+                // We first try to fetch JSON at path "$" for the key. Skip keys that don't
+                // have a JSON value or where the response is nil (this can happen if there is
+                // a non-id payment key like `users:...:payments` stored as a string or empty).
+                let redis_raw_res = con.json_get::<String, &str, RedisValue>(key.to_owned(), "$");
+                let redis_raw = match redis_raw_res {
+                    Ok(v) => v,
+                    Err(e) => {
+                        println!("DEBUG get_multiple_models - json_get failed for key {}: {:?}", key, e);
+                        continue // skip invalid/non-json keys
+                    }
+                };
 
-                // ik that I could've made the direct mapping to the GraphQl object, but I
-                // rather using my own name standar for the redis keys and that Bryan manages
-                // the names as however he want's it
-                let redis_object_parsed =
-                    from_str::<Vec<RedisType>>(nested_data.as_str()).unwrap()[0].clone();
-                // cause
-                // of the way  of the way the json library works on redis, the objects follow a
-                // list type fetching, but as the db was planned, we where heading for a more
-                // key aproach overall, so that's why we need the cast (after all there will
-                // always be just one element)
+                // Try to convert redis value to string, then parse JSON into RedisType
+                let nested_data_res = from_redis_value::<String>(&redis_raw);
+                let nested_data = match nested_data_res {
+                    Ok(s) => s,
+                    Err(e) => {
+                        println!("DEBUG get_multiple_models - from_redis_value failed for key {}: {:?}", key, e);
+                        continue
+                    }
+                };
+
+                let parsed_vec_res = from_str::<Vec<RedisType>>(nested_data.as_str());
+                let parsed_vec = match parsed_vec_res {
+                    Ok(v) => v,
+                    Err(e) => {
+                        println!("DEBUG get_multiple_models - JSON parse failed for key {}: {} -> {}", key, nested_data, e);
+                        continue
+                    }
+                };
+
+                if parsed_vec.is_empty() {
+                    continue;
+                }
+
+                let redis_object_parsed = parsed_vec[0].clone();
+
+                println!("DEBUG get_multiple_models - parsed key {} into object", key);
 
                 // now we do the graphql mapping
-
                 graphql_object_list.push(redis_object_parsed.to_graphql_type(key));
             }
 

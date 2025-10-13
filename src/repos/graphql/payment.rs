@@ -1,10 +1,11 @@
 use actix_web::web;
 use chrono::Utc;
 use r2d2::Pool;
-use redis::{Client, Commands, JsonCommands};
+use redis::{Client, Commands, JsonCommands, from_redis_value};
 use regex::Regex;
 use serde_json::from_str;
 use crate::models::GraphQLMappable;
+use crate::models::graphql::PaymentStatus;
 use crate::{
     models::{
         graphql::{Affiliate, Payment, PaymentHistory},
@@ -168,7 +169,7 @@ impl PaymentRepo {
 
         // Obtener JSON del pago
         let raw = con
-            .json_get::<String, &str, RedisValue>(key.clone(), "$")
+            .json_get::<String, &str, redis::Value>(key.clone(), "$")
             .map_err(|_| "Error fetching payment")?;
         let nested = from_redis_value::<String>(&raw).map_err(|_| "Error decoding redis value")?;
         let mut parsed: Vec<RedisPayment> =
@@ -198,7 +199,7 @@ impl PaymentRepo {
         // Actualizar y persistir
         redis_payment.status = new_status.as_str().to_owned();
         if new_status == PaymentStatus::Rejected {
-            redis_payment.comments = commentary;
+            redis_payment.comments = Some(commentary);
         }
 
         con
