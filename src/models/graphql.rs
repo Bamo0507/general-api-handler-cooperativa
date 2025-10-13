@@ -90,12 +90,21 @@ impl FineStatus {
     pub fn from_string(raw_status: String) -> FineStatus {
         match raw_status.to_uppercase().as_str() {
             "PAID" => FineStatus::Paid,
-            "UPAID" => FineStatus::Unpaid,
+            "UNPAID" => FineStatus::Unpaid,
             _ => FineStatus::ParsedError,
         }
     }
 }
 
+impl ToString for FineStatus {
+    fn to_string(&self) -> String {
+        match self {
+            FineStatus::Paid => "PAID".to_owned(),
+            FineStatus::Unpaid => "UNPAID".to_owned(),
+            _ => "ERROR".to_owned(),
+        }
+    }
+}
 #[derive(Clone, Serialize, Deserialize, GraphQLObject, Debug)]
 pub struct Loan {
     pub id: String,
