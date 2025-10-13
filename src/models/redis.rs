@@ -6,34 +6,36 @@ use crate::{
             Fine as GraphQLFine, Loan as GraphQLLoan, LoanStatus, Payment as GraphQLPayment,
             PaymentStatus,
         },
-        GraphQLMappable,
+        GraphQLMappable, PayedTo,
     },
     repos::graphql::utils::get_key,
 };
 
-//TODO: refactor for different files
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Payment {
     pub date_created: String,
-    pub comprobante_bucket: String,
     pub account_number: String,
+    pub total_amount: f64,
+    pub name: String,
+    pub comments: Option<String>, // it will be added if the directive sends it
+    pub comprobante_bucket: String,
     pub ticket_number: String,
     pub status: String,
-    pub quantity: f64,
-    pub comments: String,
+    pub being_payed: Vec<PayedTo>,
 }
 
 impl Default for Payment {
     fn default() -> Self {
         Payment {
-            date_created: "0-00-0000".to_string(),
-            comprobante_bucket: "/".to_string(),
-            account_number: "000000000".to_string(),
-            ticket_number: "000000000".to_string(),
-            status: "NOT_PROCESS".to_string(),
-            quantity: 0.00,
-            comments: "".to_string(),
+            name: "none".to_owned(),
+            date_created: "0-00-0000".to_owned(),
+            comprobante_bucket: "/".to_owned(),
+            account_number: "000000000".to_owned(),
+            ticket_number: "000000000".to_owned(),
+            status: "NOT_PROCESS".to_owned(),
+            total_amount: 0.00,
+            comments: Some("".to_owned()),
+            being_payed: vec![PayedTo::default()],
         }
     }
 }
@@ -42,11 +44,12 @@ impl GraphQLMappable<GraphQLPayment> for Payment {
     fn to_graphql_type(&self, key: String) -> GraphQLPayment {
         GraphQLPayment {
             id: get_key(key, "payments".to_owned()),
-            total_amount: self.quantity,
+            name: (*self.name).to_owned(),
+            total_amount: self.total_amount,
             account_num: (*self.account_number).to_string(),
             payment_date: (*self.date_created).to_string(),
             ticket_num: (*self.ticket_number).to_string(),
-            commentary: (*self.comments).to_string(),
+            commentary: self.comments.clone(), // f*** options, can't do low level stuff some times
             photo: (*self.comprobante_bucket).to_string(),
             state: PaymentStatus::from_string((*self.status).to_string()),
         }

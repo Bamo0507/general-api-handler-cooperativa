@@ -1,5 +1,4 @@
-use crate::models::graphql::{Affiliate, QuotaAfiliadoMensualResponse, QuotaPrestamoResponse};
-use crate::models::graphql::{Quota, QuotaType};
+use crate::models::graphql::{Affiliate, Quota, QuotaType};
 use crate::repos::auth::utils::hashing_composite_key;
 use actix_web::web::Data;
 use chrono::{Datelike, NaiveDate};
@@ -28,17 +27,18 @@ pub struct QuotaRepo {
 }
 
 impl QuotaRepo {
-    /// Formatea las cuotas mensuales de afiliado pendientes según docs/api-quota-response-format.md
+    /// Obtiene cuotas mensuales de afiliado con identificadores formateados para frontend
+    /// Incluye campos identifier y nombre_usuario poblados automáticamente
     pub fn get_monthly_affiliate_quota(
         &self,
         affiliates: Vec<Affiliate>,
         access_token: String,
-    ) -> Result<Vec<QuotaAfiliadoMensualResponse>, String> {
+    ) -> Result<Vec<Quota>, String> {
         let hoy = chrono::Utc::now().date_naive();
         let mut resultado = Vec::new();
         for afiliado in affiliates {
             let quotas = self.get_quotas_afiliado_pendientes(afiliado.user_id.clone())?;
-            for quota in quotas {
+            for mut quota in quotas {
                 if let Some(fecha_str) = &quota.exp_date {
                     if let Ok(fecha) = NaiveDate::parse_from_str(fecha_str, "%Y-%m-%d") {
                         if fecha <= hoy {
@@ -48,14 +48,10 @@ impl QuotaRepo {
                             let anio = fecha.year();
                             let nombre = afiliado.name.clone();
                             let identifier = format!("{} - {} {}", nombre, mes, anio);
-                            resultado.push(QuotaAfiliadoMensualResponse {
-                                identifier,
-                                user_id: access_token.clone(),
-                                monto: quota.amount,
-                                nombre,
-                                fecha_vencimiento: fecha_str.to_string(),
-                                extraordinaria: quota.is_extraordinary.unwrap_or(false),
-                            });
+                            // Poblar campos adicionales para frontend
+                            quota.identifier = Some(identifier);
+                            quota.nombre_usuario = Some(nombre);
+                            resultado.push(quota);
                         }
                     }
                 }
@@ -64,27 +60,13 @@ impl QuotaRepo {
         Ok(resultado)
     }
 
-    /// Formatea las cuotas de préstamo pendientes según docs/api-quota-response-format.md
-    pub fn get_pending_loans_quotas(
-        &self,
-        access_token: String,
-    ) -> Result<Vec<QuotaPrestamoResponse>, String> {
+    /// Obtiene cuotas de préstamo pendientes con campos adicionales para frontend
+    pub fn get_pending_loans_quotas(&self, access_token: String) -> Result<Vec<Quota>, String> {
         let quotas = self.get_quotas_prestamo_pendientes(access_token.clone())?;
         let mut resultado = Vec::new();
         for quota in quotas {
-            resultado.push(QuotaPrestamoResponse {
-                user_id: access_token.clone(),
-                monto: quota.amount,
-                fecha_vencimiento: quota.exp_date.clone().unwrap_or_default(),
-                monto_pagado: quota.monto_pagado,
-                multa: quota.multa,
-                pagada_por: quota.pay_by.clone(),
-                tipo: format!("{:?}", quota.qouta_type),
-                loan_id: quota.loan_id.clone(),
-                pagada: quota.payed.unwrap_or(false),
-                numero_quota: quota.quota_number,
-                nombre_prestamo: None,
-            });
+            // Los campos nombre_prestamo ya vienen poblados desde dummy_data
+            resultado.push(quota);
         }
         Ok(resultado)
     }
@@ -122,7 +104,7 @@ impl QuotaRepo {
             let quota = quota_vec.get(0).cloned();
             if let Some(quota) = quota {
                 // 1. Solo tipo afiliado
-                if quota.qouta_type != QuotaType::Afiliado {
+                if quota.quota_type != QuotaType::Afiliado {
                     continue;
                 }
                 // 2. No pagada
@@ -146,17 +128,17 @@ impl QuotaRepo {
                 } else {
                     continue; // Si no hay fecha, ignora la quota
                 }
-                // 4. Permite pagos por terceros (pagada_por puede ser distinto a user_id)
+                // 4. Permite pagos por terceros (pay_by puede ser distinto a user_id)
                 quotas.push(quota);
             }
         }
         Ok(quotas)
     }
-    // ESTE MÉTODO SE USA PARA TESTING, NO TIENE LÓGICA DE NEGOCIO, NO USAR EN PRODUCCIÓN
+    /// Guarda una cuota en Redis - usado principalmente para datos dummy y testing
     pub fn save_quota(&self, access_token: String, quota: &Quota) -> Result<(), String> {
         let mut con = self.pool.get().map_err(|_| "Couldn't connect to pool")?;
         let db_access_token = hashing_composite_key(&[&access_token]);
-        let key = match &quota.qouta_type {
+        let key = match &quota.quota_type {
             QuotaType::Prestamo => {
                 let loan_id = quota
                     .loan_id
@@ -264,7 +246,7 @@ impl QuotaRepo {
             if let Some(quota) = quota {
                 // Filtrado fundamentado:
                 // 1. Solo tipo préstamo
-                if quota.qouta_type != QuotaType::Prestamo {
+                if quota.quota_type != QuotaType::Prestamo {
                     continue;
                 }
                 // 2. No pagada

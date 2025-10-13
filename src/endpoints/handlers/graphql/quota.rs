@@ -1,5 +1,5 @@
 use crate::endpoints::handlers::configs::schema::GeneralContext;
-use crate::models::graphql::{Quota, QuotaAfiliadoMensualResponse, QuotaPrestamoResponse};
+use crate::models::graphql::Quota;
 
 pub struct QuotaQuery {}
 const MESES_ES: [&str; 12] = [
@@ -21,7 +21,7 @@ const MESES_ES: [&str; 12] = [
     Context = GeneralContext,
 )]
 impl QuotaQuery {
-    /// Retorna las quotas pendientes de préstamo para el usuario
+    /// Retorna todas las cuotas pendientes para el usuario usando el modelo Quota unificado
     pub async fn get_pending_quotas(
         context: &GeneralContext,
         access_token: String,
@@ -29,18 +29,18 @@ impl QuotaQuery {
         context.quota_repo().get_pending_quotas(access_token)
     }
 
-    /// Refactorizado: Retorna las quotas mensuales de afiliado pendientes en formato completo fundamentado según docs/api-quota-response-format.md
-    /// Cada objeto incluye: identifier, user_id, monto, nombre, fecha_vencimiento, extraordinaria
+    /// Retorna las cuotas mensuales de afiliado pendientes con campos adicionales para frontend
     pub async fn get_monthly_affiliate_quota(
         context: &GeneralContext,
         access_token: String,
-    ) -> Result<Vec<QuotaAfiliadoMensualResponse>, String> {
+    ) -> Result<Vec<Quota>, String> {
         let afiliados = context.payment_repo().get_all_users_for_affiliates()?;
         context
             .quota_repo()
             .get_monthly_affiliate_quota(afiliados, access_token)
     }
-    /// Retorna solo las quotas de préstamo pendientes para el usuario (SCRUM-255, lógica fundamentada)
+
+    /// Retorna solo las cuotas de préstamo pendientes filtradas por lógica de negocio
     pub async fn get_quotas_prestamo_pendientes(
         context: &GeneralContext,
         access_token: String,
@@ -50,12 +50,11 @@ impl QuotaQuery {
             .get_quotas_prestamo_pendientes(access_token)
     }
 
-    /// Retorna las quotas de préstamo pendientes en formato completo según docs/api-quota-response-format.md
-    /// Cada objeto incluye: user_id, monto, fecha_vencimiento, monto_pagado, multa, pagada_por, tipo, loan_id, pagada, numero_quota, nombre_prestamo
+    /// Retorna las cuotas de préstamo pendientes con campos adicionales para frontend
     pub async fn get_pending_loans_quotas(
         context: &GeneralContext,
         access_token: String,
-    ) -> Result<Vec<QuotaPrestamoResponse>, String> {
+    ) -> Result<Vec<Quota>, String> {
         context.quota_repo().get_pending_loans_quotas(access_token)
     }
 }
@@ -66,6 +65,7 @@ pub struct QuotaMutation;
     Context = GeneralContext,
 )]
 impl QuotaMutation {
+    /// Crea una nueva cuota en el sistema (implementación pendiente)
     pub async fn create_quota() -> Result<String, String> {
         todo!()
     }

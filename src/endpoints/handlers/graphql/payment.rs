@@ -1,6 +1,9 @@
 use crate::{
     endpoints::handlers::configs::schema::GeneralContext,
-    models::graphql::{Affiliate, Payment, PaymentHistory},
+    models::{
+        graphql::{Affiliate, Payment, PaymentHistory, PaymentType},
+        PayedTo,
+    },
 };
 
 pub struct PaymentQuery {}
@@ -32,8 +35,8 @@ impl PaymentQuery {
         context.payment_repo().get_all_payments()
     }
 
-    /// Get's all the members names with pg_id (mostly for payments and affiliates)
-    pub async fn get_all_memembers(context: &GeneralContext) -> Result<Vec<Affiliate>, String> {
+    /// Get's all the members names with there affiliate_keys
+    pub async fn get_all_members(context: &GeneralContext) -> Result<Vec<Affiliate>, String> {
         context.payment_repo().get_all_users_for_affiliates()
     }
 }
@@ -44,22 +47,23 @@ pub struct PaymentMutation;
     Context = GeneralContext,
 )]
 impl PaymentMutation {
+    //TODO: add for adding ticket path
     pub async fn create_user_payment(
         context: &GeneralContext,
         access_token: String,
-        comments: String,
-        amount: f64,
+        name: String,
+        total_amount: f64,
         ticket_number: String,
         account_number: String,
-        // each type (String, T), referes to the key of it and it's value (which in this case it's
-        // the amount)
+        being_payed: Vec<PayedTo>,
     ) -> Result<String, String> {
         context.payment_repo().create_payment(
             access_token,
-            comments,
-            amount,
+            name,
+            total_amount,
             ticket_number,
             account_number,
+            being_payed,
         )
     }
 

@@ -3,8 +3,6 @@
 use juniper::{GraphQLEnum, GraphQLObject};
 use serde::{Deserialize, Serialize};
 
-use crate::models::FromString;
-
 #[derive(Clone, Serialize, Deserialize, Debug, GraphQLEnum, PartialEq)]
 pub enum QuotaType {
     Prestamo,
@@ -17,6 +15,36 @@ pub enum PaymentStatus {
     Rejected,
     Accepted,
     ParsedError,
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug, GraphQLEnum, PartialEq)]
+pub enum PaymentType {
+    Loan,
+    Quota,
+    Fine,
+    ParsedError,
+}
+
+impl PaymentType {
+    pub fn from_string(raw_status: String) -> PaymentType {
+        match raw_status.to_uppercase().as_str() {
+            "LOAN" => PaymentType::Loan,
+            "QUOTA" => PaymentType::Quota,
+            "FINE" => PaymentType::Fine,
+            _ => PaymentType::ParsedError,
+        }
+    }
+}
+
+impl ToString for PaymentType {
+    fn to_string(&self) -> String {
+        match self {
+            PaymentType::Loan => "LOAN".to_owned(),
+            PaymentType::Quota => "QUOTA".to_owned(),
+            PaymentType::Fine => "FINE".to_owned(),
+            PaymentType::ParsedError => "PARSED_ERROR".to_owned(),
+        }
+    }
 }
 
 impl PaymentStatus {
@@ -81,11 +109,12 @@ pub struct Fine {
 #[derive(Clone, Serialize, Deserialize, GraphQLObject, Debug)]
 pub struct Payment {
     pub id: String,
+    pub name: String,
     pub total_amount: f64,
     pub payment_date: String, // I'll pass it as a string, for not having parsing difficulties
     pub ticket_num: String,
     pub account_num: String,
-    pub commentary: String,
+    pub commentary: Option<String>,
     pub photo: String,        // For bucket use
     pub state: PaymentStatus, // Following bryan's enums
 }
@@ -134,42 +163,37 @@ pub struct Aporte {
     pub monto: f64,
 }
 
+/// Modelo unificado de Quota para manejar tanto cuotas de afiliado como de préstamo
+/// Compatible con GraphQL y todas las operaciones del sistema
 #[derive(Clone, Serialize, Deserialize, GraphQLObject, Debug)]
 pub struct Quota {
+    /// ID del usuario (debe coincidir con access_token para dummy data)
     pub user_id: String,
+    /// Monto de la cuota
     pub amount: f64,
+    /// Fecha de vencimiento en formato YYYY-MM-DD
     pub exp_date: Option<String>,
-    pub monto_pagado: f64,
-    pub multa: f64,
-    pub pay_by: Option<String>, // bryan lo dijo porque en caso de que la Quota la pague otro usuario
-    pub qouta_type: QuotaType,
-    pub loan_id: Option<String>, // de acá se debería sacar el nombre del prestamo, pero todavía no está implementado (así lo pidió bryan)
-    pub is_extraordinary: Option<bool>, // esto al crear, por logica de negocio va cambiar el monto si es extraordinaria o no
-    pub payed: Option<bool>,
-    pub quota_number: Option<i32>, // Solo para préstamo
-}
-
-#[derive(Clone, Serialize, Deserialize, GraphQLObject, Debug)]
-pub struct QuotaAfiliadoMensualResponse {
-    pub identifier: String,
-    pub user_id: String,
-    pub monto: f64,
-    pub nombre: String,
-    pub fecha_vencimiento: String,
-    pub extraordinaria: bool,
-}
-
-#[derive(Clone, Serialize, Deserialize, GraphQLObject, Debug)]
-pub struct QuotaPrestamoResponse {
-    pub user_id: String,
-    pub monto: f64,
-    pub fecha_vencimiento: String,
-    pub monto_pagado: f64,
-    pub multa: f64,
-    pub pagada_por: Option<String>,
-    pub tipo: String,
+    /// Monto ya pagado de la cuota (0.0 para nuevas cuotas)
+    pub monto_pagado: Option<f64>,
+    /// Multa aplicada a la cuota (0.0 para nuevas cuotas)
+    pub multa: Option<f64>,
+    /// Usuario que pagó la cuota (para pagos por terceros)
+    pub pay_by: Option<String>,
+    /// Tipo de cuota: Prestamo o Afiliado
+    pub quota_type: QuotaType,
+    /// ID del préstamo (solo para cuotas de préstamo, SHA256 para dummy data)
     pub loan_id: Option<String>,
-    pub pagada: bool,
-    pub numero_quota: Option<i32>,
+    /// Indica si es una cuota extraordinaria
+    pub is_extraordinary: Option<bool>,
+    /// Estado de pago de la cuota
+    pub payed: Option<bool>,
+    /// Número de la cuota dentro del préstamo (solo para préstamos)
+    pub quota_number: Option<i32>,
+    /// Nombre del préstamo para mostrar en frontend
     pub nombre_prestamo: Option<String>,
+    /// Nombre del usuario para mostrar en frontend
+    pub nombre_usuario: Option<String>,
+    /// Identificador único para frontend (formato: "Nombre - Mes Año")
+    pub identifier: Option<String>,
 }
+
