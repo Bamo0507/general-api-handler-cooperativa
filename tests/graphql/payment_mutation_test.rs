@@ -44,7 +44,7 @@ fn test_aprobar_pago_pendiente() {
         "$",
         &redis_payment,
     ).expect("No se pudo insertar el pago en la clave global 'all'");
-    let result = tokio::runtime::Runtime::new().unwrap().block_on(async {
+    let result = futures::executor::block_on(async {
         PaymentMutation::approve_or_reject_payment(
             &context,
             payment.id.clone(),
@@ -75,7 +75,7 @@ fn test_rechazar_pago_pendiente_con_comentario() {
     };
     insert_payment_helper(&context, &payment);
     let comentario = "Pago rechazado por pruebas".to_string();
-    let result = tokio::runtime::Runtime::new().unwrap().block_on(async {
+    let result = futures::executor::block_on(async {
         PaymentMutation::approve_or_reject_payment(
             &context,
             payment.id.clone(),
@@ -105,7 +105,7 @@ fn test_rechazar_pago_pendiente_sin_comentario() {
         state: PaymentStatus::OnRevision,
     };
     insert_payment_helper(&context, &payment);
-    let result = tokio::runtime::Runtime::new().unwrap().block_on(async {
+    let result = futures::executor::block_on(async {
         PaymentMutation::approve_or_reject_payment(
             &context,
             payment.id.clone(),
@@ -135,7 +135,7 @@ fn test_mutar_pago_ya_finalizado() {
         state: PaymentStatus::Accepted,
     };
     insert_payment_helper(&context, &payment);
-    let result = tokio::runtime::Runtime::new().unwrap().block_on(async {
+    let result = futures::executor::block_on(async {
         PaymentMutation::approve_or_reject_payment(
             &context,
             payment.id.clone(),
@@ -165,7 +165,7 @@ fn test_mutar_con_estado_invalido() {
         state: PaymentStatus::OnRevision,
     };
     insert_payment_helper(&context, &payment);
-    let result = tokio::runtime::Runtime::new().unwrap().block_on(async {
+    let result = futures::executor::block_on(async {
         PaymentMutation::approve_or_reject_payment(
             &context,
             payment.id.clone(),

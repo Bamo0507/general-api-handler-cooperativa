@@ -66,7 +66,7 @@ fn test_get_all_payments_returns_all_inserted_payments() {
     }
 
     // Ejecutar la query
-    let mut result = tokio::runtime::Runtime::new().unwrap().block_on(async {
+    let mut result = futures::executor::block_on(async {
         PaymentQuery::get_all_payments(&context).await.unwrap()
     });
 
