@@ -10,31 +10,28 @@ use general_api::repos::auth::utils::hashing_composite_key;
 use general_api::endpoints::handlers::configs::schema::GeneralContext;
 use general_api::endpoints::handlers::graphql::Quota::{QuotaQuery, QuotaPrestamoResponse};
 use chrono::Local;
-use dotenv::dotenv;
+// dotenv eliminado: solo se usa REDIS_URL exportada por CLI
 
 // Helper para crear contexto siguiendo patrón del proyecto
 fn setup_context() -> GeneralContext {
-    dotenv().ok();
-    let redis_url = std::env::var("REDIS_URL").unwrap_or_else(|_| "redis://127.0.0.1/".to_string());
-    let client = Client::open(redis_url).unwrap();
-    let pool = Pool::builder().build(client).unwrap();
+    let redis_url = std::env::var("REDIS_URL").expect("REDIS_URL debe estar exportada en el CLI");
+    let client = Client::open(redis_url).expect("No se pudo conectar a Redis");
+    let pool = Pool::builder().build(client).expect("No se pudo crear el pool de Redis");
     GeneralContext { pool: Data::new(pool) }
 }
 
 // Helper para crear repo siguiendo patrón del proyecto
 fn get_test_repo() -> QuotaRepo {
-    dotenv().ok();
-    let redis_url = std::env::var("REDIS_URL").unwrap_or_else(|_| "redis://127.0.0.1/".to_string());
-    let pool = Data::new(Pool::new(Client::open(redis_url).unwrap()).unwrap());
+    let redis_url = std::env::var("REDIS_URL").expect("REDIS_URL debe estar exportada en el CLI");
+    let pool = Data::new(Pool::new(Client::open(redis_url).expect("No se pudo conectar a Redis")).expect("No se pudo crear el pool de Redis"));
     QuotaRepo { pool }
 }
 
 // Helper para limpiar Redis antes/después de cada test
 fn cleanup_redis_for_user(access_token: &str) {
-    dotenv().ok(); // Cargar variables de entorno
     let access_token_string = access_token.to_string();
     let db_access_token = hashing_composite_key(&[&access_token_string]);
-    let redis_url = std::env::var("REDIS_URL").unwrap_or_else(|_| "redis://127.0.0.1/".to_string());
+    let redis_url = std::env::var("REDIS_URL").expect("REDIS_URL debe estar exportada en el CLI");
     let client = Client::open(redis_url).expect("No se pudo conectar a Redis");
     let mut con = client.get_connection().expect("No se pudo obtener conexión");
     let pattern = format!("users:{}:*", db_access_token);
@@ -174,7 +171,7 @@ fn test_quotas_corruptas_no_causan_panic() {
     // Insertar JSON corrupto directamente en Redis
     let access_token_string = access_token.to_string();
     let db_access_token = hashing_composite_key(&[&access_token_string]);
-    let redis_url = std::env::var("REDIS_URL").unwrap_or_else(|_| "redis://127.0.0.1/".to_string());
+    let redis_url = std::env::var("REDIS_URL").expect("REDIS_URL debe estar exportada en el CLI");
     let client = Client::open(redis_url).expect("No se pudo conectar a Redis");
     let mut con = client.get_connection().expect("No se pudo obtener conexión");
     let key = format!("users:{}:quotas:corrupted_quota", db_access_token);
@@ -264,7 +261,7 @@ fn test_error_conexion_no_panic() {
     // Insertar datos que causen problemas en deserialización
     let access_token_string = access_token.to_string();
     let db_access_token = hashing_composite_key(&[&access_token_string]);
-    let redis_url = std::env::var("REDIS_URL").unwrap_or_else(|_| "redis://127.0.0.1/".to_string());
+    let redis_url = std::env::var("REDIS_URL").expect("REDIS_URL debe estar exportada en el CLI");
     let client = Client::open(redis_url).expect("No se pudo conectar a Redis");
     let mut con = client.get_connection().expect("No se pudo obtener conexión");
     let key = format!("users:{}:quotas:problematic_data", db_access_token);

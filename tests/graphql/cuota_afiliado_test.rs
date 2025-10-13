@@ -11,9 +11,10 @@ mod tests {
     use redis::Client;
 
     fn setup_context() -> GeneralContext {
-        // Configura un pool de Redis para pruebas (puede ser mock o real)
-        let client = Client::open("redis://127.0.0.1/").unwrap();
-        let pool = Pool::builder().build(client).unwrap();
+        // Configura un pool de Redis para pruebas usando solo la variable de entorno CLI
+        let redis_url = std::env::var("REDIS_URL").expect("REDIS_URL debe estar exportada en el CLI");
+        let client = Client::open(redis_url).expect("No se pudo conectar a Redis");
+        let pool = Pool::builder().build(client).expect("No se pudo crear el pool de Redis");
         GeneralContext { pool: Data::new(pool) }
     }
 

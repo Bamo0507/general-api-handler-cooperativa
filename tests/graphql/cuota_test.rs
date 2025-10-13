@@ -73,10 +73,10 @@ mod tests {
 
     // Utilidad para crear un QuotaRepo de prueba
     fn get_test_repo() -> QuotaRepo {
-        // Usa una variable de entorno para la URL de Redis en vez de hardcodear
-        let redis_url = std::env::var("REDIS_TEST_URL").unwrap_or_else(|_| "redis://127.0.0.1/".to_string());
-        let pool = Data::new(Pool::new(Client::open(redis_url).unwrap()).unwrap());
-        QuotaRepo { pool }
+    // Usa solo la variable de entorno REDIS_URL exportada por CLI
+    let redis_url = std::env::var("REDIS_URL").expect("REDIS_URL debe estar exportada en el CLI");
+    let pool = Data::new(Pool::new(Client::open(redis_url).expect("No se pudo conectar a Redis")).expect("No se pudo crear el pool de Redis"));
+    QuotaRepo { pool }
     }
 
     // Utilidad para insertar quotas de prueba
