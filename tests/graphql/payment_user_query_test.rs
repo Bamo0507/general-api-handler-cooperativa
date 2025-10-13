@@ -69,7 +69,7 @@ fn test_get_users_payments_returns_inserted_payments() {
         insert_payment_for_user(&context, &access_token, p);
     }
 
-    let result = tokio::runtime::Runtime::new().unwrap().block_on(async {
+    let result = futures::executor::block_on(async {
         PaymentQuery::get_users_payments(&context, access_token.clone()).await
     }).unwrap();
 
@@ -122,7 +122,7 @@ fn test_get_users_payments_filters_other_users() {
     insert_payment_for_user(&context, &user_a, &payment_a);
     insert_payment_for_user(&context, &user_b, &payment_b);
 
-    let result_a = tokio::runtime::Runtime::new().unwrap().block_on(async {
+    let result_a = futures::executor::block_on(async {
         PaymentQuery::get_users_payments(&context, user_a.clone()).await
     }).unwrap();
 
@@ -137,7 +137,7 @@ fn test_get_users_payments_no_payments_returns_empty() {
     clear_redis(&context);
 
     let user = "no_payments_user".to_string();
-    let result = tokio::runtime::Runtime::new().unwrap().block_on(async {
+    let result = futures::executor::block_on(async {
         PaymentQuery::get_users_payments(&context, user.clone()).await
     }).unwrap();
 

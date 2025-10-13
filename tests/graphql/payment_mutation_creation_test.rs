@@ -31,7 +31,7 @@ fn test_mutation_create_user_payment_happy_path() {
     // puede delegar a repo create_payment; ajustamos la llamada directa si existe método.
     // La firma real de la mutation es: (context, access_token, name, total_amount, ticket_number, account_number, being_payed)
     let access_token = "testuser_mut_create".to_string();
-    let res = tokio::runtime::Runtime::new().unwrap().block_on(async {
+    let res = futures::executor::block_on(async {
         PaymentMutation::create_user_payment(
             &context,
             access_token.clone(),
@@ -62,7 +62,7 @@ fn test_mutation_create_user_payment_with_negative_amount() {
     clear_redis(&context);
 
     let access_token = "test_neg_amount".to_string();
-    let res = tokio::runtime::Runtime::new().unwrap().block_on(async {
+    let res = futures::executor::block_on(async {
         PaymentMutation::create_user_payment(
             &context,
             access_token.clone(),
