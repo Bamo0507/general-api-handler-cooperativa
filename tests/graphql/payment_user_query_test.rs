@@ -4,6 +4,8 @@ use general_api::endpoints::handlers::configs::schema::GeneralContext;
 
 use general_api::models::graphql::Payment;
 use general_api::models::graphql::PaymentStatus;
+use general_api::models::redis::Payment as RedisPayment;
+use general_api::repos::auth::utils::hashing_composite_key;
 use general_api::endpoints::handlers::graphql::payment::PaymentQuery;
 use general_api::repos::graphql::utils::{create_test_context, clear_redis};
 
@@ -17,9 +19,6 @@ use redis::JsonCommands;
 
 // Inserta directamente en Redis bajo la clave del access_token provisto
 fn insert_payment_for_user(context: &GeneralContext, access_token: &str, payment: &Payment) {
-    use general_api::models::redis::Payment as RedisPayment;
-    use general_api::repos::auth::utils::hashing_composite_key;
-
     let composite = hashing_composite_key(&[&access_token.to_string()]);
     let redis_key = format!("users:{}:payments:{}", composite, payment.id);
     let pool = context.pool.clone();
