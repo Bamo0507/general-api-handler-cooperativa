@@ -1,3 +1,4 @@
+use general_api::endpoints::handlers::configs::schema::GeneralContext;
 // Tests para SCRUM-201: query get_users_payments
 // No modificar archivos de producción; usar helpers existentes y runtime local
 
@@ -5,11 +6,17 @@ use general_api::models::graphql::Payment;
 use general_api::models::graphql::PaymentStatus;
 use general_api::endpoints::handlers::graphql::payment::PaymentQuery;
 use general_api::repos::graphql::utils::{create_test_context, clear_redis};
-use general_api::test_sync::REDIS_TEST_LOCK;
+
+// Local lock helper (avoid depending on non-existent general_api::test_sync)
+use std::sync::{Mutex, OnceLock};
+fn redis_test_lock() -> &'static Mutex<()> {
+    static REDIS_TEST_LOCAL: OnceLock<Mutex<()>> = OnceLock::new();
+    REDIS_TEST_LOCAL.get_or_init(|| Mutex::new(()))
+}
 use redis::JsonCommands;
 
 // Inserta directamente en Redis bajo la clave del access_token provisto
-fn insert_payment_for_user(context: &crate::endpoints::handlers::configs::schema::GeneralContext, access_token: &str, payment: &Payment) {
+fn insert_payment_for_user(context: &GeneralContext, access_token: &str, payment: &Payment) {
     use general_api::models::redis::Payment as RedisPayment;
     use general_api::repos::auth::utils::hashing_composite_key;
 
@@ -33,13 +40,13 @@ fn insert_payment_for_user(context: &crate::endpoints::handlers::configs::schema
 
 #[test]
 fn test_get_users_payments_returns_inserted_payments() {
-    let _guard = REDIS_TEST_LOCK.get_or_init(|| std::sync::Mutex::new(())).lock().unwrap();
+    let _guard = redis_test_lock().lock().unwrap();
     let context = create_test_context();
     clear_redis(&context);
 
     // Preparar datos
     let access_token = "testuser_a".to_string();
-    let now = chrono::Utc::now().timestamp_nanos();
+    let now = chrono::Utc::now().timestamp_nanos_opt().unwrap();
     let payments = vec![
         Payment {
             id: format!("test_pago_{}_a1", now),
@@ -87,13 +94,13 @@ fn test_get_users_payments_returns_inserted_payments() {
 
 #[test]
 fn test_get_users_payments_filters_other_users() {
-    let _guard = REDIS_TEST_LOCK.get_or_init(|| std::sync::Mutex::new(())).lock().unwrap();
+    let _guard = redis_test_lock().lock().unwrap();
     let context = create_test_context();
     clear_redis(&context);
 
     let user_a = "user_a".to_string();
     let user_b = "user_b".to_string();
-    let now = chrono::Utc::now().timestamp_nanos();
+    let now = chrono::Utc::now().timestamp_nanos_opt().unwrap();
 
     let payment_a = Payment {
         id: format!("test_pago_{}_ua", now),
@@ -132,7 +139,7 @@ fn test_get_users_payments_filters_other_users() {
 
 #[test]
 fn test_get_users_payments_no_payments_returns_empty() {
-    let _guard = REDIS_TEST_LOCK.get_or_init(|| std::sync::Mutex::new(())).lock().unwrap();
+    let _guard = redis_test_lock().lock().unwrap();
     let context = create_test_context();
     clear_redis(&context);
 

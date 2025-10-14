@@ -3,7 +3,14 @@
 
 use general_api::models::graphql::{Payment, PaymentStatus};
 use general_api::repos::graphql::utils::{create_test_context, clear_redis};
-use general_api::test_sync::REDIS_TEST_LOCK;
+
+// Local test-only lock to serialize Redis access when running tests in parallel.
+// Use std::sync::OnceLock to avoid adding dependencies.
+use std::sync::{Mutex, OnceLock};
+fn redis_test_lock() -> &'static Mutex<()> {
+    static REDIS_TEST_LOCAL: OnceLock<Mutex<()>> = OnceLock::new();
+    REDIS_TEST_LOCAL.get_or_init(|| Mutex::new(()))
+}
 use general_api::repos::auth::utils::hashing_composite_key;
 use redis::Commands;
 use redis::{JsonCommands, Value as RedisValue, from_redis_value};
@@ -12,7 +19,7 @@ use serde_json::from_str;
 
 #[test]
 fn test_repo_create_payment_happy_path() {
-    let _guard = REDIS_TEST_LOCK.get_or_init(|| std::sync::Mutex::new(())).lock().unwrap();
+    let _guard = redis_test_lock().lock().unwrap();
     let context = create_test_context();
     clear_redis(&context);
 
@@ -54,7 +61,7 @@ fn test_repo_create_payment_happy_path() {
 
 #[test]
 fn test_repo_create_payment_persists_json_content() {
-    let _guard = REDIS_TEST_LOCK.get_or_init(|| std::sync::Mutex::new(())).lock().unwrap();
+    let _guard = redis_test_lock().lock().unwrap();
     let context = create_test_context();
     clear_redis(&context);
 
@@ -95,7 +102,7 @@ fn test_repo_create_payment_persists_json_content() {
 
 #[test]
 fn test_repo_create_payment_twice_creates_two_keys() {
-    let _guard = REDIS_TEST_LOCK.get_or_init(|| std::sync::Mutex::new(())).lock().unwrap();
+    let _guard = redis_test_lock().lock().unwrap();
     let context = create_test_context();
     clear_redis(&context);
 
@@ -127,7 +134,7 @@ fn test_repo_create_payment_twice_creates_two_keys() {
 
 #[test]
 fn test_create_payment_collision_behavior() {
-    let _guard = REDIS_TEST_LOCK.get_or_init(|| std::sync::Mutex::new(())).lock().unwrap();
+    let _guard = redis_test_lock().lock().unwrap();
     let context = create_test_context();
     clear_redis(&context);
 
@@ -161,7 +168,7 @@ fn test_create_payment_collision_behavior() {
 
 #[test]
 fn test_clear_redis_does_not_remove_unrelated_keys() {
-    let _guard = REDIS_TEST_LOCK.get_or_init(|| std::sync::Mutex::new(())).lock().unwrap();
+    let _guard = redis_test_lock().lock().unwrap();
     let context = create_test_context();
     clear_redis(&context);
 

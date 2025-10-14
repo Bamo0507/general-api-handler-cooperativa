@@ -4,13 +4,20 @@
 use general_api::models::graphql::{Payment, PaymentStatus};
 use general_api::endpoints::handlers::graphql::payment::PaymentMutation;
 use general_api::repos::graphql::utils::{create_test_context, clear_redis, insert_payment_helper};
-use general_api::test_sync::REDIS_TEST_LOCK;
+
+// Local test-only lock (see payment_create_test.rs) to avoid depending on a missing
+// global `general_api::test_sync::REDIS_TEST_LOCK`.
+use std::sync::{Mutex, OnceLock};
+fn redis_test_lock() -> &'static Mutex<()> {
+    static REDIS_TEST_LOCAL: OnceLock<Mutex<()>> = OnceLock::new();
+    REDIS_TEST_LOCAL.get_or_init(|| Mutex::new(()))
+}
 use general_api::repos::auth::utils::hashing_composite_key;
 use redis::Commands;
 
 #[test]
 fn test_mutation_create_user_payment_happy_path() {
-    let _guard = REDIS_TEST_LOCK.get_or_init(|| std::sync::Mutex::new(())).lock().unwrap();
+    let _guard = redis_test_lock().lock().unwrap();
     let context = create_test_context();
     clear_redis(&context);
 
@@ -57,7 +64,7 @@ fn test_mutation_create_user_payment_happy_path() {
 fn test_mutation_create_user_payment_with_negative_amount() {
     // Documenting current behavior: create_payment does not currently validate negative amounts.
     // This test asserts the current behavior so changes will be visible in CI if validation is added later.
-    let _guard = REDIS_TEST_LOCK.get_or_init(|| std::sync::Mutex::new(())).lock().unwrap();
+    let _guard = redis_test_lock().lock().unwrap();
     let context = create_test_context();
     clear_redis(&context);
 
