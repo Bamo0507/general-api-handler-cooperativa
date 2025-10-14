@@ -5,6 +5,7 @@ use general_api::models::graphql::Payment;
 use general_api::endpoints::handlers::graphql::payment::PaymentQuery;
 use general_api::repos::graphql::utils::{create_test_context, clear_redis, insert_payment_helper};
 use general_api::test_sync::REDIS_TEST_LOCK;
+use general_api::repos::auth::utils::hashing_composite_key;
 
 #[test]
 fn test_get_all_payments_returns_all_inserted_payments() {
@@ -58,7 +59,7 @@ fn test_get_all_payments_returns_all_inserted_payments() {
             .unwrap_or_default();
         // Verificar que existen ambas claves de pago
         let all_str = String::from("all");
-        let composite_key = general_api::repos::auth::utils::hashing_composite_key(&[&all_str]);
+        let composite_key = hashing_composite_key(&[&all_str]);
     let key1 = format!("users:{}:payments:{}", composite_key, payments[0].id);
     let key2 = format!("users:{}:payments:{}", composite_key, payments[1].id);
     assert!(keys.contains(&key1), "No se encontró la clave del pago 1 en Redis");

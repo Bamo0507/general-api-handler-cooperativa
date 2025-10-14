@@ -2,8 +2,11 @@
 // Estructura y helpers igual a payment_test.rs
 
 use general_api::models::graphql::{Payment, PaymentStatus};
+use general_api::models::redis::Payment as RedisPayment;
+use general_api::models::PayedTo;
 use general_api::endpoints::handlers::graphql::payment::PaymentMutation;
 use general_api::repos::graphql::utils::{create_test_context, clear_redis, insert_payment_helper};
+use general_api::repos::auth::utils::hashing_composite_key;
 use redis::JsonCommands;
 use general_api::test_sync::REDIS_TEST_LOCK;
 
@@ -26,9 +29,9 @@ fn test_aprobar_pago_pendiente() {
     };
     // Insertar bajo la clave global 'all' para que la mutación lo encuentre
     let all_vec = vec![String::from("all")];
-    let all_key = general_api::repos::auth::utils::hashing_composite_key(&[&all_vec[0]]);
+    let all_key = hashing_composite_key(&[&all_vec[0]]);
     let redis = &mut context.pool.get().expect("Couldn't connect to pool");
-    let redis_payment = general_api::models::redis::Payment {
+    let redis_payment = RedisPayment {
         date_created: payment.payment_date.clone(),
         account_number: payment.account_num.clone(),
         total_amount: payment.total_amount,
@@ -37,7 +40,7 @@ fn test_aprobar_pago_pendiente() {
         comprobante_bucket: payment.photo.clone(),
         ticket_number: payment.ticket_num.clone(),
         status: payment.state.as_str().to_owned(),
-        being_payed: vec![general_api::models::PayedTo::default()],
+    being_payed: vec![PayedTo::default()],
     };
     let _: () = redis.json_set(
         format!("users:{}:payments:{}", all_key, payment.id),
