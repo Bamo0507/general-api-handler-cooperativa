@@ -16,12 +16,11 @@ use crate::endpoints::handlers::configs::schema::GeneralContext;
 
 /// Crea un contexto de test con pool de Redis real (localhost)
 pub fn create_test_context() -> GeneralContext {
-    // Conexión a Redis local para testing
-    let client = redis::Client::open("redis://127.0.0.1/").expect("No se pudo conectar a Redis");
+    // Conexión a Redis para testing, la URL debe ser provista por la variable de entorno REDIS_URL
+    let redis_url = std::env::var("REDIS_URL").expect("REDIS_URL debe estar exportada en el CLI");
+    let client = redis::Client::open(redis_url).expect("No se pudo conectar a Redis");
     let pool = Pool::builder().build(client).expect("No se pudo crear el pool de Redis");
-    GeneralContext {
-        pool: Data::new(pool),
-    }
+    GeneralContext { pool: Data::new(pool) }
 }
 
 
@@ -87,7 +86,12 @@ pub fn insert_payment_helper(context: &GeneralContext, payment: &Payment) {
     };
 
     // Use redis_json wrapper (JsonCommands) to persist the value as JSON
+    // Additionally write the serialized JSON string with SET as a fallback for
+    // environments where RedisJSON may not return the expected types via json_get.
     let _ : redis::RedisResult<()> = con.json_set(&redis_key, "$", &redis_payment);
+    if let Ok(s) = serde_json::to_string(&redis_payment) {
+        let _ : redis::RedisResult<()> = con.set(&redis_key, s);
+    }
 }
 
 ///Function for returning n number of any type value, having a function as a generator
@@ -151,24 +155,36 @@ where
                 // We first try to fetch JSON at path "$" for the key. Skip keys that don't
                 // have a JSON value or where the response is nil (this can happen if there is
                 // a non-id payment key like `users:...:payments` stored as a string or empty).
-                let redis_raw_res = con.json_get::<String, &str, RedisValue>(key.to_owned(), "$");
-                let redis_raw = match redis_raw_res {
-                    Ok(v) => v,
+                // Try JSON.GET first (RedisJSON). If it fails or returns nil, fallback to GET
+                let mut nested_data: String = String::new();
+
+                match con.json_get::<String, &str, RedisValue>(key.to_owned(), "$") {
+                    Ok(redis_raw) => {
+                        // Attempt to convert redis value to string
+                        match from_redis_value::<String>(&redis_raw) {
+                            Ok(s) => nested_data = s,
+                            Err(e) => {
+                                println!("DEBUG get_multiple_models - from_redis_value failed for key {}: {:?}", key, e);
+                                // Fallthrough to try GET below
+                            }
+                        }
+                    }
                     Err(e) => {
                         println!("DEBUG get_multiple_models - json_get failed for key {}: {:?}", key, e);
-                        continue // skip invalid/non-json keys
+                        // Fallthrough to try GET below
                     }
-                };
+                }
 
-                // Try to convert redis value to string, then parse JSON into RedisType
-                let nested_data_res = from_redis_value::<String>(&redis_raw);
-                let nested_data = match nested_data_res {
-                    Ok(s) => s,
-                    Err(e) => {
-                        println!("DEBUG get_multiple_models - from_redis_value failed for key {}: {:?}", key, e);
-                        continue
+                // If nested_data is still empty, try fetching the raw string value with GET
+                if nested_data.is_empty() {
+                    match con.get::<String, String>(key.to_owned()) {
+                        Ok(s) => nested_data = s,
+                        Err(e) => {
+                            println!("DEBUG get_multiple_models - GET fallback failed for key {}: {:?}", key, e);
+                            continue; // skip keys we can't read
+                        }
                     }
-                };
+                }
 
                 // Intentar deserializar como array; si falla, intentar como objeto individual
                 let parsed_vec_res = from_str::<Vec<RedisType>>(nested_data.as_str());
