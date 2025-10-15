@@ -71,12 +71,12 @@ mod tests {
     }
     use super::*;
 
-    // Utilidad para crear un QuotaRepo de prueba
+    use general_api::repos::graphql::utils::create_test_context;
+
+    // Utilidad para crear un QuotaRepo de prueba usando el helper central del proyecto
     fn get_test_repo() -> QuotaRepo {
-        // Usa una variable de entorno para la URL de Redis en vez de hardcodear
-        let redis_url = std::env::var("REDIS_TEST_URL").unwrap_or_else(|_| "redis://127.0.0.1/".to_string());
-        let pool = Data::new(Pool::new(Client::open(redis_url).unwrap()).unwrap());
-        QuotaRepo { pool }
+        let context = create_test_context();
+        QuotaRepo { pool: context.pool.clone() }
     }
 
     // Utilidad para insertar quotas de prueba

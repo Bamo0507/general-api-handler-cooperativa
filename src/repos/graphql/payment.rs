@@ -1,9 +1,11 @@
 use actix_web::web;
 use chrono::Utc;
 use r2d2::Pool;
-use redis::{Client, Commands, JsonCommands};
+use redis::{Client, Commands, JsonCommands, from_redis_value};
 use regex::Regex;
-
+use serde_json::from_str;
+use crate::models::GraphQLMappable;
+use crate::models::graphql::PaymentStatus;
 use crate::{
     models::{
         graphql::{Affiliate, Payment, PaymentHistory},
@@ -50,6 +52,18 @@ impl PaymentRepo {
             "payments".to_owned(), // TODO: see a way to don't burn the keys
         )
     }
+
+        /// Obtiene todos los pagos de todos los socios
+        pub fn get_all_payments(&self) -> Result<Vec<Payment>, String> {
+            // Se fundamenta en el patrón de get_multiple_models usado en get_user_payments
+            // Para obtener todos los pagos, se puede usar una clave global o escanear todas las claves de pagos
+            // Aquí se usa una clave global "all" para mantener el patrón
+            get_multiple_models::<Payment, RedisPayment>(
+                "all".to_owned(),
+                self.pool.clone(),
+                "payments".to_owned(),
+            )
+        }
 
     // TODO: implement payment creation
     pub fn create_payment(
@@ -138,5 +152,62 @@ impl PaymentRepo {
             }
             Err(_) => Err("Couldn't get users".to_string()),
         }
+    }
+
+    /// Aprueba o rechaza un pago por id, actualizando estado y comentario (si es REJECTED)
+    pub async fn approve_or_reject_payment(
+        &self,
+        id: String,
+        new_state: String,
+        commentary: String,
+    ) -> Result<Payment, String> {
+        let mut con = self.pool.get().map_err(|_| "Couldn't connect to pool")?;
+
+        // Clave completa: users:{hash("all")}:payments:{id}
+        let all_key = hashing_composite_key(&[&String::from("all")]);
+        let key = format!("users:{}:payments:{}", all_key, id);
+
+        // Obtener JSON del pago
+        let raw = con
+            .json_get::<String, &str, redis::Value>(key.clone(), "$")
+            .map_err(|_| "Error fetching payment")?;
+        let nested = from_redis_value::<String>(&raw).map_err(|_| "Error decoding redis value")?;
+        let mut parsed: Vec<RedisPayment> =
+            from_str(&nested).map_err(|_| "Error deserializing payment")?;
+        let mut redis_payment = parsed
+            .pop()
+            .ok_or_else(|| "Payment not found".to_string())?;
+
+        // Validar estado actual
+        let current_status = PaymentStatus::from_string(redis_payment.status.clone());
+        if current_status == PaymentStatus::Accepted || current_status == PaymentStatus::Rejected {
+            return Err("El pago ya está finalizado".to_string());
+        }
+
+        // Validar nuevo estado
+        let new_status = PaymentStatus::from_string(new_state.clone());
+        match new_status {
+            PaymentStatus::Accepted => {}
+            PaymentStatus::Rejected => {
+                if commentary.trim().is_empty() {
+                    return Err("Se requiere comentario al rechazar el pago".to_string());
+                }
+            }
+            _ => return Err("Estado inválido, debe ser ACCEPTED o REJECTED".to_string()),
+        }
+
+        // Actualizar y persistir
+        redis_payment.status = new_status.as_str().to_owned();
+        if new_status == PaymentStatus::Rejected {
+            redis_payment.comments = Some(commentary);
+        }
+
+        con
+            .json_set::<String, &str, _, ()>(key.clone(), "$", &redis_payment)
+            .map_err(|_| "Error updating payment")?;
+
+        // Mapear a GraphQL
+        let payment = redis_payment.to_graphql_type(key);
+        Ok(payment)
     }
 }

@@ -3,8 +3,13 @@ target
 .env
 docs/planeacion_scrum314.md
 
+temp
+.github/copilot-instructions.md
+
 docs/refactor-cuota-nuevos-campos.md
 docs/api-quota-response-format.md
 cuotas-related
 .github/copilot-instructions.md
 
+SCRUM-259-PLAN.md
+docs/insomnia_collection_get_all_payments.json
