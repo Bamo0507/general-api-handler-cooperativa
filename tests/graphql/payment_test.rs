@@ -3,23 +3,23 @@
 
 use general_api::models::graphql::Payment;
 use general_api::endpoints::handlers::graphql::payment::PaymentQuery;
-use general_api::repos::graphql::utils::{create_test_context, clear_redis, insert_payment_helper};
+use super::common::{create_test_context, insert_payment_helper_and_return, TestRedisGuard};
 use general_api::test_sync::REDIS_TEST_LOCK;
 use general_api::repos::auth::utils::hashing_composite_key;
+use redis::Commands;
 
 #[test]
 fn test_get_all_payments_returns_all_inserted_payments() {
     // Serializar pruebas que tocan Redis sin dependencias externas
     // Acquire a blocking mutex guard to serialize access across tests
     let _guard = REDIS_TEST_LOCK.get_or_init(|| std::sync::Mutex::new(())).lock().unwrap();
-    // Crear contexto y limpiar Redis SOLO UNA VEZ
+    // Crear contexto y guard para limpieza de claves de test
     let context = create_test_context();
-    // Limpiar redis para evitar interferencia de otros tests
-    clear_redis(&context);
+    let mut guard = TestRedisGuard::new(context.pool.clone());
 
     // Insertar pagos de prueba
     use general_api::models::graphql::PaymentStatus;
-    let now = chrono::Utc::now().timestamp_nanos();
+    let now = chrono::Utc::now().timestamp_nanos_opt().unwrap();
     let payments = vec![
         Payment {
             id: format!("test_pago_{}_1", now),
@@ -46,17 +46,20 @@ fn test_get_all_payments_returns_all_inserted_payments() {
     ];
 
     for payment in &payments {
-        insert_payment_helper(&context, payment);
+        let k = insert_payment_helper_and_return(&context, payment);
+        guard.register_key(k);
     }
 
     // Debug: mostrar claves en Redis después de insertar pagos
     {
         let pool = context.pool.clone();
         let mut con = pool.get().expect("No se pudo obtener conexión de Redis");
-        let keys: Vec<String> = redis::cmd("KEYS")
-            .arg("*")
-            .query(&mut con)
-            .unwrap_or_default();
+        // Evitar KEYS "*"; usamos scan_match con el patrón de pagos
+        let pattern = format!("users:{}:payments:*", hashing_composite_key(&[&String::from("all")]));
+        let iter = con
+            .scan_match::<String, String>(pattern)
+            .expect("Error escaneando claves de pagos");
+        let keys: Vec<String> = iter.collect();
         // Verificar que existen ambas claves de pago
         let all_str = String::from("all");
         let composite_key = hashing_composite_key(&[&all_str]);

@@ -5,7 +5,7 @@ use general_api::models::graphql::{Payment, PaymentStatus};
 use general_api::models::redis::Payment as RedisPayment;
 use general_api::models::PayedTo;
 use general_api::endpoints::handlers::graphql::payment::PaymentMutation;
-use general_api::repos::graphql::utils::{create_test_context, clear_redis, insert_payment_helper};
+use super::common::{create_test_context, insert_payment_helper_and_return, TestRedisGuard};
 use general_api::repos::auth::utils::hashing_composite_key;
 use redis::JsonCommands;
 use general_api::test_sync::REDIS_TEST_LOCK;
@@ -14,8 +14,8 @@ use general_api::test_sync::REDIS_TEST_LOCK;
 fn test_aprobar_pago_pendiente() {
     let _guard = REDIS_TEST_LOCK.get_or_init(|| std::sync::Mutex::new(())).lock().unwrap();
     let context = create_test_context();
-    clear_redis(&context);
-    let now = chrono::Utc::now().timestamp_nanos();
+    let mut guard = TestRedisGuard::new(context.pool.clone());
+    let now = chrono::Utc::now().timestamp_nanos_opt().unwrap();
     let payment = Payment {
         id: format!("test_pago_{}_1", now),
         name: "Test".to_string(),
@@ -63,8 +63,8 @@ fn test_aprobar_pago_pendiente() {
 fn test_rechazar_pago_pendiente_con_comentario() {
     let _guard = REDIS_TEST_LOCK.get_or_init(|| std::sync::Mutex::new(())).lock().unwrap();
     let context = create_test_context();
-    clear_redis(&context);
-    let now = chrono::Utc::now().timestamp_nanos();
+    let mut guard = TestRedisGuard::new(context.pool.clone());
+    let now = chrono::Utc::now().timestamp_nanos_opt().unwrap();
     let payment = Payment {
         id: format!("test_pago_{}_2", now),
         name: "Test".to_string(),
@@ -76,7 +76,8 @@ fn test_rechazar_pago_pendiente_con_comentario() {
         photo: "url2".to_string(),
         state: PaymentStatus::OnRevision,
     };
-    insert_payment_helper(&context, &payment);
+    let k = insert_payment_helper_and_return(&context, &payment);
+    guard.register_key(k);
     let comentario = "Pago rechazado por pruebas".to_string();
     let result = futures::executor::block_on(async {
         PaymentMutation::approve_or_reject_payment(
@@ -94,8 +95,8 @@ fn test_rechazar_pago_pendiente_con_comentario() {
 fn test_rechazar_pago_pendiente_sin_comentario() {
     let _guard = REDIS_TEST_LOCK.get_or_init(|| std::sync::Mutex::new(())).lock().unwrap();
     let context = create_test_context();
-    clear_redis(&context);
-    let now = chrono::Utc::now().timestamp_nanos();
+    let mut guard = TestRedisGuard::new(context.pool.clone());
+    let now = chrono::Utc::now().timestamp_nanos_opt().unwrap();
     let payment = Payment {
         id: format!("test_pago_{}_3", now),
         name: "Test".to_string(),
@@ -107,7 +108,8 @@ fn test_rechazar_pago_pendiente_sin_comentario() {
         photo: "url3".to_string(),
         state: PaymentStatus::OnRevision,
     };
-    insert_payment_helper(&context, &payment);
+    let k = insert_payment_helper_and_return(&context, &payment);
+    guard.register_key(k);
     let result = futures::executor::block_on(async {
         PaymentMutation::approve_or_reject_payment(
             &context,
@@ -124,8 +126,8 @@ fn test_rechazar_pago_pendiente_sin_comentario() {
 fn test_mutar_pago_ya_finalizado() {
     let _guard = REDIS_TEST_LOCK.get_or_init(|| std::sync::Mutex::new(())).lock().unwrap();
     let context = create_test_context();
-    clear_redis(&context);
-    let now = chrono::Utc::now().timestamp_nanos();
+    let mut guard = TestRedisGuard::new(context.pool.clone());
+    let now = chrono::Utc::now().timestamp_nanos_opt().unwrap();
     let payment = Payment {
         id: format!("test_pago_{}_4", now),
         name: "Test".to_string(),
@@ -137,7 +139,8 @@ fn test_mutar_pago_ya_finalizado() {
         photo: "url4".to_string(),
         state: PaymentStatus::Accepted,
     };
-    insert_payment_helper(&context, &payment);
+    let k = insert_payment_helper_and_return(&context, &payment);
+    guard.register_key(k);
     let result = futures::executor::block_on(async {
         PaymentMutation::approve_or_reject_payment(
             &context,
@@ -154,8 +157,8 @@ fn test_mutar_pago_ya_finalizado() {
 fn test_mutar_con_estado_invalido() {
     let _guard = REDIS_TEST_LOCK.get_or_init(|| std::sync::Mutex::new(())).lock().unwrap();
     let context = create_test_context();
-    clear_redis(&context);
-    let now = chrono::Utc::now().timestamp_nanos();
+    let mut guard = TestRedisGuard::new(context.pool.clone());
+    let now = chrono::Utc::now().timestamp_nanos_opt().unwrap();
     let payment = Payment {
         id: format!("test_pago_{}_5", now),
         name: "Test".to_string(),
@@ -167,7 +170,8 @@ fn test_mutar_con_estado_invalido() {
         photo: "url5".to_string(),
         state: PaymentStatus::OnRevision,
     };
-    insert_payment_helper(&context, &payment);
+    let k = insert_payment_helper_and_return(&context, &payment);
+    guard.register_key(k);
     let result = futures::executor::block_on(async {
         PaymentMutation::approve_or_reject_payment(
             &context,

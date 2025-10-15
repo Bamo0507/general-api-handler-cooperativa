@@ -25,43 +25,11 @@ pub fn create_test_context() -> GeneralContext {
 }
 
 
-/// Limpia todas las claves de pagos en Redis para tests
-pub fn clear_redis(context: &GeneralContext) {
-    let pool = context.pool.clone();
-    let mut con = pool.get().expect("No se pudo obtener conexión de Redis");
-    
-    // borra la colección 'all' usada en tests; solo elimina claves de pruebas
-    let composite_key = hashing_composite_key(&[&String::from("all")]);
-    let pattern_all_composite = format!("users:{}:payments:*", composite_key);
-    let keys_for_all: Vec<String> = redis::cmd("KEYS")
-        .arg(&pattern_all_composite)
-        .query(&mut con)
-        .unwrap_or_default();
-    for key in keys_for_all {
-        let _: () = con.del(&key).unwrap_or(());
-    }
-
-    // Additionally, clean any test-generated payment keys elsewhere (ids starting with test_pago_)
-    let pattern_any = "users:*:payments:*".to_string();
-    let keys_any: Vec<String> = redis::cmd("KEYS")
-        .arg(&pattern_any)
-        .query(&mut con)
-        .unwrap_or_default();
-    for key in keys_any {
-        if let Ok(re) = Regex::new(r"users:[\w]+:payments:(?P<key>.+)") {
-            if let Some(caps) = re.captures(&key) {
-                let id = caps.name("key").map(|m| m.as_str()).unwrap_or("");
-                if id.starts_with("test_pago_") {
-                    let _: () = con.del(&key).unwrap_or(());
-                }
-            }
-        }
-    }
-}
 
 
-/// Inserta un pago en Redis usando el pool del contexto
-pub fn insert_payment_helper(context: &GeneralContext, payment: &Payment) {
+/// Inserta un pago en Redis usando el pool del contexto y devuelve la clave Redis creada.
+/// Formato de la clave: users:{hash("all")}:payments:{id}
+pub fn insert_payment_helper(context: &GeneralContext, payment: &Payment) -> String {
     let pool = context.pool.clone();
     let mut con = pool.get().expect("No se pudo obtener conexión de Redis");
     use crate::repos::auth::utils::hashing_composite_key;
@@ -88,6 +56,7 @@ pub fn insert_payment_helper(context: &GeneralContext, payment: &Payment) {
 
     // Use redis_json wrapper (JsonCommands) to persist the value as JSON
     let _ : redis::RedisResult<()> = con.json_set(&redis_key, "$", &redis_payment);
+    redis_key
 }
 
 ///Function for returning n number of any type value, having a function as a generator
