@@ -56,6 +56,15 @@ impl PaymentStatus {
             _ => PaymentStatus::ParsedError,
         }
     }
+
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            PaymentStatus::OnRevision => "ON_REVISION",
+            PaymentStatus::Rejected => "REJECTED",
+            PaymentStatus::Accepted => "ACCEPTED",
+            PaymentStatus::ParsedError => "PARSED_ERROR",
+        }
+    }
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug, GraphQLEnum, PartialEq)]
