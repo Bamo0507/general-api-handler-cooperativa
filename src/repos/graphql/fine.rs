@@ -10,7 +10,7 @@ use crate::{
     },
     repos::{
         auth::utils::hashing_composite_key,
-        graphql::utils::{get_db_access_token_with_affiliate_key, get_multiple_models},
+        graphql::utils::{get_db_access_token_with_affiliate_key, get_multiple_models_by_id},
     },
 };
 
@@ -20,7 +20,7 @@ pub struct FineRepo {
 
 impl FineRepo {
     pub fn get_user_fines(&self, access_token: String) -> Result<Vec<Fine>, String> {
-        get_multiple_models::<Fine, RedisFine>(
+        get_multiple_models_by_id::<Fine, RedisFine>(
             access_token,
             self.pool.clone(),
             "fines".to_owned(), // TODO: see a way to don't burn the keys

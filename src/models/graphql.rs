@@ -100,6 +100,7 @@ impl FineStatus {
         match raw_status.to_uppercase().as_str() {
             "PAID" => FineStatus::Paid,
             "UNPAID" => FineStatus::Unpaid,
+            "UPAID" => FineStatus::Unpaid,
             _ => FineStatus::ParsedError,
         }
     }
@@ -114,6 +115,7 @@ impl ToString for FineStatus {
         }
     }
 }
+
 #[derive(Clone, Serialize, Deserialize, GraphQLObject, Debug)]
 pub struct Loan {
     pub id: String,

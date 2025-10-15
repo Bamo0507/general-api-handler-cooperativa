@@ -5,7 +5,7 @@ use redis::Client;
 use redis::{from_redis_value, Commands, JsonCommands, Value as RedisValue};
 use serde_json::from_str;
 
-use crate::repos::graphql::utils::get_multiple_models;
+use crate::repos::graphql::utils::get_multiple_models_by_id;
 use crate::{
     models::{graphql::Loan, redis::Loan as RedisLoan},
     repos::auth::utils::hashing_composite_key,
@@ -23,7 +23,7 @@ impl LoanRepo {
 
     //TODO: implent true logic
     pub fn get_user_loans(&self, access_token: String) -> Result<Vec<Loan>, String> {
-        get_multiple_models::<Loan, RedisLoan>(
+        get_multiple_models_by_id::<Loan, RedisLoan>(
             access_token,
             self.pool.clone(),
             "loans".to_owned(), // TODO: see a way to don't burn the keys
