@@ -245,11 +245,9 @@ where
     }
 }
 
-/// Scans Redis using an arbitrary pattern (for example "users:*:payments:*") and
-/// tries to parse any JSON values found into `RedisType`, mapping them to
-/// `GraphQLType` via the `GraphQLMappable` trait. This is a generalization of
-/// `get_multiple_models` that accepts a fully-formed SCAN pattern instead of
-/// constructing it from an access token.
+/// Busca en Redis usando el patrón que le pases, por ejemplo "users::payments:"
+/// Intenta convertir lo que encuentra en JSON al tipo de Redis y luego lo mapea al tipo GraphQL
+/// Es como el get_multiple_models pero aquí tú le das el patrón completo
 pub fn get_multiple_models_by_pattern<GraphQLType, RedisType>(
     pattern: String,
     pool: Data<Pool<Client>>,
