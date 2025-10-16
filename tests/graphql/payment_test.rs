@@ -1,12 +1,11 @@
 // Pruebas unitarias para la query get_all_payments
 // No se usa dotenv, las variables se cargan directamente
 
-use general_api::models::graphql::Payment;
+// Include shared test helpers from tests/graphql/common/mod.rs (provides Payment, GeneralContext, TestRedisGuard)
+include!("common/mod.rs");
 use general_api::endpoints::handlers::graphql::payment::PaymentQuery;
-use super::common::{create_test_context, insert_payment_helper_and_return, TestRedisGuard};
 use general_api::test_sync::REDIS_TEST_LOCK;
 use general_api::repos::auth::utils::hashing_composite_key;
-use redis::Commands;
 
 #[test]
 fn test_get_all_payments_returns_all_inserted_payments() {

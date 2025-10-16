@@ -1,8 +1,7 @@
 // Tests para SCRUM-202: create_payment (repo-level)
 // Usamos los mismos helpers y patrón de runtime que en los tests existentes
 
-use general_api::models::graphql::{Payment, PaymentStatus};
-use general_api::repos::graphql::utils::{create_test_context, clear_redis};
+use general_api::models::graphql::PaymentStatus;
 
 // Local test-only lock to serialize Redis access when running tests in parallel.
 // Use std::sync::OnceLock to avoid adding dependencies.
@@ -11,9 +10,10 @@ fn redis_test_lock() -> &'static Mutex<()> {
     static REDIS_TEST_LOCAL: OnceLock<Mutex<()>> = OnceLock::new();
     REDIS_TEST_LOCAL.get_or_init(|| Mutex::new(()))
 }
+// Include shared test helpers from tests/graphql/common/mod.rs
+include!("common/mod.rs");
 use general_api::repos::auth::utils::hashing_composite_key;
-use redis::Commands;
-use redis::{JsonCommands, Value as RedisValue, from_redis_value};
+use redis::{Value as RedisValue, from_redis_value};
 use general_api::models::redis::Payment as RedisPayment;
 use serde_json::from_str;
 
@@ -21,9 +21,9 @@ use serde_json::from_str;
 fn test_repo_create_payment_happy_path() {
     let _guard = redis_test_lock().lock().unwrap();
     let context = create_test_context();
-    clear_redis(&context);
+    let mut guard = TestRedisGuard::new(context.pool.clone());
 
-    let now = chrono::Utc::now().timestamp_nanos();
+    let now = chrono::Utc::now().timestamp_nanos_opt().unwrap();
     let payment = Payment {
         id: format!("test_pago_{}_create_1", now),
         name: "Repo Create Test".to_string(),
@@ -57,13 +57,17 @@ fn test_repo_create_payment_happy_path() {
         .unwrap()
         .collect();
     assert!(!keys.is_empty(), "Expected at least one payment key in Redis");
+    // Register created keys so the guard will remove them after the test
+    for key in keys {
+        guard.register_key(key);
+    }
 }
 
 #[test]
 fn test_repo_create_payment_persists_json_content() {
     let _guard = redis_test_lock().lock().unwrap();
     let context = create_test_context();
-    clear_redis(&context);
+    let mut guard = TestRedisGuard::new(context.pool.clone());
 
     let access_token = "testuser_create_repo_content".to_string();
     let payment_name = "Repo Create Content Test".to_string();
@@ -83,9 +87,14 @@ fn test_repo_create_payment_persists_json_content() {
     // Buscar la key creada y leer el JSON
     let composite = hashing_composite_key(&[&access_token]);
     let mut con = context.pool.get().expect("No se pudo obtener conexión de Redis");
-    let keys_iter = con.scan_match::<String, String>(format!("users:{}:payments:*", composite)).unwrap();
+    let keys_iter = con
+        .scan_match::<String, String>(format!("users:{}:payments:*", composite))
+        .unwrap();
     let keys: Vec<String> = keys_iter.collect();
     assert!(!keys.is_empty(), "Expected at least one payment key in Redis");
+    for key in &keys {
+        guard.register_key(key.clone());
+    }
 
     // Leer primer key JSON y parsear
     let redis_raw: RedisValue = con.json_get(keys[0].as_str(), "$").expect("json_get failed");
@@ -104,7 +113,7 @@ fn test_repo_create_payment_persists_json_content() {
 fn test_repo_create_payment_twice_creates_two_keys() {
     let _guard = redis_test_lock().lock().unwrap();
     let context = create_test_context();
-    clear_redis(&context);
+    let mut guard = TestRedisGuard::new(context.pool.clone());
 
     let access_token = "testuser_create_repo_two".to_string();
     let repo = context.payment_repo();
@@ -128,15 +137,24 @@ fn test_repo_create_payment_twice_creates_two_keys() {
 
     let composite = hashing_composite_key(&[&access_token]);
     let mut con = context.pool.get().expect("No se pudo obtener conexión de Redis");
-    let keys: Vec<String> = con.scan_match(format!("users:{}:payments:*", composite)).unwrap().collect();
-    assert!(keys.len() >= 2, "Expected at least two payment keys after two create_payment calls");
+    let keys: Vec<String> = con
+        .scan_match(format!("users:{}:payments:*", composite))
+        .unwrap()
+        .collect();
+    assert!(
+        keys.len() >= 2,
+        "Expected at least two payment keys after two create_payment calls"
+    );
+    for key in &keys {
+        guard.register_key(key.clone());
+    }
 }
 
 #[test]
 fn test_create_payment_collision_behavior() {
     let _guard = redis_test_lock().lock().unwrap();
     let context = create_test_context();
-    clear_redis(&context);
+    let mut guard = TestRedisGuard::new(context.pool.clone());
 
     let access_token = "test_collision".to_string();
     let repo = context.payment_repo();
@@ -161,24 +179,34 @@ fn test_create_payment_collision_behavior() {
 
     let composite = hashing_composite_key(&[&access_token]);
     let mut con = context.pool.get().expect("No se pudo obtener conexión de Redis");
-    let keys: Vec<String> = con.scan_match(format!("users:{}:payments:*", composite)).unwrap().collect();
+    let keys: Vec<String> = con
+        .scan_match(format!("users:{}:payments:*", composite))
+        .unwrap()
+        .collect();
     // Current behavior: should create two keys (non-overwriting). Assert >=2.
-    assert!(keys.len() >= 2, "Expected at least two keys for collision behavior, got {}", keys.len());
+    assert!(
+        keys.len() >= 2,
+        "Expected at least two keys for collision behavior, got {}",
+        keys.len()
+    );
+    for key in &keys {
+        guard.register_key(key.clone());
+    }
 }
 
 #[test]
-fn test_clear_redis_does_not_remove_unrelated_keys() {
+fn test_guard_does_not_remove_unrelated_keys() {
     let _guard = redis_test_lock().lock().unwrap();
     let context = create_test_context();
-    clear_redis(&context);
+    let guard = TestRedisGuard::new(context.pool.clone());
 
-    // Create an unrelated key that should NOT be removed by clear_redis
+    // Create an unrelated key that should NOT be removed by the guard
     let mut con = context.pool.get().expect("No se pudo obtener conexión de Redis");
     let unrelated_key = "unrelated:test:key".to_string();
     let _: () = con.set(&unrelated_key, "preserve").expect("couldn't set unrelated key");
 
-    // Run clear_redis and assert unrelated key still exists
-    clear_redis(&context);
+    // Drop guard without registering any keys; it should not delete unrelated keys
+    drop(guard);
     let exists: bool = con.exists(&unrelated_key).unwrap_or(false);
-    assert!(exists, "clear_redis removed an unrelated key: {}", unrelated_key);
+    assert!(exists, "TestRedisGuard removed an unrelated key: {}", unrelated_key);
 }

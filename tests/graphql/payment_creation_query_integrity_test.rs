@@ -1,8 +1,10 @@
 // Tests adicionales para SCRUM-252: query sobre pagos creados e integridad de datos
 
-use general_api::models::graphql::{Payment, PaymentStatus};
+use general_api::models::graphql::PaymentStatus;
 use general_api::endpoints::handlers::graphql::payment::PaymentQuery;
-use general_api::repos::graphql::utils::{create_test_context, clear_redis, insert_payment_helper};
+// Include shared test helpers from tests/graphql/common/mod.rs
+include!("common/mod.rs");
+use general_api::repos::auth::utils::hashing_composite_key;
 
 // Serialización simple para evitar race conditions con Redis cuando se ejecutan tests en paralelo
 use std::sync::{Mutex, OnceLock};
@@ -15,7 +17,7 @@ fn redis_test_lock() -> &'static Mutex<()> {
 fn test_query_returns_payments_created_via_repo_helper_and_preserves_fields() {
     let _guard = redis_test_lock().lock().unwrap();
     let context = create_test_context();
-    clear_redis(&context);
+    let mut guard = TestRedisGuard::new(context.pool.clone());
 
     // Crear dos payments mediante el helper (simula persistencia del repo)
     let _access_token = "scrum252_user".to_string();
@@ -45,8 +47,10 @@ fn test_query_returns_payments_created_via_repo_helper_and_preserves_fields() {
         state: PaymentStatus::Accepted,
     };
 
-    insert_payment_helper(&context, &p1);
-    insert_payment_helper(&context, &p2);
+    let k1 = insert_payment_helper_and_return(&context, &p1);
+    let k2 = insert_payment_helper_and_return(&context, &p2);
+    guard.register_key(k1);
+    guard.register_key(k2);
 
     // Ejecutar la query
     let result = futures::executor::block_on(async {
@@ -74,7 +78,7 @@ fn test_query_returns_payments_created_via_repo_helper_and_preserves_fields() {
 fn test_query_returns_payments_created_via_mutation_and_repo_consistency() {
     let _guard = redis_test_lock().lock().unwrap();
     let context = create_test_context();
-    clear_redis(&context);
+    let mut guard = TestRedisGuard::new(context.pool.clone());
 
     // Crear payment vía la mutation (si la mutation delega en repo, debe ser visible via la query)
     use general_api::endpoints::handlers::graphql::payment::PaymentMutation;
@@ -99,6 +103,13 @@ fn test_query_returns_payments_created_via_mutation_and_repo_consistency() {
     }).expect("mutation create failed");
 
     assert_eq!(res, "Payment Created");
+
+    // Register keys created by mutation
+    {
+        let mut con = context.pool.get().expect("No se pudo obtener conexión de Redis");
+        let keys: Vec<String> = con.scan_match(format!("users:{}:payments:*", hashing_composite_key(&[&access_token.clone()]))).unwrap().collect();
+        for k in keys { guard.register_key(k); }
+    }
 
     // Ahora la query debe devolver al menos un payment con los campos creados
     let result = futures::executor::block_on(async {

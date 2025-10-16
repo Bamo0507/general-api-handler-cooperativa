@@ -1,13 +1,13 @@
-use general_api::endpoints::handlers::configs::schema::GeneralContext;
 // Tests para SCRUM-201: query get_users_payments
 // No modificar archivos de producción; usar helpers existentes y runtime local
 
-use general_api::models::graphql::Payment;
+// Payment struct is brought in by the included common helpers
 use general_api::models::graphql::PaymentStatus;
 use general_api::models::redis::Payment as RedisPayment;
 use general_api::repos::auth::utils::hashing_composite_key;
 use general_api::endpoints::handlers::graphql::payment::PaymentQuery;
-use general_api::repos::graphql::utils::{create_test_context, clear_redis};
+// Include shared test helpers from tests/graphql/common/mod.rs
+include!("common/mod.rs");
 
 // Local lock helper (avoid depending on non-existent general_api::test_sync)
 use std::sync::{Mutex, OnceLock};
@@ -15,8 +15,6 @@ fn redis_test_lock() -> &'static Mutex<()> {
     static REDIS_TEST_LOCAL: OnceLock<Mutex<()>> = OnceLock::new();
     REDIS_TEST_LOCAL.get_or_init(|| Mutex::new(()))
 }
-use redis::JsonCommands;
-
 // Inserta directamente en Redis bajo la clave del access_token provisto
 fn insert_payment_for_user(context: &GeneralContext, access_token: &str, payment: &Payment) {
     let composite = hashing_composite_key(&[&access_token.to_string()]);
@@ -41,7 +39,7 @@ fn insert_payment_for_user(context: &GeneralContext, access_token: &str, payment
 fn test_get_users_payments_returns_inserted_payments() {
     let _guard = redis_test_lock().lock().unwrap();
     let context = create_test_context();
-    clear_redis(&context);
+    let mut guard = TestRedisGuard::new(context.pool.clone());
 
     // Preparar datos
     let access_token = "testuser_a".to_string();
@@ -73,6 +71,10 @@ fn test_get_users_payments_returns_inserted_payments() {
 
     for p in &payments {
         insert_payment_for_user(&context, &access_token, p);
+        // register the key created using known pattern
+        let composite = hashing_composite_key(&[&access_token.clone()]);
+        let key = format!("users:{}:payments:{}", composite, p.id);
+        guard.register_key(key);
     }
 
     let result = futures::executor::block_on(async {
@@ -95,7 +97,7 @@ fn test_get_users_payments_returns_inserted_payments() {
 fn test_get_users_payments_filters_other_users() {
     let _guard = redis_test_lock().lock().unwrap();
     let context = create_test_context();
-    clear_redis(&context);
+    let mut guard = TestRedisGuard::new(context.pool.clone());
 
     let user_a = "user_a".to_string();
     let user_b = "user_b".to_string();
@@ -127,6 +129,9 @@ fn test_get_users_payments_filters_other_users() {
 
     insert_payment_for_user(&context, &user_a, &payment_a);
     insert_payment_for_user(&context, &user_b, &payment_b);
+    // register both keys so they are cleaned up by the guard
+    guard.register_key(format!("users:{}:payments:{}", hashing_composite_key(&[&user_a.clone()]), payment_a.id));
+    guard.register_key(format!("users:{}:payments:{}", hashing_composite_key(&[&user_b.clone()]), payment_b.id));
 
     let result_a = futures::executor::block_on(async {
         PaymentQuery::get_users_payments(&context, user_a.clone()).await
@@ -140,7 +145,7 @@ fn test_get_users_payments_filters_other_users() {
 fn test_get_users_payments_no_payments_returns_empty() {
     let _guard = redis_test_lock().lock().unwrap();
     let context = create_test_context();
-    clear_redis(&context);
+    let _guard_local = TestRedisGuard::new(context.pool.clone());
 
     let user = "no_payments_user".to_string();
     let result = futures::executor::block_on(async {

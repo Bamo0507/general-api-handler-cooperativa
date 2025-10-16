@@ -1,158 +1,210 @@
+use std::collections::HashMap;
+
+use chrono::{Datelike, NaiveDate, Utc};
 use general_api::endpoints::handlers::configs::schema::GeneralContext;
-use general_api::models::graphql::{Quota, TipoQuota};
-use general_api::endpoints::handlers::graphql::Quota::{QuotaQuery, QuotaAfiliadoMensualResponse};
-use chrono::NaiveDate;
+use general_api::endpoints::handlers::graphql::quota::QuotaQuery;
+use general_api::models::graphql::{Quota, QuotaType};
+use general_api::repos::auth::utils::hashing_composite_key;
+use general_api::test_sync::REDIS_TEST_LOCK;
+use redis::Commands;
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use actix_web::web::Data;
-    use r2d2::Pool;
-    use redis::Client;
-    use general_api::repos::graphql::utils::create_test_context;
+use super::common::{create_test_context, TestRedisGuard};
 
-        // Use the project's canonical test context helper instead of duplicating pool creation
-        // This keeps test setup centralized and easier to maintain.
+#[derive(Clone, Debug)]
+struct ExpectedQuota {
+    due_date: String,
+    identifier: String,
+    amount: f64,
+    user_id: String,
+}
 
-    #[test]
-    fn test_get_monthly_affiliate_quota() {
-        let context = setup_context();
-        
-        // Limpieza y setup de datos
-        // 1. Crear afiliados de prueba y sus claves en Redis
-        let afiliados = vec![
-            ("afiliado1", "Juan Perez"),
-            ("afiliado2", "Maria Gomez"),
-        ];
+fn spanish_month_name(month: u32) -> &'static str {
+    match month {
+        1 => "Enero",
+        2 => "Febrero",
+        3 => "Marzo",
+        4 => "Abril",
+        5 => "Mayo",
+        6 => "Junio",
+        7 => "Julio",
+        8 => "Agosto",
+        9 => "Septiembre",
+        10 => "Octubre",
+        11 => "Noviembre",
+        12 => "Diciembre",
+        _ => "Mes",
+    }
+}
 
-        // *** LIMPIAR Redis antes de la prueba ***
-        // Evitamos flushdb() (borrado global). Eliminamos solo las claves que vamos a usar.
-        {
-            use redis::Commands;
-            let mut conn = context.pool.get().unwrap();
-            // Formato de las claves creadas: users:{afiliado}:affiliate_key y users:{afiliado}:complete_name
-            for (afiliado_key, _) in &afiliados {
-                let k1 = format!("users:{}:affiliate_key", afiliado_key);
-                let k2 = format!("users:{}:complete_name", afiliado_key);
-                let _ : () = conn.del(&k1).unwrap_or(());
-                let _ : () = conn.del(&k2).unwrap_or(());
-            }
-        }
+fn identifier_for(name: &str, date: &NaiveDate) -> String {
+    let month = spanish_month_name(date.month());
+    format!("{} - {} {}", name, month, date.year())
+}
 
-            // Crear claves en Redis para cada afiliado según el formato esperado por el repo
-            {
-                use redis::Commands;
-                let mut conn = context.pool.get().unwrap();
-                for (afiliado_key, nombre) in &afiliados {
-                    let redis_key = format!("users:{}:affiliate_key", afiliado_key);
-                    let _: () = conn.set(&redis_key, afiliado_key).unwrap();
-                    let complete_name_key = format!("users:{}:complete_name", afiliado_key);
-                    let _: () = conn.set(&complete_name_key, nombre).unwrap();
-                }
-            }
+fn register_affiliate_metadata(
+    context: &GeneralContext,
+    guard: &mut TestRedisGuard,
+    access_token: &str,
+    affiliate_key_value: &str,
+    complete_name: &str,
+) {
+    let mut conn = context.pool.get().expect("No se pudo obtener conexión a Redis");
+    let affiliate_key = format!("users:{}:affiliate_key", access_token);
+    let complete_name_key = format!("users:{}:complete_name", access_token);
+    let _: () = conn
+        .set(&affiliate_key, affiliate_key_value)
+        .expect("No se pudo registrar affiliate_key de prueba");
+    let _: () = conn
+        .set(&complete_name_key, complete_name)
+        .expect("No se pudo registrar complete_name de prueba");
+    guard.register_key(affiliate_key);
+    guard.register_key(complete_name_key);
+}
 
-        // 2. Crear quotas pendientes para cada afiliado y guardar en Redis
-        let quotas = vec![
-            // Para cada afiliado, crear una Quota en dos meses distintos
-            Quota {
-                user_id: "afiliado1".to_string(),
-                monto: 250.0,
-                fecha_vencimiento: Some("2025-01-01".to_string()),
-                monto_pagado: 0.0,
-                multa: 0.0,
-                pagada_por: None,
-                tipo: TipoQuota::Afiliado,
+fn register_quota_key(guard: &mut TestRedisGuard, access_token: &str, quota: &Quota) {
+    let exp_date = quota
+        .exp_date
+        .as_ref()
+        .expect("Las quotas de prueba deben tener fecha");
+    let access_token_owned = access_token.to_string();
+    let db_access_token = hashing_composite_key(&[&access_token_owned]);
+    let key = format!("users:{}:quotas_afiliado:{}", db_access_token, exp_date);
+    guard.register_key(key);
+}
+
+#[test]
+fn test_get_monthly_affiliate_quota_returns_pending_formatted() {
+    // Serializa el acceso a Redis compartido entre pruebas.
+    let _lock = REDIS_TEST_LOCK
+        .get_or_init(|| std::sync::Mutex::new(()))
+        .lock()
+        .expect("No se pudo adquirir el lock de pruebas");
+
+    let context = create_test_context();
+    let mut guard = TestRedisGuard::new(context.pool.clone());
+    let repo = context.quota_repo();
+
+    let today = Utc::now().date_naive();
+    let current_month = NaiveDate::from_ymd_opt(today.year(), today.month(), 1)
+        .expect("Mes actual inválido");
+    let previous_month = if today.month() == 1 {
+        NaiveDate::from_ymd_opt(today.year() - 1, 12, 1).expect("Mes anterior inválido")
+    } else {
+        NaiveDate::from_ymd_opt(today.year(), today.month() - 1, 1)
+            .expect("Mes anterior inválido")
+    };
+
+    let affiliates = vec![
+        (
+            "quota_afiliado_token_juan",
+            "Juan Perez",
+            "AFF-JP",
+            vec![(current_month, 250.0_f64), (previous_month, 275.0_f64)],
+        ),
+        (
+            "quota_afiliado_token_maria",
+            "Maria Gomez",
+            "AFF-MG",
+            vec![(previous_month, 180.0_f64)],
+        ),
+    ];
+
+    let mut expected: HashMap<String, Vec<ExpectedQuota>> = HashMap::new();
+
+    for (access_token, name, affiliate_key_value, due_dates) in &affiliates {
+        register_affiliate_metadata(
+            &context,
+            &mut guard,
+            access_token,
+            affiliate_key_value,
+            name,
+        );
+
+        for (due_date, amount) in due_dates.iter() {
+            let due_date_str = due_date.format("%Y-%m-%d").to_string();
+            let quota = Quota {
+                user_id: (*access_token).to_string(),
+                amount: *amount,
+                exp_date: Some(due_date_str.clone()),
+                monto_pagado: Some(0.0),
+                multa: Some(0.0),
+                pay_by: None,
+                quota_type: QuotaType::Afiliado,
                 loan_id: None,
-                extraordinaria: None,
-                pagada: Some(false),
-                numero_quota: None,
-            },
-            Quota {
-                user_id: "afiliado1".to_string(),
-                monto: 250.0,
-                fecha_vencimiento: Some("2025-02-01".to_string()),
-                monto_pagado: 0.0,
-                multa: 0.0,
-                pagada_por: None,
-                tipo: TipoQuota::Afiliado,
-                loan_id: None,
-                extraordinaria: None,
-                pagada: Some(false),
-                numero_quota: None,
-            },
-            Quota {
-                user_id: "afiliado2".to_string(),
-                monto: 250.0,
-                fecha_vencimiento: Some("2025-01-01".to_string()),
-                monto_pagado: 0.0,
-                multa: 0.0,
-                pagada_por: None,
-                tipo: TipoQuota::Afiliado,
-                loan_id: None,
-                extraordinaria: None,
-                pagada: Some(false),
-                numero_quota: None,
-            },
-        ];
-        for Quota in &quotas {
-            let _ = context.quota_repo().save_quota(Quota.user_id.clone(), Quota);
-        }
-        // 4. Mock de get_all_users_for_affiliates si es necesario
-        // 5. Ejecutar el resolver
-        let result = futures::executor::block_on(
-            QuotaQuery::get_monthly_affiliate_quota(&context, "TEST_ACCESS_TOKEN".to_string())
-        ).unwrap();
-        
-        // Imprimir resultado para depuración
-        println!("Resultado del resolver: {:?}", result);
-        
-        // 6. Validar formato y contenido del array de objetos QuotaAfiliadoMensualResponse
-        assert!(!result.is_empty(), "El resultado no debe estar vacío");
-        
-        // Verificar que contiene quotas para Juan Perez (debería tener dos quotas: enero y febrero 2025)
-        let quotas_juan: Vec<&QuotaAfiliadoMensualResponse> = result.iter()
-            .filter(|r| r.identifier.contains("Juan Perez"))
-            .collect();
-        assert_eq!(quotas_juan.len(), 2, "Juan Perez debe tener exactamente 2 quotas");
-        
-        // Verificar campos específicos para las quotas de Juan Perez
-        for Quota in &quotas_juan {
-            assert_eq!(Quota.user_id, "TEST_ACCESS_TOKEN");
-            assert_eq!(Quota.monto, 250.0);
-            assert_eq!(Quota.nombre, "Juan Perez");
-            assert_eq!(Quota.extraordinaria, false);
-            // Verificar que el identifier tiene formato correcto con meses en español
-            assert!(
-                Quota.identifier == "Juan Perez - Enero 2025" || Quota.identifier == "Juan Perez - Febrero 2025",
-                "Identifier incorrecto: {}", Quota.identifier
-            );
-            // Verificar fecha_vencimiento
-            assert!(
-                Quota.fecha_vencimiento == "2025-01-01" || Quota.fecha_vencimiento == "2025-02-01",
-                "Fecha de vencimiento incorrecta: {}", Quota.fecha_vencimiento
-            );
-        }
-        
-        // Verificar que contiene quotas para Maria Gomez (debería tener una Quota: enero 2025)
-        let quotas_maria: Vec<&QuotaAfiliadoMensualResponse> = result.iter()
-            .filter(|r| r.identifier.contains("Maria Gomez"))
-            .collect();
-        assert_eq!(quotas_maria.len(), 1, "Maria Gomez debe tener exactamente 1 Quota");
-        
-        // Verificar campos específicos para la Quota de Maria Gomez
-        let quota_maria = quotas_maria[0];
-        assert_eq!(quota_maria.user_id, "TEST_ACCESS_TOKEN");
-        assert_eq!(quota_maria.monto, 250.0);
-        assert_eq!(quota_maria.nombre, "Maria Gomez");
-        assert_eq!(quota_maria.extraordinaria, false);
-        assert_eq!(quota_maria.identifier, "Maria Gomez - Enero 2025");
-        assert_eq!(quota_maria.fecha_vencimiento, "2025-01-01");
-        
-        // Verificar que todas las quotas tienen fechas <= fecha actual (solo quotas de enero y febrero 2025)
-        for Quota in &result {
-            let fecha = NaiveDate::parse_from_str(&Quota.fecha_vencimiento, "%Y-%m-%d").unwrap();
-            let hoy = chrono::Utc::now().date_naive();
-            assert!(fecha <= hoy, "La Quota {} tiene fecha futura: {}", Quota.identifier, Quota.fecha_vencimiento);
+                is_extraordinary: Some(false),
+                payed: Some(false),
+                quota_number: None,
+                nombre_prestamo: None,
+                nombre_usuario: None,
+                identifier: None,
+            };
+
+            repo
+                .save_quota((*access_token).to_string(), &quota)
+                .expect("No se pudo guardar la quota de prueba");
+
+            register_quota_key(&mut guard, access_token, &quota);
+
+            expected
+                .entry((*name).to_string())
+                .or_default()
+                .push(ExpectedQuota {
+                    due_date: due_date_str,
+                    identifier: identifier_for(name, due_date),
+                    amount: *amount,
+                    user_id: (*access_token).to_string(),
+                });
         }
     }
+
+    let expected_total: usize = expected.values().map(|entries| entries.len()).sum();
+
+    let result = futures::executor::block_on(QuotaQuery::get_monthly_affiliate_quota(
+        &context,
+        "TEST_REQUESTING_TOKEN".to_string(),
+    ))
+    .expect("La query de quotas de afiliado falló");
+
+    let mut matched = 0_usize;
+
+    for quota in result {
+        let Some(name) = quota.nombre_usuario.clone() else {
+            continue;
+        };
+
+        let Some(expected_entries) = expected.get_mut(&name) else {
+            continue;
+        };
+
+        let exp_date = quota
+            .exp_date
+            .clone()
+            .expect("Las cuotas devueltas deben incluir exp_date");
+        let identifier = quota
+            .identifier
+            .clone()
+            .expect("Las cuotas devueltas deben incluir identifier");
+
+        if let Some(position) = expected_entries.iter().position(|candidate| {
+            candidate.due_date == exp_date
+                && candidate.identifier == identifier
+                && (candidate.amount - quota.amount).abs() < f64::EPSILON
+        }) {
+            let expected_entry = expected_entries.remove(position);
+            matched += 1;
+
+            assert_eq!(quota.quota_type, QuotaType::Afiliado);
+            assert_eq!(quota.user_id, expected_entry.user_id);
+            assert_eq!(quota.payed, Some(false));
+            assert_eq!(quota.is_extraordinary, Some(false));
+            assert_eq!(quota.monto_pagado, Some(0.0));
+            assert_eq!(quota.multa, Some(0.0));
+        }
+    }
+
+    for (name, remaining) in &expected {
+        assert!(remaining.is_empty(), "Faltan quotas esperadas para {}", name);
+    }
+
+    assert_eq!(matched, expected_total, "No se validaron todas las quotas esperadas");
 }

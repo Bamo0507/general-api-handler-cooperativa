@@ -72,6 +72,32 @@ pub fn insert_payment_helper_and_return(context: &GeneralContext, payment: &Paym
     redis_key
 }
 
+/// Inserta una multa en Redis y devuelve la clave usada. Permite probar FineQuery.
+#[allow(dead_code)]
+pub fn insert_fine_helper_and_return(
+    context: &GeneralContext,
+    access_token: &str,
+    fine: &general_api::models::graphql::Fine,
+) -> String {
+    use general_api::models::redis::Fine as RedisFine;
+    use general_api::repos::auth::utils::hashing_composite_key;
+
+    let pool = context.pool.clone();
+    let mut con = pool.get().expect("No se pudo obtener conexión de Redis");
+
+    let composite_key = hashing_composite_key(&[&access_token.to_string()]);
+    let redis_key = format!("users:{}:fines:{}", composite_key, fine.id);
+
+    let redis_fine = RedisFine {
+        amount: fine.amount as f32,
+        motive: fine.reason.clone(),
+    status: fine.status.to_string(),
+    };
+
+    let _: redis::RedisResult<()> = con.json_set(&redis_key, "$", &redis_fine);
+    redis_key
+}
+
 
 #[cfg(test)]
 mod integration {
@@ -81,6 +107,10 @@ mod integration {
 
     #[test]
     fn test_guard_borra_solo_claves_registradas() {
+        let _redis_guard = general_api::test_sync::REDIS_TEST_LOCK
+            .get_or_init(|| std::sync::Mutex::new(()))
+            .lock()
+            .unwrap();
         let context = create_test_context();
         let mut guard = TestRedisGuard::new(context.pool.clone());
 

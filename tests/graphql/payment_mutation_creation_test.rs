@@ -1,9 +1,10 @@
 // Tests para SCRUM-202: crear pagos via mutation (mutation-level)
 // Reutilizamos los helpers existentes y patrón de runtime
 
-use general_api::models::graphql::{Payment, PaymentStatus};
+use general_api::models::graphql::PaymentStatus;
 use general_api::endpoints::handlers::graphql::payment::PaymentMutation;
-use general_api::repos::graphql::utils::{create_test_context, clear_redis, insert_payment_helper};
+// Include shared test helpers from tests/graphql/common/mod.rs (provides Payment, GeneralContext, TestRedisGuard)
+include!("common/mod.rs");
 
 // Local test-only lock (see payment_create_test.rs) to avoid depending on a missing
 // global `general_api::test_sync::REDIS_TEST_LOCK`.
@@ -13,15 +14,14 @@ fn redis_test_lock() -> &'static Mutex<()> {
     REDIS_TEST_LOCAL.get_or_init(|| Mutex::new(()))
 }
 use general_api::repos::auth::utils::hashing_composite_key;
-use redis::Commands;
 
 #[test]
 fn test_mutation_create_user_payment_happy_path() {
     let _guard = redis_test_lock().lock().unwrap();
     let context = create_test_context();
-    clear_redis(&context);
+    let mut guard = TestRedisGuard::new(context.pool.clone());
 
-    let now = chrono::Utc::now().timestamp_nanos();
+    let now = chrono::Utc::now().timestamp_nanos_opt().unwrap();
     let payment = Payment {
         id: format!("test_pago_{}_mut_create_1", now),
         name: "Mutation Create Test".to_string(),
@@ -52,12 +52,22 @@ fn test_mutation_create_user_payment_happy_path() {
 
     // La implementación actual devuelve Result<String, String> con el mensaje "Payment Created"
     assert_eq!(res, "Payment Created");
-
-    // Verificar existencia de la key en Redis
-    let composite = hashing_composite_key(&[&access_token]);
-    let mut con = context.pool.get().expect("No se pudo obtener conexión de Redis");
-    let keys: Vec<String> = con.scan_match(format!("users:{}:payments:*", composite)).unwrap().collect();
-    assert!(!keys.is_empty(), "Expected at least one payment key in Redis after mutation");
+    // Register created keys by scanning the namespace for the access token
+    {
+        let composite = hashing_composite_key(&[&access_token]);
+        let mut con = context.pool.get().expect("No se pudo obtener conexión de Redis");
+        let keys: Vec<String> = con
+            .scan_match(format!("users:{}:payments:*", composite))
+            .unwrap()
+            .collect();
+        assert!(
+            !keys.is_empty(),
+            "Expected at least one payment key in Redis after mutation"
+        );
+        for k in keys {
+            guard.register_key(k);
+        }
+    }
 }
 
 #[test]
@@ -66,7 +76,7 @@ fn test_mutation_create_user_payment_with_negative_amount() {
     // This test asserts the current behavior so changes will be visible in CI if validation is added later.
     let _guard = redis_test_lock().lock().unwrap();
     let context = create_test_context();
-    clear_redis(&context);
+    let mut guard = TestRedisGuard::new(context.pool.clone());
 
     let access_token = "test_neg_amount".to_string();
     let res = futures::executor::block_on(async {
@@ -83,6 +93,23 @@ fn test_mutation_create_user_payment_with_negative_amount() {
 
     // Current implementation returns Ok("Payment Created") even for negative amounts.
     // We assert that behavior; if you prefer to reject negatives, change production code and update test.
-    assert!(res.is_ok(), "Expected create_user_payment to succeed currently, got {:?}", res);
-    assert_eq!(res.unwrap(), "Payment Created");
+    assert!(
+        res.is_ok(),
+        "Expected create_user_payment to succeed currently, got {:?}",
+        res
+    );
+    assert_eq!(res.as_deref().unwrap(), "Payment Created");
+
+    // Registrar las claves creadas, ya que la mutación debería haber persistido un pago
+    {
+        let composite = hashing_composite_key(&[&access_token]);
+        let mut con = context.pool.get().expect("No se pudo obtener conexión de Redis");
+        let keys: Vec<String> = con
+            .scan_match(format!("users:{}:payments:*", composite))
+            .unwrap()
+            .collect();
+        for k in keys {
+            guard.register_key(k);
+        }
+    }
 }
