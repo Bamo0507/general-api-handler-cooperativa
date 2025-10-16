@@ -244,3 +244,74 @@ where
         Err(_) => Err("Couldn't get users payments".to_string()),
     }
 }
+
+/// Scans Redis using an arbitrary pattern (for example "users:*:payments:*") and
+/// tries to parse any JSON values found into `RedisType`, mapping them to
+/// `GraphQLType` via the `GraphQLMappable` trait. This is a generalization of
+/// `get_multiple_models` that accepts a fully-formed SCAN pattern instead of
+/// constructing it from an access token.
+pub fn get_multiple_models_by_pattern<GraphQLType, RedisType>(
+    pattern: String,
+    pool: Data<Pool<Client>>,
+) -> Result<Vec<GraphQLType>, String>
+where
+    RedisType: DeserializeOwned + Clone + GraphQLMappable<GraphQLType> + Debug,
+{
+    let mut con = pool.get().expect("Couldn't connect to pool");
+
+    match con.scan_match::<String, String>(pattern) {
+        Ok(keys) => {
+            let mut graphql_object_list: Vec<GraphQLType> = Vec::new();
+
+            // conn for fetching redis models
+            let mut con = pool.get().expect("Couldn't connect to pool");
+
+            // Collect keys into a Vec so we can log and iterate deterministically for debugging
+            let key_vec: Vec<String> = keys.collect();
+            println!("DEBUG get_multiple_models_by_pattern - scanned keys: {:?}", key_vec);
+
+            for key in key_vec {
+                let redis_raw_res = con.json_get::<String, &str, redis::Value>(key.to_owned(), "$");
+                let redis_raw = match redis_raw_res {
+                    Ok(v) => v,
+                    Err(e) => {
+                        println!("DEBUG get_multiple_models_by_pattern - json_get failed for key {}: {:?}", key, e);
+                        continue; // skip invalid/non-json keys
+                    }
+                };
+
+                let nested_data_res = from_redis_value::<String>(&redis_raw);
+                let nested_data = match nested_data_res {
+                    Ok(s) => s,
+                    Err(e) => {
+                        println!("DEBUG get_multiple_models_by_pattern - from_redis_value failed for key {}: {:?}", key, e);
+                        continue;
+                    }
+                };
+
+                let parsed_vec_res = from_str::<Vec<RedisType>>(nested_data.as_str());
+                let mut parsed_objects: Vec<RedisType> = match parsed_vec_res {
+                    Ok(v) => v,
+                    Err(_) => match from_str::<RedisType>(nested_data.as_str()) {
+                        Ok(obj) => vec![obj],
+                        Err(e) => {
+                            println!("DEBUG get_multiple_models_by_pattern - JSON parse failed for key {}: {} -> {}", key, nested_data, e);
+                            continue;
+                        }
+                    },
+                };
+
+                if parsed_objects.is_empty() {
+                    continue;
+                }
+
+                for redis_object_parsed in parsed_objects {
+                    graphql_object_list.push(redis_object_parsed.to_graphql_type(key.clone()));
+                }
+            }
+
+            Ok(graphql_object_list)
+        }
+        Err(_) => Err("Couldn't get users payments".to_string()),
+    }
+}

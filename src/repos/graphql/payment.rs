@@ -56,13 +56,10 @@ impl PaymentRepo {
 
     /// Obtiene todos los pagos de todos los socios
     pub fn get_all_payments(&self) -> Result<Vec<Payment>, String> {
-        // Se fundamenta en el patrón de get_multiple_models usado en get_user_payments
-        // Para obtener todos los pagos, se puede usar una clave global o escanear todas las claves de pagos
-        // Aquí se usa una clave global "all" para mantener el patrón
-        get_multiple_models::<Payment, RedisPayment>(
-            "all".to_owned(),
+        // Reuse the generic helper to scan and map payments across all users.
+        crate::repos::graphql::utils::get_multiple_models_by_pattern::<Payment, RedisPayment>(
+            "users:*:payments:*".to_string(),
             self.pool.clone(),
-            "payments".to_owned(),
         )
     }
 
