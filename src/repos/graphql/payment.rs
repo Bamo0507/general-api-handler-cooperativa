@@ -136,9 +136,16 @@ impl PaymentRepo {
                     // The equivalent of cloning
                     let name_con = &mut self.pool.get().expect("Couldn't connect to pool");
 
+                    let affiliate_con = &mut self.pool.get().expect("Couldn't connect to pool");
+
                     affiliates.push(Affiliate {
                         // user db_id
-                        user_id: parsed_key[2].to_owned(),
+                        user_id: affiliate_con
+                            .get::<String, String>(format!(
+                                "users:{}:affiliate_key",
+                                parsed_key[2].to_owned()
+                            ))
+                            .unwrap_or("Not Name Found".to_owned()),
                         name: name_con
                             .get::<String, String>(format!(
                                 "users:{}:complete_name",
