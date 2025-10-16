@@ -162,50 +162,144 @@ impl PaymentRepo {
     ) -> Result<Payment, String> {
         let mut con = self.pool.get().map_err(|_| "Couldn't connect to pool")?;
 
-        // Clave completa: users:{hash("all")}:payments:{id}
-        let all_key = hashing_composite_key(&[&String::from("all")]);
-        let key = format!("users:{}:payments:{}", all_key, id);
+        // Buscamos todas las keys que correspondan al id: users:*:payments:{id}
+        let pattern = format!("users:*:payments:{}", id);
 
-        // Obtener JSON del pago
-        let raw = con
-            .json_get::<String, &str, redis::Value>(key.clone(), "$")
-            .map_err(|_| "Error fetching payment")?;
-        let nested = from_redis_value::<String>(&raw).map_err(|_| "Error decoding redis value")?;
-        let mut parsed: Vec<RedisPayment> =
-            from_str(&nested).map_err(|_| "Error deserializing payment")?;
-        let mut redis_payment = parsed
-            .pop()
-            .ok_or_else(|| "Payment not found".to_string())?;
+        match con.scan_match::<String, String>(pattern.clone()) {
+            Ok(keys) => {
+                let key_vec: Vec<String> = keys.collect();
 
-        // Validar estado actual
-        let current_status = PaymentStatus::from_string(redis_payment.status.clone());
-        if current_status == PaymentStatus::Accepted || current_status == PaymentStatus::Rejected {
-            return Err("El pago ya está finalizado".to_string());
-        }
+                if key_vec.is_empty() {
+                    // Fallback: try the 'all' key behavior from before
+                    let all_key = hashing_composite_key(&[&String::from("all")]);
+                    let key = format!("users:{}:payments:{}", all_key, id);
 
-        // Validar nuevo estado
-        let new_status = PaymentStatus::from_string(new_state.clone());
-        match new_status {
-            PaymentStatus::Accepted => {}
-            PaymentStatus::Rejected => {
-                if commentary.trim().is_empty() {
-                    return Err("Se requiere comentario al rechazar el pago".to_string());
+                    // Obtener JSON del pago
+                    let raw = con
+                        .json_get::<String, &str, redis::Value>(key.clone(), "$")
+                        .map_err(|_| "Error fetching payment")?;
+                    let nested = from_redis_value::<String>(&raw).map_err(|_| "Error decoding redis value")?;
+                    let mut parsed: Vec<RedisPayment> =
+                        from_str(&nested).map_err(|_| "Error deserializing payment")?;
+                    let mut redis_payment = parsed
+                        .pop()
+                        .ok_or_else(|| "Payment not found".to_string())?;
+
+                    // Validar estado actual
+                    let current_status = PaymentStatus::from_string(redis_payment.status.clone());
+                    if current_status == PaymentStatus::Accepted || current_status == PaymentStatus::Rejected {
+                        return Err("El pago ya está finalizado".to_string());
+                    }
+
+                    // Validar nuevo estado
+                    let new_status = PaymentStatus::from_string(new_state.clone());
+                    match new_status {
+                        PaymentStatus::Accepted => {}
+                        PaymentStatus::Rejected => {
+                            if commentary.trim().is_empty() {
+                                return Err("Se requiere comentario al rechazar el pago".to_string());
+                            }
+                        }
+                        _ => return Err("Estado inválido, debe ser ACCEPTED o REJECTED".to_string()),
+                    }
+
+                    // Actualizar y persistir
+                    redis_payment.status = new_status.as_str().to_owned();
+                    if new_status == PaymentStatus::Rejected {
+                        redis_payment.comments = Some(commentary);
+                    }
+
+                    con.json_set::<String, &str, _, ()>(key.clone(), "$", &redis_payment)
+                        .map_err(|_| "Error updating payment")?;
+
+                    // Mapear a GraphQL
+                    let payment = redis_payment.to_graphql_type(key);
+                    Ok(payment)
+                } else {
+                    // Tenemos una o más keys; actualizamos todas para mantenerlas sincronizadas
+                    let mut con2 = self.pool.get().map_err(|_| "Couldn't connect to pool")?;
+
+                    // Primero validamos que ninguna copia ya esté finalizada
+                    for key in &key_vec {
+                        let raw_res = con2.json_get::<String, &str, redis::Value>(key.clone(), "$");
+                        let raw = match raw_res {
+                            Ok(v) => v,
+                            Err(_) => continue, // skip invalid
+                        };
+                        let nested = match from_redis_value::<String>(&raw) {
+                            Ok(s) => s,
+                            Err(_) => continue,
+                        };
+                        let parsed_vec_res = from_str::<Vec<RedisPayment>>(nested.as_str());
+                        let parsed_objects: Vec<RedisPayment> = match parsed_vec_res {
+                            Ok(v) => v,
+                            Err(_) => match from_str::<RedisPayment>(nested.as_str()) {
+                                Ok(obj) => vec![obj],
+                                Err(_) => continue,
+                            },
+                        };
+
+                        for p in parsed_objects {
+                            let current_status = PaymentStatus::from_string(p.status.clone());
+                            if current_status == PaymentStatus::Accepted || current_status == PaymentStatus::Rejected {
+                                return Err("El pago ya está finalizado".to_string());
+                            }
+                        }
+                    }
+
+                    // Validar nuevo estado
+                    let new_status = PaymentStatus::from_string(new_state.clone());
+                    match new_status {
+                        PaymentStatus::Accepted => {}
+                        PaymentStatus::Rejected => {
+                            if commentary.trim().is_empty() {
+                                return Err("Se requiere comentario al rechazar el pago".to_string());
+                            }
+                        }
+                        _ => return Err("Estado inválido, debe ser ACCEPTED o REJECTED".to_string()),
+                    }
+
+                    // Actualizamos todas las copias y guardamos la primera mapeada para devolverla
+                    let mut mapped_payment: Option<Payment> = None;
+                    for key in key_vec {
+                        // volver a leer y parsear (para obtener el objeto)
+                        let raw = match con2.json_get::<String, &str, redis::Value>(key.clone(), "$") {
+                            Ok(v) => v,
+                            Err(_) => continue,
+                        };
+                        let nested = match from_redis_value::<String>(&raw) {
+                            Ok(s) => s,
+                            Err(_) => continue,
+                        };
+                        let mut parsed: Vec<RedisPayment> = match from_str(&nested) {
+                            Ok(v) => v,
+                            Err(_) => match from_str::<RedisPayment>(&nested) {
+                                Ok(obj) => vec![obj],
+                                Err(_) => continue,
+                            },
+                        };
+                        if parsed.is_empty() {
+                            continue;
+                        }
+
+                        let mut redis_payment = parsed.pop().unwrap();
+                        redis_payment.status = new_status.as_str().to_owned();
+                        if new_status == PaymentStatus::Rejected {
+                            redis_payment.comments = Some(commentary.clone());
+                        }
+
+                        con2.json_set::<String, &str, _, ()>(key.clone(), "$", &redis_payment)
+                            .map_err(|_| "Error updating payment")?;
+
+                        if mapped_payment.is_none() {
+                            mapped_payment = Some(redis_payment.to_graphql_type(key.clone()));
+                        }
+                    }
+
+                    mapped_payment.ok_or_else(|| "Payment not found".to_string())
                 }
             }
-            _ => return Err("Estado inválido, debe ser ACCEPTED o REJECTED".to_string()),
+            Err(_) => Err("Couldn't scan for payment keys".to_string()),
         }
-
-        // Actualizar y persistir
-        redis_payment.status = new_status.as_str().to_owned();
-        if new_status == PaymentStatus::Rejected {
-            redis_payment.comments = Some(commentary);
-        }
-
-        con.json_set::<String, &str, _, ()>(key.clone(), "$", &redis_payment)
-            .map_err(|_| "Error updating payment")?;
-
-        // Mapear a GraphQL
-        let payment = redis_payment.to_graphql_type(key);
-        Ok(payment)
     }
 }
