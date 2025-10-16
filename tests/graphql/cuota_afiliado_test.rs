@@ -9,32 +9,35 @@ mod tests {
     use actix_web::web::Data;
     use r2d2::Pool;
     use redis::Client;
+    use general_api::repos::graphql::utils::create_test_context;
 
-    fn setup_context() -> GeneralContext {
-        // Configura un pool de Redis para pruebas usando solo la variable de entorno CLI
-        let redis_url = std::env::var("REDIS_URL").expect("REDIS_URL debe estar exportada en el CLI");
-        let client = Client::open(redis_url).expect("No se pudo conectar a Redis");
-        let pool = Pool::builder().build(client).expect("No se pudo crear el pool de Redis");
-        GeneralContext { pool: Data::new(pool) }
-    }
+        // Use the project's canonical test context helper instead of duplicating pool creation
+        // This keeps test setup centralized and easier to maintain.
 
     #[test]
     fn test_get_monthly_affiliate_quota() {
         let context = setup_context();
         
+        // Limpieza y setup de datos
+        // 1. Crear afiliados de prueba y sus claves en Redis
+        let afiliados = vec![
+            ("afiliado1", "Juan Perez"),
+            ("afiliado2", "Maria Gomez"),
+        ];
+
         // *** LIMPIAR Redis antes de la prueba ***
+        // Evitamos flushdb() (borrado global). Eliminamos solo las claves que vamos a usar.
         {
             use redis::Commands;
             let mut conn = context.pool.get().unwrap();
-            let _: () = conn.flushdb().unwrap();
+            // Formato de las claves creadas: users:{afiliado}:affiliate_key y users:{afiliado}:complete_name
+            for (afiliado_key, _) in &afiliados {
+                let k1 = format!("users:{}:affiliate_key", afiliado_key);
+                let k2 = format!("users:{}:complete_name", afiliado_key);
+                let _ : () = conn.del(&k1).unwrap_or(());
+                let _ : () = conn.del(&k2).unwrap_or(());
+            }
         }
-        
-        // Limpieza y setup de datos
-            // 1. Crear afiliados de prueba y sus claves en Redis
-            let afiliados = vec![
-                ("afiliado1", "Juan Perez"),
-                ("afiliado2", "Maria Gomez"),
-            ];
 
             // Crear claves en Redis para cada afiliado según el formato esperado por el repo
             {

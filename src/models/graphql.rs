@@ -88,6 +88,34 @@ impl LoanStatus {
     }
 }
 
+#[derive(Clone, Serialize, Deserialize, Debug, GraphQLEnum, PartialEq)]
+pub enum FineStatus {
+    Paid,
+    Unpaid,
+    ParsedError,
+}
+
+impl FineStatus {
+    pub fn from_string(raw_status: String) -> FineStatus {
+        match raw_status.to_uppercase().as_str() {
+            "PAID" => FineStatus::Paid,
+            "UNPAID" => FineStatus::Unpaid,
+            "UPAID" => FineStatus::Unpaid,
+            _ => FineStatus::ParsedError,
+        }
+    }
+}
+
+impl ToString for FineStatus {
+    fn to_string(&self) -> String {
+        match self {
+            FineStatus::Paid => "PAID".to_owned(),
+            FineStatus::Unpaid => "UNPAID".to_owned(),
+            _ => "ERROR".to_owned(),
+        }
+    }
+}
+
 #[derive(Clone, Serialize, Deserialize, GraphQLObject, Debug)]
 pub struct Loan {
     pub id: String,
@@ -102,7 +130,8 @@ pub struct Loan {
 #[derive(Clone, Serialize, Deserialize, GraphQLObject, Debug)]
 pub struct Fine {
     pub id: String,
-    pub quantity: f64,
+    pub amount: f64,
+    pub status: FineStatus,
     pub reason: String,
 }
 
@@ -196,4 +225,3 @@ pub struct Quota {
     /// Identificador único para frontend (formato: "Nombre - Mes Año")
     pub identifier: Option<String>,
 }
-

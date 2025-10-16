@@ -8,3 +8,4 @@
 - [X] SCRUM-201: Crear unit testing para query de pagos por socio (in-progress)
 
 
+ -[X] Crear graphql query para poder cambiar el estado de un pago y ponerle comentario

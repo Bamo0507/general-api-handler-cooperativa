@@ -30,6 +30,10 @@ impl PaymentQuery {
     ) -> Result<Vec<Payment>, String> {
         context.payment_repo().get_user_payments(access_token)
     }
+    /// Obtiene todos los pagos de todos los socios
+    pub async fn get_all_payments(context: &GeneralContext) -> Result<Vec<Payment>, String> {
+        context.payment_repo().get_all_payments()
+    }
 
     /// Get's all the members names with there affiliate_keys
     pub async fn get_all_members(context: &GeneralContext) -> Result<Vec<Affiliate>, String> {
@@ -61,5 +65,15 @@ impl PaymentMutation {
             account_number,
             being_payed,
         )
+    }
+
+    /// Mutation para aprobar o rechazar un pago
+    pub async fn approve_or_reject_payment(
+        context: &GeneralContext,
+        id: String,
+        new_state: String,
+        commentary: String,
+    ) -> Result<Payment, String> {
+        context.payment_repo().approve_or_reject_payment(id, new_state, commentary).await
     }
 }
