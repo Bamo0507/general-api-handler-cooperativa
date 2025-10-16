@@ -245,9 +245,10 @@ where
     }
 }
 
-/// Busca en Redis usando el patrón que le pases, por ejemplo "users::payments:"
-/// Intenta convertir lo que encuentra en JSON al tipo de Redis y luego lo mapea al tipo GraphQL
-/// Es como el get_multiple_models pero aquí tú le das el patrón completo
+/// creado porque necesitamos escanear con patrones arbitrarios como users:*:payments:*
+/// los otros helpers construyen el patrón desde un access token y no sirven para queries globales
+/// este recibe el patrón ya formado, hace el json_get defensivo y mapea los objetos redis a graphql
+/// lo dejo separado pa no tocar lo que ya usa access token y pa consultas que spannean todo
 pub fn get_multiple_models_by_pattern<GraphQLType, RedisType>(
     pattern: String,
     pool: Data<Pool<Client>>,

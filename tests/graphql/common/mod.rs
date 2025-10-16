@@ -49,11 +49,16 @@ impl Drop for TestRedisGuard {
 pub fn insert_payment_helper_and_return(context: &GeneralContext, payment: &Payment) -> String {
     use general_api::models::redis::Payment as RedisPayment;
     use general_api::repos::auth::utils::hashing_composite_key;
+    use chrono::Utc;
 
     let pool = context.pool.clone();
     let mut con = pool.get().expect("No se pudo obtener conexión de Redis");
 
-    let composite_key = hashing_composite_key(&[&String::from("all")]);
+    // use a unique composite per helper call to avoid collisions when tests run in parallel
+    // avoid deprecated timestamp_nanos, build a unique string from seconds + nanos
+    let now = Utc::now();
+    let unique = format!("test{}_{}", now.timestamp(), now.timestamp_subsec_nanos());
+    let composite_key = hashing_composite_key(&[&unique]);
     let redis_key = format!("users:{}:payments:{}", composite_key, payment.id);
 
     let redis_payment = RedisPayment {

@@ -56,7 +56,8 @@ impl PaymentRepo {
 
     /// Obtiene todos los pagos de todos los socios
     pub fn get_all_payments(&self) -> Result<Vec<Payment>, String> {
-        // Reuse the generic helper to scan and map payments across all users.
+        // usamos el helper que acepta un patrón porque necesitamos spannear todos los users
+        // los otros helpers construyen patrón desde access token y no sirven para esto
         crate::repos::graphql::utils::get_multiple_models_by_pattern::<Payment, RedisPayment>(
             "users:*:payments:*".to_string(),
             self.pool.clone(),
