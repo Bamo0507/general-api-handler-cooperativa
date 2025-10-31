@@ -1,8 +1,6 @@
 // tests para create_loan (repo-level)
 // usamos los mismos helpers y patrón de runtime que en los tests existentes
 
-use general_api::models::graphql::LoanStatus;
-
 // local test-only lock para serializar acceso a redis cuando los tests corren en paralelo
 use std::sync::{Mutex, OnceLock};
 fn redis_test_lock() -> &'static Mutex<()> {
@@ -17,34 +15,19 @@ use redis::{Value as RedisValue, from_redis_value};
 use general_api::models::redis::Loan as RedisLoan;
 use serde_json::from_str;
 
-/// helper para crear el mapping affiliate_key -> db_access_token en redis
-fn setup_affiliate_key_mapping(
-    context: &GeneralContext,
-    affiliate_key: &str,
-    db_access_token: &str,
-) {
-    let mut con = context.pool.get().expect("no se pudo obtener conexión de redis");
-    let key = format!("affiliate_key_to_db_access:{}", affiliate_key);
-    let _: () = con.set(&key, db_access_token).expect("no se pudo crear mapping");
-}
-
 #[test]
 fn test_repo_create_loan_happy_path() {
     let _guard = redis_test_lock().lock().unwrap();
     let context = create_test_context();
     let mut guard = TestRedisGuard::new(context.pool.clone());
 
-    let affiliate_key = format!("test_affiliate_{}", chrono::Utc::now().timestamp_nanos_opt().unwrap());
-    let db_access_token = hashing_composite_key(&[&affiliate_key]);
-
-    // setup del mapping affiliate_key -> db_access_token
-    setup_affiliate_key_mapping(&context, &affiliate_key, &db_access_token);
-    guard.register_key(format!("affiliate_key_to_db_access:{}", affiliate_key));
+    let access_token = format!("testuser_loan_{}", chrono::Utc::now().timestamp_nanos_opt().unwrap());
+    let db_access_token = hashing_composite_key(&[&access_token]);
 
     // llamar al repo a través del contexto
     let repo = context.loan_repo();
     let res = repo.create_loan(
-        affiliate_key.clone(),
+        access_token.clone(),
         12,
         5000.0,
         "compra de equipo".to_string(),
@@ -71,12 +54,8 @@ fn test_repo_create_loan_persists_json_content() {
     let context = create_test_context();
     let mut guard = TestRedisGuard::new(context.pool.clone());
 
-    let affiliate_key = format!("test_affiliate_content_{}", chrono::Utc::now().timestamp_nanos_opt().unwrap());
-    let db_access_token = hashing_composite_key(&[&affiliate_key]);
-
-    // setup del mapping
-    setup_affiliate_key_mapping(&context, &affiliate_key, &db_access_token);
-    guard.register_key(format!("affiliate_key_to_db_access:{}", affiliate_key));
+    let access_token = format!("testuser_content_{}", chrono::Utc::now().timestamp_nanos_opt().unwrap());
+    let db_access_token = hashing_composite_key(&[&access_token]);
 
     let repo = context.loan_repo();
     let total_quota = 24;
@@ -84,7 +63,7 @@ fn test_repo_create_loan_persists_json_content() {
     let reason = "préstamo para vivienda".to_string();
 
     let res = repo.create_loan(
-        affiliate_key.clone(),
+        access_token.clone(),
         total_quota,
         base_needed_payment,
         reason.clone(),
@@ -125,23 +104,19 @@ fn test_repo_create_loan_twice_creates_two_keys() {
     let context = create_test_context();
     let mut guard = TestRedisGuard::new(context.pool.clone());
 
-    let affiliate_key = format!("test_affiliate_two_{}", chrono::Utc::now().timestamp_nanos_opt().unwrap());
-    let db_access_token = hashing_composite_key(&[&affiliate_key]);
-
-    // setup del mapping
-    setup_affiliate_key_mapping(&context, &affiliate_key, &db_access_token);
-    guard.register_key(format!("affiliate_key_to_db_access:{}", affiliate_key));
+    let access_token = format!("testuser_two_{}", chrono::Utc::now().timestamp_nanos_opt().unwrap());
+    let db_access_token = hashing_composite_key(&[&access_token]);
 
     let repo = context.loan_repo();
 
     let _ = repo.create_loan(
-        affiliate_key.clone(),
+        access_token.clone(),
         6,
         1000.0,
         "préstamo 1".to_string(),
     );
     let _ = repo.create_loan(
-        affiliate_key.clone(),
+        access_token.clone(),
         12,
         2000.0,
         "préstamo 2".to_string(),
@@ -168,24 +143,20 @@ fn test_create_loan_collision_behavior() {
     let context = create_test_context();
     let mut guard = TestRedisGuard::new(context.pool.clone());
 
-    let affiliate_key = format!("test_collision_{}", chrono::Utc::now().timestamp_nanos_opt().unwrap());
-    let db_access_token = hashing_composite_key(&[&affiliate_key]);
-
-    // setup del mapping
-    setup_affiliate_key_mapping(&context, &affiliate_key, &db_access_token);
-    guard.register_key(format!("affiliate_key_to_db_access:{}", affiliate_key));
+    let access_token = format!("testuser_collision_{}", chrono::Utc::now().timestamp_nanos_opt().unwrap());
+    let db_access_token = hashing_composite_key(&[&access_token]);
 
     let repo = context.loan_repo();
 
     // crear dos loans con parámetros idénticos; current implementation usa count-based hash key
     let _ = repo.create_loan(
-        affiliate_key.clone(),
+        access_token.clone(),
         10,
         3000.0,
         "mismo motivo".to_string(),
     );
     let _ = repo.create_loan(
-        affiliate_key.clone(),
+        access_token.clone(),
         10,
         3000.0,
         "mismo motivo".to_string(),
@@ -209,20 +180,3 @@ fn test_create_loan_collision_behavior() {
     }
 }
 
-#[test]
-fn test_create_loan_invalid_affiliate_key() {
-    let _guard = redis_test_lock().lock().unwrap();
-    let context = create_test_context();
-
-    let repo = context.loan_repo();
-
-    // intentar crear loan con affiliate_key que no existe
-    let res = repo.create_loan(
-        "affiliate_inexistente".to_string(),
-        12,
-        5000.0,
-        "test".to_string(),
-    );
-
-    assert!(res.is_err(), "expected error for invalid affiliate_key");
-}

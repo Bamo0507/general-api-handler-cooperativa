@@ -5,7 +5,7 @@ use redis::Client;
 use redis::{from_redis_value, Commands, JsonCommands, Value as RedisValue};
 use serde_json::from_str;
 
-use crate::repos::graphql::utils::{get_db_access_token_with_affiliate_key, get_multiple_models_by_id};
+use crate::repos::graphql::utils::get_multiple_models_by_id;
 use crate::{
     models::{graphql::Loan, redis::Loan as RedisLoan},
     repos::auth::utils::hashing_composite_key,
@@ -32,17 +32,16 @@ impl LoanRepo {
 
     pub fn create_loan(
         &self,
-        affiliate_key: String,
+        access_token: String,
         total_quota: i32,
         base_needed_payment: f64,
         reason: String,
     ) -> Result<String, String> {
         let mut con = &mut self.pool.get().expect("Couldn't connect to pool");
 
-        // obtenemos el db_access_token desde el affiliate_key
+        // obtenemos el db_access_token desde el access_token
 
-        let db_access_token =
-            get_db_access_token_with_affiliate_key(affiliate_key, self.pool.clone())?;
+        let db_access_token = hashing_composite_key(&[&access_token]);
 
         if let Ok(keys) =
             con.scan_match::<String, String>(format!("users:{}:loans:*", db_access_token))
