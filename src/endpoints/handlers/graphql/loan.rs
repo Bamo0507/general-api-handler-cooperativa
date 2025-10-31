@@ -17,6 +17,11 @@ impl LoanQuery {
     ) -> Result<Vec<Loan>, String> {
         context.loan_repo().get_user_loans(access_token)
     }
+
+    /// obtiene todos los préstamos de todos los socios
+    pub async fn get_all_loans(context: &GeneralContext) -> Result<Vec<Loan>, String> {
+        context.loan_repo().get_all_loans()
+    }
 }
 
 pub struct LoanMutation;
@@ -25,7 +30,15 @@ pub struct LoanMutation;
     Context = GeneralContext,
 )]
 impl LoanMutation {
-    pub async fn create_user_loan() -> Result<String, String> {
-        todo!()
+    pub async fn create_user_loan(
+        context: &GeneralContext,
+        access_token: String,
+        total_quota: i32,
+        base_needed_payment: f64,
+        reason: String,
+    ) -> Result<String, String> {
+        context
+            .loan_repo()
+            .create_loan(access_token, total_quota, base_needed_payment, reason)
     }
 }
