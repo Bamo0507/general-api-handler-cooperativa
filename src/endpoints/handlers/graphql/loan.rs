@@ -17,6 +17,11 @@ impl LoanQuery {
     ) -> Result<Vec<Loan>, String> {
         context.loan_repo().get_user_loans(access_token)
     }
+
+    /// obtiene todos los préstamos de todos los socios
+    pub async fn get_all_loans(context: &GeneralContext) -> Result<Vec<Loan>, String> {
+        context.loan_repo().get_all_loans()
+    }
 }
 
 pub struct LoanMutation;

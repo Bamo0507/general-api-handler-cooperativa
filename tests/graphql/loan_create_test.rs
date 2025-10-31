@@ -180,3 +180,38 @@ fn test_create_loan_collision_behavior() {
     }
 }
 
+#[test]
+fn test_create_then_get_all_returns_created_loan() {
+    let _guard = redis_test_lock().lock().unwrap();
+    let context = create_test_context();
+    let mut guard = TestRedisGuard::new(context.pool.clone());
+
+    let repo = context.loan_repo();
+    let access_token = format!("testuser_getall_{}", chrono::Utc::now().timestamp_nanos_opt().unwrap());
+    let db_access_token = hashing_composite_key(&[&access_token]);
+
+    // crear un loan usando el repo
+    let res = repo.create_loan(
+        access_token.clone(),
+        18,
+        7500.0,
+        "préstamo para get_all test".to_string(),
+    );
+    assert!(res.is_ok(), "create_loan failed: {:?}", res);
+
+    // llamar a get_all_loans y verificar que encontramos al menos un loan con reason esperado
+    let all = repo.get_all_loans().expect("get_all_loans failed");
+    let found = all.iter().any(|l| l.reason == "préstamo para get_all test");
+
+    // registrar keys para cleanup
+    let mut con = context.pool.get().expect("no redis conn");
+    let keys: Vec<String> = con
+        .scan_match(format!("users:{}:loans:*", db_access_token))
+        .unwrap()
+        .collect();
+    for key in keys {
+        guard.register_key(key);
+    }
+
+    assert!(found, "expected created loan to appear in get_all_loans");
+}

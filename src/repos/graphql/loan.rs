@@ -5,7 +5,7 @@ use redis::Client;
 use redis::{from_redis_value, Commands, JsonCommands, Value as RedisValue};
 use serde_json::from_str;
 
-use crate::repos::graphql::utils::get_multiple_models_by_id;
+use crate::repos::graphql::utils::{get_multiple_models_by_id, get_multiple_models_by_pattern};
 use crate::{
     models::{graphql::Loan, redis::Loan as RedisLoan},
     repos::auth::utils::hashing_composite_key,
@@ -27,6 +27,16 @@ impl LoanRepo {
             access_token,
             self.pool.clone(),
             "loans".to_owned(), // TODO: see a way to don't burn the keys
+        )
+    }
+
+    /// obtiene todos los préstamos de todos los socios
+    pub fn get_all_loans(&self) -> Result<Vec<Loan>, String> {
+        // usamos el helper que acepta un patrón porque necesitamos spannear todos los users
+        // los otros helpers construyen patrón desde access token y no sirven para esto
+        get_multiple_models_by_pattern::<Loan, RedisLoan>(
+            "users:*:loans:*".to_string(),
+            self.pool.clone(),
         )
     }
 
