@@ -136,6 +136,13 @@ pub struct Fine {
 }
 
 #[derive(Clone, Serialize, Deserialize, GraphQLObject, Debug)]
+pub struct UsersWithFines {
+    pub complete_name: String,
+    pub user_id: String,
+    pub fines: Vec<Fine>,
+}
+
+#[derive(Clone, Serialize, Deserialize, GraphQLObject, Debug)]
 pub struct Payment {
     pub id: String,
     pub name: String,
