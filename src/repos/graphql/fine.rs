@@ -99,6 +99,8 @@ impl FineRepo {
                 let old_fine_parsed =
                     from_str::<Vec<RedisFine>>(nested_data.as_str()).unwrap()[0].clone();
 
+                //TODO: refactor this if statements
+
                 let new_amount = if new_amount.is_some() {
                     new_amount
                 } else {
@@ -136,7 +138,7 @@ impl FineRepo {
         }
     }
 
-    pub fn get_users_with_there_fines(&self) -> Result<Vec<Fine>, String> {
+    pub fn get_users_with_there_fines(&self) -> Result<Vec<UsersWithFines>, String> {
         let mut con_for_users_key = &mut self.pool.get().expect("Couldn't connect to pool");
 
         // we get first all the user db id
@@ -151,9 +153,44 @@ impl FineRepo {
                     let name_con = &mut self.pool.get().expect("Couldn't connect to pool");
 
                     let affiliate_con = &mut self.pool.get().expect("Couldn't connect to pool");
+
+                    let user_fines = get_multiple_models_by_id::<Fine, RedisFine>(
+                        None,
+                        Some(parsed_key[2].to_owned()),
+                        self.pool.clone(),
+                        "fines".to_owned(),
+                    )
+                    .unwrap_or(Vec::new());
+
+                    if !user_fines.is_empty() {
+                        users_with_fines.push(UsersWithFines {
+                            user_id: affiliate_con
+                                .get::<String, String>(format!(
+                                    "users:{}:affiliate_key",
+                                    parsed_key[2].to_owned()
+                                ))
+                                .unwrap_or("Not Name Found".to_owned()),
+                            complete_name: name_con
+                                .get::<String, String>(format!(
+                                    "users:{}:complete_name",
+                                    parsed_key[2].to_owned()
+                                ))
+                                .unwrap_or("Not Name Found".to_owned()),
+                            fines: get_multiple_models_by_id::<Fine, RedisFine>(
+                                None,
+                                Some(parsed_key[2].to_owned()),
+                                self.pool.clone(),
+                                "fines".to_owned(),
+                            )
+                            .unwrap_or(Vec::new()),
+                        });
+                    } else {
+                        // we don't put the fines for that one, cause it doesn't have
+                        continue;
+                    }
                 }
 
-                todo!()
+                Ok(users_with_fines)
             }
             Err(_) => {
                 return Err("Couldn't update fine".to_owned());
