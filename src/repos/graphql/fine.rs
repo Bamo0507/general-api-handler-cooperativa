@@ -138,6 +138,7 @@ impl FineRepo {
         }
     }
 
+    /// get's each user affiliate id, complete name and there respective fines
     pub fn get_users_with_there_fines(&self) -> Result<Vec<UsersWithFines>, String> {
         let mut con_for_users_key = &mut self.pool.get().expect("Couldn't connect to pool");
 
