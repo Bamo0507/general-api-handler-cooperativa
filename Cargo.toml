@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 r2d2 = "0.8.10"
 redis = { version = "0.29.1", features = ["json", "r2d2"] }
-actix-web = "4.9.0"
+actix-web = "4.11.0"
 actix-cors = "0.7.0"
 juniper = "0.16.1"
 envconfig = "0.11.0"
