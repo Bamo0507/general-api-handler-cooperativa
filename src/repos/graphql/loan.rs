@@ -24,7 +24,8 @@ impl LoanRepo {
     //TODO: implent true logic
     pub fn get_user_loans(&self, access_token: String) -> Result<Vec<Loan>, String> {
         get_multiple_models_by_id::<Loan, RedisLoan>(
-            access_token,
+            Some(access_token),
+            None,
             self.pool.clone(),
             "loans".to_owned(), // TODO: see a way to don't burn the keys
         )

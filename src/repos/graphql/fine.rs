@@ -22,7 +22,8 @@ pub struct FineRepo {
 impl FineRepo {
     pub fn get_user_fines(&self, access_token: String) -> Result<Vec<Fine>, String> {
         get_multiple_models_by_id::<Fine, RedisFine>(
-            access_token,
+            Some(access_token),
+            None,
             self.pool.clone(),
             "fines".to_owned(), // TODO: see a way to don't burn the keys
         )
