@@ -15,11 +15,11 @@ use r2d2::Pool;
 use redis::{from_redis_value, Client, Commands, JsonCommands};
 use regex::Regex;
 use serde_json::from_str;
+
 pub struct PaymentRepo {
     pub pool: web::Data<Pool<Client>>,
 }
 
-//TODO: add error managment for redis
 impl PaymentRepo {
     /// giving the acess token, this returns the an Object of PaymentHistory of that "user"
     pub fn get_user_history(&self, access_token: String) -> Result<PaymentHistory, String> {
@@ -50,7 +50,7 @@ impl PaymentRepo {
         get_multiple_models_by_id::<Payment, RedisPayment>(
             access_token,
             self.pool.clone(),
-            "payments".to_owned(), // TODO: see a way to don't burn the keys
+            "payments".to_owned(),
         )
     }
 
@@ -66,7 +66,6 @@ impl PaymentRepo {
         )
     }
 
-    // TODO: implement payment creation
     pub fn create_payment(
         &self,
         access_token: String,
