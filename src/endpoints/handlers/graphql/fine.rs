@@ -1,6 +1,6 @@
 use crate::{
     endpoints::handlers::configs::schema::GeneralContext,
-    models::graphql::{Fine, FineStatus},
+    models::graphql::{Fine, FineStatus, UsersWithFines},
 };
 
 pub struct FineQuery {}
@@ -17,6 +17,10 @@ impl FineQuery {
         access_token: String,
     ) -> Result<Vec<Fine>, String> {
         context.fine_repo().get_user_fines(access_token)
+    }
+
+    pub async fn get_fines(context: &GeneralContext) -> Result<Vec<UsersWithFines>, String> {
+        context.fine_repo().get_users_with_there_fines()
     }
 }
 
