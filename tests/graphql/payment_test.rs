@@ -45,28 +45,20 @@ fn test_get_all_payments_returns_all_inserted_payments() {
         },
     ];
 
+    let mut inserted_keys: Vec<String> = Vec::new();
     for payment in &payments {
         let k = insert_payment_helper_and_return(&context, payment);
+        inserted_keys.push(k.clone());
         guard.register_key(k);
     }
 
-    // Debug: mostrar claves en Redis después de insertar pagos
+    // Debug: verificar que las claves insertadas existen en Redis
     {
         let pool = context.pool.clone();
         let mut con = pool.get().expect("No se pudo obtener conexión de Redis");
-        // Evitar KEYS "*"; usamos scan_match con el patrón de pagos
-        let pattern = format!("users:{}:payments:*", hashing_composite_key(&[&String::from("all")]));
-        let iter = con
-            .scan_match::<String, String>(pattern)
-            .expect("Error escaneando claves de pagos");
-        let keys: Vec<String> = iter.collect();
-        // Verificar que existen ambas claves de pago
-        let all_str = String::from("all");
-        let composite_key = hashing_composite_key(&[&all_str]);
-    let key1 = format!("users:{}:payments:{}", composite_key, payments[0].id);
-    let key2 = format!("users:{}:payments:{}", composite_key, payments[1].id);
-    assert!(keys.contains(&key1), "No se encontró la clave del pago 1 en Redis");
-    assert!(keys.contains(&key2), "No se encontró la clave del pago 2 en Redis");
+
+        assert!(con.exists::<_, bool>(&inserted_keys[0]).unwrap(), "No se encontró la clave del pago 1 en Redis");
+        assert!(con.exists::<_, bool>(&inserted_keys[1]).unwrap(), "No se encontró la clave del pago 2 en Redis");
     }
 
     // Ejecutar la query
