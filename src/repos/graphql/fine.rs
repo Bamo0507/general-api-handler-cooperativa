@@ -1,11 +1,12 @@
 use actix_web::web::Data;
 use r2d2::Pool;
 use redis::{cmd, from_redis_value, Client, Commands, JsonCommands, Value as RedisValue};
+use regex::Regex;
 use serde_json::from_str;
 
 use crate::{
     models::{
-        graphql::{Fine, FineStatus},
+        graphql::{Fine, FineStatus, UsersWithFines},
         redis::Fine as RedisFine,
     },
     repos::{
@@ -81,9 +82,9 @@ impl FineRepo {
 
         match con.scan_match::<String, String>(format!("users:*:fines:{}", fine_key)) {
             // there should be only one key
-            Ok(mut key) => {
+            Ok(mut keys) => {
                 // we grab the only needed key
-                let key = key.next().unwrap();
+                let key = keys.next().unwrap();
 
                 // the old boilerplate for getting the json value in rust
 
@@ -127,6 +128,31 @@ impl FineRepo {
                     )
                     .expect("FINE CREATION: Couldn't Create Fine");
                 return Ok("Fine updated".to_owned());
+            }
+            Err(_) => {
+                return Err("Couldn't update fine".to_owned());
+            }
+        }
+    }
+
+    pub fn get_users_with_there_fines(&self) -> Result<Vec<Fine>, String> {
+        let mut con_for_users_key = &mut self.pool.get().expect("Couldn't connect to pool");
+
+        // we get first all the user db id
+        match con_for_users_key.scan_match::<&str, String>("users:*:complete_name") {
+            Ok(users_keys) => {
+                let mut users_with_fines: Vec<UsersWithFines> = Vec::new();
+                let regex = Regex::new(r"(users):(\w+):(complete_name)").unwrap();
+
+                for user_key in users_keys {
+                    let parsed_key = regex.captures(user_key.as_str()).unwrap();
+
+                    let name_con = &mut self.pool.get().expect("Couldn't connect to pool");
+
+                    let affiliate_con = &mut self.pool.get().expect("Couldn't connect to pool");
+                }
+
+                todo!()
             }
             Err(_) => {
                 return Err("Couldn't update fine".to_owned());
