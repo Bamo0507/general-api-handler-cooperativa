@@ -48,7 +48,8 @@ impl PaymentRepo {
 
     pub fn get_user_payments(&self, access_token: String) -> Result<Vec<Payment>, String> {
         get_multiple_models_by_id::<Payment, RedisPayment>(
-            access_token,
+            Some(access_token),
+            None,
             self.pool.clone(),
             "payments".to_owned(), // TODO: see a way to don't burn the keys
         )
@@ -186,7 +187,8 @@ impl PaymentRepo {
                     let raw = con
                         .json_get::<String, &str, redis::Value>(key.clone(), "$")
                         .map_err(|_| "Error fetching payment")?;
-                    let nested = from_redis_value::<String>(&raw).map_err(|_| "Error decoding redis value")?;
+                    let nested = from_redis_value::<String>(&raw)
+                        .map_err(|_| "Error decoding redis value")?;
                     let mut parsed: Vec<RedisPayment> =
                         from_str(&nested).map_err(|_| "Error deserializing payment")?;
                     let mut redis_payment = parsed
@@ -195,7 +197,9 @@ impl PaymentRepo {
 
                     // Validar estado actual
                     let current_status = PaymentStatus::from_string(redis_payment.status.clone());
-                    if current_status == PaymentStatus::Accepted || current_status == PaymentStatus::Rejected {
+                    if current_status == PaymentStatus::Accepted
+                        || current_status == PaymentStatus::Rejected
+                    {
                         return Err("El pago ya está finalizado".to_string());
                     }
 
@@ -205,10 +209,14 @@ impl PaymentRepo {
                         PaymentStatus::Accepted => {}
                         PaymentStatus::Rejected => {
                             if commentary.trim().is_empty() {
-                                return Err("Se requiere comentario al rechazar el pago".to_string());
+                                return Err(
+                                    "Se requiere comentario al rechazar el pago".to_string()
+                                );
                             }
                         }
-                        _ => return Err("Estado inválido, debe ser ACCEPTED o REJECTED".to_string()),
+                        _ => {
+                            return Err("Estado inválido, debe ser ACCEPTED o REJECTED".to_string())
+                        }
                     }
 
                     // Actualizar y persistir
@@ -249,7 +257,9 @@ impl PaymentRepo {
 
                         for p in parsed_objects {
                             let current_status = PaymentStatus::from_string(p.status.clone());
-                            if current_status == PaymentStatus::Accepted || current_status == PaymentStatus::Rejected {
+                            if current_status == PaymentStatus::Accepted
+                                || current_status == PaymentStatus::Rejected
+                            {
                                 return Err("El pago ya está finalizado".to_string());
                             }
                         }
@@ -261,20 +271,25 @@ impl PaymentRepo {
                         PaymentStatus::Accepted => {}
                         PaymentStatus::Rejected => {
                             if commentary.trim().is_empty() {
-                                return Err("Se requiere comentario al rechazar el pago".to_string());
+                                return Err(
+                                    "Se requiere comentario al rechazar el pago".to_string()
+                                );
                             }
                         }
-                        _ => return Err("Estado inválido, debe ser ACCEPTED o REJECTED".to_string()),
+                        _ => {
+                            return Err("Estado inválido, debe ser ACCEPTED o REJECTED".to_string())
+                        }
                     }
 
                     // Actualizamos todas las copias y guardamos la primera mapeada para devolverla
                     let mut mapped_payment: Option<Payment> = None;
                     for key in key_vec {
                         // volver a leer y parsear (para obtener el objeto)
-                        let raw = match con2.json_get::<String, &str, redis::Value>(key.clone(), "$") {
-                            Ok(v) => v,
-                            Err(_) => continue,
-                        };
+                        let raw =
+                            match con2.json_get::<String, &str, redis::Value>(key.clone(), "$") {
+                                Ok(v) => v,
+                                Err(_) => continue,
+                            };
                         let nested = match from_redis_value::<String>(&raw) {
                             Ok(s) => s,
                             Err(_) => continue,
