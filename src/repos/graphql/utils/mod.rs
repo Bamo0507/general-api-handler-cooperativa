@@ -101,15 +101,27 @@ pub fn get_db_access_token_with_affiliate_key(
 
 /// Function for generalizing the fetching for redis values and turnining them in to GraphQLObject
 pub fn get_multiple_models_by_id<GraphQLType, RedisType>(
-    access_token: String,
+    access_token: Option<String>,
+    db_token: Option<String>,
     pool: Data<Pool<Client>>,
     redis_key_type: String,
 ) -> Result<Vec<GraphQLType>, String>
 where
     RedisType: DeserializeOwned + Clone + GraphQLMappable<GraphQLType> + Debug,
 {
+    let mut db_access_token;
     let mut con = pool.get().expect("Couldn't connect to pool");
-    let db_access_token = hashing_composite_key(&[&access_token]);
+
+    if (access_token == None) && (db_token == None) {
+        return Err("At leat one of the token most be something".to_owned());
+    }
+
+    if let Some(token) = access_token {
+        db_access_token = hashing_composite_key(&[&token]);
+    } else {
+        // cause of them at least has to be something
+        db_access_token = db_token.unwrap();
+    }
 
     match con
         .scan_match::<String, String>(format!("users:{}:{}:*", db_access_token, redis_key_type))
@@ -267,7 +279,10 @@ where
 
             // Collect keys into a Vec so we can log and iterate deterministically for debugging
             let key_vec: Vec<String> = keys.collect();
-            println!("DEBUG get_multiple_models_by_pattern - scanned keys: {:?}", key_vec);
+            println!(
+                "DEBUG get_multiple_models_by_pattern - scanned keys: {:?}",
+                key_vec
+            );
 
             for key in key_vec {
                 let redis_raw_res = con.json_get::<String, &str, redis::Value>(key.to_owned(), "$");
