@@ -1,11 +1,12 @@
 use actix_web::web::Data;
 use r2d2::Pool;
 use redis::{cmd, from_redis_value, Client, Commands, JsonCommands, Value as RedisValue};
+use regex::Regex;
 use serde_json::from_str;
 
 use crate::{
     models::{
-        graphql::{Fine, FineStatus},
+        graphql::{Fine, FineStatus, UsersWithFines},
         redis::Fine as RedisFine,
     },
     repos::{
@@ -21,7 +22,8 @@ pub struct FineRepo {
 impl FineRepo {
     pub fn get_user_fines(&self, access_token: String) -> Result<Vec<Fine>, String> {
         get_multiple_models_by_id::<Fine, RedisFine>(
-            access_token,
+            Some(access_token),
+            None,
             self.pool.clone(),
             "fines".to_owned(), // TODO: see a way to don't burn the keys
         )
@@ -81,9 +83,9 @@ impl FineRepo {
 
         match con.scan_match::<String, String>(format!("users:*:fines:{}", fine_key)) {
             // there should be only one key
-            Ok(mut key) => {
+            Ok(mut keys) => {
                 // we grab the only needed key
-                let key = key.next().unwrap();
+                let key = keys.next().unwrap();
 
                 // the old boilerplate for getting the json value in rust
 
@@ -96,6 +98,8 @@ impl FineRepo {
 
                 let old_fine_parsed =
                     from_str::<Vec<RedisFine>>(nested_data.as_str()).unwrap()[0].clone();
+
+                //TODO: refactor this if statements
 
                 let new_amount = if new_amount.is_some() {
                     new_amount
@@ -127,6 +131,67 @@ impl FineRepo {
                     )
                     .expect("FINE CREATION: Couldn't Create Fine");
                 return Ok("Fine updated".to_owned());
+            }
+            Err(_) => {
+                return Err("Couldn't update fine".to_owned());
+            }
+        }
+    }
+
+    /// get's each user affiliate id, complete name and there respective fines
+    pub fn get_users_with_there_fines(&self) -> Result<Vec<UsersWithFines>, String> {
+        let mut con_for_users_key = &mut self.pool.get().expect("Couldn't connect to pool");
+
+        // we get first all the user db id
+        match con_for_users_key.scan_match::<&str, String>("users:*:complete_name") {
+            Ok(users_keys) => {
+                let mut users_with_fines: Vec<UsersWithFines> = Vec::new();
+                let regex = Regex::new(r"(users):(\w+):(complete_name)").unwrap();
+
+                for user_key in users_keys {
+                    let parsed_key = regex.captures(user_key.as_str()).unwrap();
+
+                    let name_con = &mut self.pool.get().expect("Couldn't connect to pool");
+
+                    let affiliate_con = &mut self.pool.get().expect("Couldn't connect to pool");
+
+                    let user_fines = get_multiple_models_by_id::<Fine, RedisFine>(
+                        None,
+                        Some(parsed_key[2].to_owned()),
+                        self.pool.clone(),
+                        "fines".to_owned(),
+                    )
+                    .unwrap_or(Vec::new());
+
+                    if !user_fines.is_empty() {
+                        users_with_fines.push(UsersWithFines {
+                            user_id: affiliate_con
+                                .get::<String, String>(format!(
+                                    "users:{}:affiliate_key",
+                                    parsed_key[2].to_owned()
+                                ))
+                                .unwrap_or("Not Name Found".to_owned()),
+                            complete_name: name_con
+                                .get::<String, String>(format!(
+                                    "users:{}:complete_name",
+                                    parsed_key[2].to_owned()
+                                ))
+                                .unwrap_or("Not Name Found".to_owned()),
+                            fines: get_multiple_models_by_id::<Fine, RedisFine>(
+                                None,
+                                Some(parsed_key[2].to_owned()),
+                                self.pool.clone(),
+                                "fines".to_owned(),
+                            )
+                            .unwrap_or(Vec::new()),
+                        });
+                    } else {
+                        // we don't put the fines for that one, cause it doesn't have
+                        continue;
+                    }
+                }
+
+                Ok(users_with_fines)
             }
             Err(_) => {
                 return Err("Couldn't update fine".to_owned());
