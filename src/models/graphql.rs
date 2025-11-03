@@ -99,8 +99,19 @@ impl FineStatus {
     pub fn from_string(raw_status: String) -> FineStatus {
         match raw_status.to_uppercase().as_str() {
             "PAID" => FineStatus::Paid,
+            "UNPAID" => FineStatus::Unpaid,
             "UPAID" => FineStatus::Unpaid,
             _ => FineStatus::ParsedError,
+        }
+    }
+}
+
+impl ToString for FineStatus {
+    fn to_string(&self) -> String {
+        match self {
+            FineStatus::Paid => "PAID".to_owned(),
+            FineStatus::Unpaid => "UNPAID".to_owned(),
+            _ => "ERROR".to_owned(),
         }
     }
 }
@@ -122,6 +133,13 @@ pub struct Fine {
     pub amount: f64,
     pub status: FineStatus,
     pub reason: String,
+}
+
+#[derive(Clone, Serialize, Deserialize, GraphQLObject, Debug)]
+pub struct UsersWithFines {
+    pub complete_name: String,
+    pub user_id: String,
+    pub fines: Vec<Fine>,
 }
 
 #[derive(Clone, Serialize, Deserialize, GraphQLObject, Debug)]

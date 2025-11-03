@@ -1,5 +1,5 @@
 use serde_json;
-use std::fmt::Debug;
+use std::fmt::{format, Debug};
 
 use actix_web::web::Data;
 use r2d2::Pool;
@@ -12,18 +12,6 @@ use crate::{models::GraphQLMappable, repos::auth::utils::hashing_composite_key};
 
 use crate::endpoints::handlers::configs::schema::GeneralContext;
 use crate::models::graphql::Payment;
-
-/// Crea un contexto de test con pool de Redis real (localhost)
-pub fn create_test_context() -> GeneralContext {
-    // Conexión a Redis local para testing
-    let client = redis::Client::open("redis://127.0.0.1/").expect("No se pudo conectar a Redis");
-    let pool = Pool::builder()
-        .build(client)
-        .expect("No se pudo crear el pool de Redis");
-    GeneralContext {
-        pool: Data::new(pool),
-    }
-}
 
 /// Inserta un pago en Redis usando el pool del contexto y devuelve la clave Redis creada.
 /// Formato de la clave: users:{hash("all")}:payments:{id}
@@ -101,15 +89,27 @@ pub fn get_db_access_token_with_affiliate_key(
 
 /// Function for generalizing the fetching for redis values and turnining them in to GraphQLObject
 pub fn get_multiple_models_by_id<GraphQLType, RedisType>(
-    access_token: String,
+    access_token: Option<String>,
+    db_token: Option<String>,
     pool: Data<Pool<Client>>,
     redis_key_type: String,
 ) -> Result<Vec<GraphQLType>, String>
 where
     RedisType: DeserializeOwned + Clone + GraphQLMappable<GraphQLType> + Debug,
 {
+    let mut db_access_token;
     let mut con = pool.get().expect("Couldn't connect to pool");
-    let db_access_token = hashing_composite_key(&[&access_token]);
+
+    if (access_token == None) && (db_token == None) {
+        return Err("At leat one of the token most be something".to_owned());
+    }
+
+    if let Some(token) = access_token {
+        db_access_token = hashing_composite_key(&[&token]);
+    } else {
+        // cause of them at least has to be something
+        db_access_token = db_token.unwrap();
+    }
 
     match con
         .scan_match::<String, String>(format!("users:{}:{}:*", db_access_token, redis_key_type))
@@ -235,6 +235,79 @@ where
                 for redis_object_parsed in parsed_objects {
                     println!("DEBUG get_multiple_models - parsed key {} into object", key);
                     // now we do the graphql mapping
+                    graphql_object_list.push(redis_object_parsed.to_graphql_type(key.clone()));
+                }
+            }
+
+            Ok(graphql_object_list)
+        }
+        Err(_) => Err("Couldn't get users payments".to_string()),
+    }
+}
+
+/// creado porque necesitamos escanear con patrones arbitrarios como users:*:payments:*
+/// los otros helpers construyen el patrón desde un access token y no sirven para queries globales
+/// este recibe el patrón ya formado, hace el json_get defensivo y mapea los objetos redis a graphql
+/// lo dejo separado pa no tocar lo que ya usa access token y pa consultas que spannean todo
+pub fn get_multiple_models_by_pattern<GraphQLType, RedisType>(
+    pattern: String,
+    pool: Data<Pool<Client>>,
+) -> Result<Vec<GraphQLType>, String>
+where
+    RedisType: DeserializeOwned + Clone + GraphQLMappable<GraphQLType> + Debug,
+{
+    let mut con = pool.get().expect("Couldn't connect to pool");
+
+    match con.scan_match::<String, String>(pattern) {
+        Ok(keys) => {
+            let mut graphql_object_list: Vec<GraphQLType> = Vec::new();
+
+            // conn for fetching redis models
+            let mut con = pool.get().expect("Couldn't connect to pool");
+
+            // Collect keys into a Vec so we can log and iterate deterministically for debugging
+            let key_vec: Vec<String> = keys.collect();
+            println!(
+                "DEBUG get_multiple_models_by_pattern - scanned keys: {:?}",
+                key_vec
+            );
+
+            for key in key_vec {
+                let redis_raw_res = con.json_get::<String, &str, redis::Value>(key.to_owned(), "$");
+                let redis_raw = match redis_raw_res {
+                    Ok(v) => v,
+                    Err(e) => {
+                        println!("DEBUG get_multiple_models_by_pattern - json_get failed for key {}: {:?}", key, e);
+                        continue; // skip invalid/non-json keys
+                    }
+                };
+
+                let nested_data_res = from_redis_value::<String>(&redis_raw);
+                let nested_data = match nested_data_res {
+                    Ok(s) => s,
+                    Err(e) => {
+                        println!("DEBUG get_multiple_models_by_pattern - from_redis_value failed for key {}: {:?}", key, e);
+                        continue;
+                    }
+                };
+
+                let parsed_vec_res = from_str::<Vec<RedisType>>(nested_data.as_str());
+                let mut parsed_objects: Vec<RedisType> = match parsed_vec_res {
+                    Ok(v) => v,
+                    Err(_) => match from_str::<RedisType>(nested_data.as_str()) {
+                        Ok(obj) => vec![obj],
+                        Err(e) => {
+                            println!("DEBUG get_multiple_models_by_pattern - JSON parse failed for key {}: {} -> {}", key, nested_data, e);
+                            continue;
+                        }
+                    },
+                };
+
+                if parsed_objects.is_empty() {
+                    continue;
+                }
+
+                for redis_object_parsed in parsed_objects {
                     graphql_object_list.push(redis_object_parsed.to_graphql_type(key.clone()));
                 }
             }
