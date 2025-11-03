@@ -1,5 +1,4 @@
 use actix_web::web::{post, resource, ServiceConfig};
-use aws_sdk_s3::Client as S3Client;
 
 use crate::endpoints::handlers::graphql::{
     fine::FineMutation, loan::LoanMutation, payment::PaymentMutation, quota::QuotaMutation,
@@ -14,7 +13,7 @@ use super::handlers::{
 
 //this is pretty much boilerplate for any Graphql api
 
-pub fn graphql_config(config: &mut ServiceConfig, s3_client: S3Client) {
+pub fn graphql_config(config: &mut ServiceConfig) {
     // redis pool
     let pool = get_pool_connection();
 
@@ -26,7 +25,6 @@ pub fn graphql_config(config: &mut ServiceConfig, s3_client: S3Client) {
 
     config
         .app_data(pool)
-        .app_data(s3_client)
         .app_data(payment_schema)
         .app_data(loan_schema)
         .app_data(fine_schema)

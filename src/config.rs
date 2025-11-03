@@ -10,6 +10,9 @@ pub struct Env {
 
     #[envconfig(from = "REDIS_URL")]
     pub redis_url: String,
+
+    #[envconfig(from = "BUCKET_NAME")]
+    pub bucket_name: String,
 }
 
 impl Env {

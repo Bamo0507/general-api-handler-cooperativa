@@ -17,7 +17,6 @@ use super::configs::schema::{GeneralContext, GeneralSchema};
 
 // Graphql creator schema generic
 pub async fn graphql<GenericQuery, GenericMutation>(
-    client: Data<S3Client>,
     pool: Data<Pool<Client>>,
     data: Json<GraphQLRequest>,
     schema: Data<GeneralSchema<GenericQuery, GenericMutation>>,
@@ -52,7 +51,7 @@ where
         + Sync,
     GenericMutation::TypeInfo: Send + Sync,
 {
-    let context = GeneralContext { pool, client };
+    let context = GeneralContext { pool };
 
     let res = data.execute(&schema, &context).await;
 
