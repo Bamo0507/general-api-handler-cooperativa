@@ -91,6 +91,9 @@ impl GraphQLMappable<GraphQLLoan> for Loan {
             total: self.total,
             status: LoanStatus::from_string((*self.status).to_string()),
             reason: (*self.reason).to_string(),
+            // campo que requiere contexto adicional se llena con default aquí
+            // solo get_all_loans lo llena correctamente con datos de redis
+            presented_by_name: "N/A".to_string(),
         }
     }
 }
