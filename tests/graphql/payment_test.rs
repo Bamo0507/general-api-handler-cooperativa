@@ -31,6 +31,8 @@ fn test_get_all_payments_returns_all_inserted_payments() {
             commentary: Some("Pago test 1".to_string()),
             photo: "url1".to_string(),
             state: PaymentStatus::from_string("ACCEPTED".to_string()),
+            presented_by_name: "Test User 1".to_string(),
+            being_payed: vec![],
         },
         Payment {
             id: format!("test_pago_{}_2", now),
@@ -42,6 +44,8 @@ fn test_get_all_payments_returns_all_inserted_payments() {
             commentary: Some("Pago test 2".to_string()),
             photo: "url2".to_string(),
             state: PaymentStatus::from_string("ON_REVISION".to_string()),
+            presented_by_name: "Test User 2".to_string(),
+            being_payed: vec![],
         },
     ];
 

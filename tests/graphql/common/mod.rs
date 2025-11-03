@@ -100,6 +100,8 @@ mod integration {
             commentary: Some("Pago guard 1".to_string()),
             photo: "url1".to_string(),
             state: PaymentStatus::Accepted,
+            presented_by_name: "Test Guard User 1".to_string(),
+            being_payed: vec![],
         };
 
         let payment2 = Payment {
@@ -112,6 +114,8 @@ mod integration {
             commentary: Some("Pago guard 2".to_string()),
             photo: "url2".to_string(),
             state: PaymentStatus::Accepted,
+            presented_by_name: "Test Guard User 2".to_string(),
+            being_payed: vec![],
         };
 
         let key1 = insert_payment_helper_and_return(&context, &payment1);

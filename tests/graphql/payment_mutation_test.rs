@@ -26,6 +26,8 @@ fn test_aprobar_pago_pendiente() {
         commentary: Some("Pago test 1".to_string()),
         photo: "url1".to_string(),
         state: PaymentStatus::OnRevision,
+        presented_by_name: "Test User Mutation 1".to_string(),
+        being_payed: vec![],
     };
     // Insertar bajo la clave global 'all' para que la mutación lo encuentre
     let all_vec = vec![String::from("all")];
@@ -75,6 +77,8 @@ fn test_rechazar_pago_pendiente_con_comentario() {
         commentary: Some("Pago test 2".to_string()),
         photo: "url2".to_string(),
         state: PaymentStatus::OnRevision,
+        presented_by_name: "Test User Mutation 2".to_string(),
+        being_payed: vec![],
     };
     let k = insert_payment_helper_and_return(&context, &payment);
     guard.register_key(k);
@@ -107,6 +111,8 @@ fn test_rechazar_pago_pendiente_sin_comentario() {
         commentary: Some("Pago test 3".to_string()),
         photo: "url3".to_string(),
         state: PaymentStatus::OnRevision,
+        presented_by_name: "Test User Mutation 3".to_string(),
+        being_payed: vec![],
     };
     let k = insert_payment_helper_and_return(&context, &payment);
     guard.register_key(k);
@@ -138,6 +144,8 @@ fn test_mutar_pago_ya_finalizado() {
         commentary: Some("Pago test 4".to_string()),
         photo: "url4".to_string(),
         state: PaymentStatus::Accepted,
+        presented_by_name: "Test User Mutation 4".to_string(),
+        being_payed: vec![],
     };
     let k = insert_payment_helper_and_return(&context, &payment);
     guard.register_key(k);
@@ -169,6 +177,8 @@ fn test_mutar_con_estado_invalido() {
         commentary: Some("Pago test 5".to_string()),
         photo: "url5".to_string(),
         state: PaymentStatus::OnRevision,
+        presented_by_name: "Test User Mutation 5".to_string(),
+        being_payed: vec![],
     };
     let k = insert_payment_helper_and_return(&context, &payment);
     guard.register_key(k);
