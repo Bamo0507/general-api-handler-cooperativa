@@ -1,6 +1,5 @@
 use crate::models::graphql::PaymentStatus;
 use crate::models::GraphQLMappable;
-use crate::repos::graphql::utils::get_multiple_models;
 use crate::{
     models::{
         graphql::{Affiliate, Payment, PaymentHistory},

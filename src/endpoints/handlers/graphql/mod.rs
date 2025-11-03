@@ -3,18 +3,24 @@ pub mod loan;
 pub mod payment;
 pub mod quota;
 
-use actix_web::{web, HttpResponse};
+use actix_web::{
+    web::{Data, Json},
+    HttpResponse,
+};
 use juniper::{http::GraphQLRequest, GraphQLType, GraphQLTypeAsync};
 use r2d2::Pool;
 use redis::Client;
+
+use aws_sdk_s3::Client as S3Client;
 
 use super::configs::schema::{GeneralContext, GeneralSchema};
 
 // Graphql creator schema generic
 pub async fn graphql<GenericQuery, GenericMutation>(
-    pool: web::Data<Pool<Client>>,
-    data: web::Json<GraphQLRequest>,
-    schema: web::Data<GeneralSchema<GenericQuery, GenericMutation>>,
+    client: Data<S3Client>,
+    pool: Data<Pool<Client>>,
+    data: Json<GraphQLRequest>,
+    schema: Data<GeneralSchema<GenericQuery, GenericMutation>>,
 ) -> HttpResponse
 where
     //Okay, first time using the where key word so time to explain
@@ -46,7 +52,7 @@ where
         + Sync,
     GenericMutation::TypeInfo: Send + Sync,
 {
-    let context = GeneralContext { pool };
+    let context = GeneralContext { pool, client };
 
     let res = data.execute(&schema, &context).await;
 

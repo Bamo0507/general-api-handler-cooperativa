@@ -13,18 +13,6 @@ use crate::{models::GraphQLMappable, repos::auth::utils::hashing_composite_key};
 use crate::endpoints::handlers::configs::schema::GeneralContext;
 use crate::models::graphql::Payment;
 
-/// Crea un contexto de test con pool de Redis real (localhost)
-pub fn create_test_context() -> GeneralContext {
-    // Conexión a Redis local para testing
-    let client = redis::Client::open("redis://127.0.0.1/").expect("No se pudo conectar a Redis");
-    let pool = Pool::builder()
-        .build(client)
-        .expect("No se pudo crear el pool de Redis");
-    GeneralContext {
-        pool: Data::new(pool),
-    }
-}
-
 /// Inserta un pago en Redis usando el pool del contexto y devuelve la clave Redis creada.
 /// Formato de la clave: users:{hash("all")}:payments:{id}
 pub fn insert_payment_helper(context: &GeneralContext, payment: &Payment) -> String {
