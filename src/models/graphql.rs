@@ -116,6 +116,14 @@ impl ToString for FineStatus {
     }
 }
 
+/// info de lo que se está pagando, versión output para queries
+#[derive(Clone, Serialize, Deserialize, GraphQLObject, Debug)]
+pub struct PayedToInfo {
+    pub model_type: String,
+    pub amount: f64,
+    pub model_key: String,
+}
+
 #[derive(Clone, Serialize, Deserialize, GraphQLObject, Debug)]
 pub struct Loan {
     pub id: String,
@@ -153,6 +161,10 @@ pub struct Payment {
     pub commentary: Option<String>,
     pub photo: String,        // For bucket use
     pub state: PaymentStatus, // Following bryan's enums
+    /// nombre completo del socio que presentó el pago
+    pub presented_by_name: String,
+    /// info de qué está pagando este payment (loans, quotas, fines)
+    pub being_payed: Vec<PayedToInfo>,
 }
 
 #[derive(Clone, Serialize, Deserialize, GraphQLObject, Debug)]
