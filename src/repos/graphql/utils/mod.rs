@@ -83,6 +83,106 @@ pub fn get_key(raw_key: String, key_type: String) -> String {
     split_key["key"].to_string()
 }
 
+/// Helper genérico para obtener modelos con el nombre del usuario incluido
+/// 
+/// Este helper resuelve el problema de que el trait GraphQLMappable no tiene acceso
+/// a la conexión de Redis para obtener presented_by_name. Escanea las keys, extrae
+/// el user_hash, obtiene el nombre, y permite mapear manualmente cada objeto.
+/// 
+/// # Parámetros
+/// - `scan_pattern`: Pattern para scan_match (ej: "users:*:payments:*")
+/// - `user_hash_regex`: Regex para extraer el user_hash de la key (debe tener grupo "hash")
+/// - `key_type`: Tipo de key para extraer el ID (ej: "payments", "fines")
+/// - `pool`: Pool de conexiones de Redis
+/// - `mapper`: Función que recibe (RedisType, id, presented_by_name) y devuelve GraphQLType
+pub fn get_models_with_user_name<GraphQLType, RedisType>(
+    scan_pattern: String,
+    user_hash_regex: &str,
+    key_type: String,
+    pool: Data<Pool<Client>>,
+    mapper: impl Fn(RedisType, String, String) -> GraphQLType,
+) -> Result<Vec<GraphQLType>, String>
+where
+    RedisType: DeserializeOwned + Clone + Debug,
+{
+    use redis::{from_redis_value, Commands, JsonCommands, Value as RedisValue};
+    use regex::Regex;
+    
+    let mut con = pool.get().map_err(|_| "Couldn't connect to pool")?;
+    
+    let re_user_hash = Regex::new(user_hash_regex)
+        .map_err(|_| "Invalid regex pattern".to_string())?;
+    
+    match con.scan_match::<String, String>(scan_pattern.clone()) {
+        Ok(keys) => {
+            let mut result_list: Vec<GraphQLType> = Vec::new();
+            let key_vec: Vec<String> = keys.collect();
+            
+            for key in key_vec {
+                // Extraer hash del usuario de la key
+                let user_hash = match re_user_hash.captures(&key) {
+                    Some(caps) => caps["hash"].to_string(),
+                    None => {
+                        println!("get_models_with_user_name - couldn't extract user hash from key: {}", key);
+                        continue;
+                    }
+                };
+                
+                // Obtener el objeto de Redis
+                let redis_raw_res = con.json_get::<String, &str, RedisValue>(key.clone(), "$");
+                let redis_raw = match redis_raw_res {
+                    Ok(v) => v,
+                    Err(e) => {
+                        println!("get_models_with_user_name - json_get failed for key {}: {:?}", key, e);
+                        continue;
+                    }
+                };
+                
+                let nested_data = match from_redis_value::<String>(&redis_raw) {
+                    Ok(s) => s,
+                    Err(e) => {
+                        println!("get_models_with_user_name - from_redis_value failed for key {}: {:?}", key, e);
+                        continue;
+                    }
+                };
+                
+                // Parsear como array o como objeto individual
+                let parsed_vec_res = from_str::<Vec<RedisType>>(nested_data.as_str());
+                let mut parsed_objects: Vec<RedisType> = match parsed_vec_res {
+                    Ok(v) => v,
+                    Err(_) => match from_str::<RedisType>(nested_data.as_str()) {
+                        Ok(obj) => vec![obj],
+                        Err(e) => {
+                            println!("get_models_with_user_name - JSON parse failed for key {}: {}", key, e);
+                            continue;
+                        }
+                    },
+                };
+                
+                if parsed_objects.is_empty() {
+                    continue;
+                }
+                
+                let redis_object = parsed_objects.pop().unwrap();
+                
+                // Obtener el nombre completo del usuario
+                let presented_by_name = con
+                    .get::<String, String>(format!("users:{}:complete_name", user_hash))
+                    .unwrap_or_else(|_| "Nombre no encontrado".to_string());
+                
+                // Extraer el ID del objeto de la key
+                let object_id = get_key(key.clone(), key_type.clone());
+                
+                // Mapear a GraphQL usando la función proporcionada
+                result_list.push(mapper(redis_object, object_id, presented_by_name));
+            }
+            
+            Ok(result_list)
+        }
+        Err(_) => Err(format!("Couldn't scan for keys with pattern: {}", scan_pattern)),
+    }
+}
+
 // this method could be really slow, I'll see a way for optimizing later
 pub fn get_db_access_token_with_affiliate_key(
     affiliate_key: String,
@@ -180,12 +280,7 @@ where
         .scan_match::<String, String>(format!("users:{}:{}:*", db_access_token, redis_key_type))
     {
         Ok(keys) => {
-            // Nota para reviewers: después del refactor de pagos podemos encontrarnos
-            // con claves en Redis que no sean JSON o que no sigan el shape esperado.
-            // En vez de `unwrap()`-ear, este helper es defensivo: intenta `json_get`,
-            // intenta parsear y si falla simplemente ignora la clave. Esto responde al
-            // comentario del PR sobre robustez y evita panics por datos antiguos/no esperados.
-            // (Comentario casual: mejor saltarse una clave rara que romper toda la query.)
+
             let mut graphql_object_list: Vec<GraphQLType> = Vec::new();
 
             // conn for fetching redis models

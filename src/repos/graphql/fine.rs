@@ -11,7 +11,7 @@ use crate::{
     },
     repos::{
         auth::utils::hashing_composite_key,
-        graphql::utils::{get_db_access_token_with_affiliate_key, get_multiple_models_by_id},
+        graphql::utils::{get_db_access_token_with_affiliate_key, get_models_with_user_name, get_multiple_models_by_id},
     },
 };
 
@@ -20,12 +20,25 @@ pub struct FineRepo {
 }
 
 impl FineRepo {
+    /// Obtiene todas las multas de un usuario específico con su nombre completo
+    /// Usa el helper genérico get_models_with_user_name para evitar código repetitivo
     pub fn get_user_fines(&self, access_token: String) -> Result<Vec<Fine>, String> {
-        get_multiple_models_by_id::<Fine, RedisFine>(
-            Some(access_token),
-            None,
+        let db_access_token = hashing_composite_key(&[&access_token]);
+        
+        get_models_with_user_name(
+            format!("users:{}:fines:*", db_access_token),
+            r"users:(?<hash>\w+):fines:\w+",
+            "fines".to_string(),
             self.pool.clone(),
-            "fines".to_owned(), // TODO: see a way to don't burn the keys
+            |redis_fine: RedisFine, fine_id, presented_by_name| {
+                Fine {
+                    id: fine_id,
+                    amount: redis_fine.amount as f64,
+                    status: FineStatus::from_string(redis_fine.status.clone()),
+                    reason: redis_fine.motive.clone(),
+                    presented_by_name,
+                }
+            },
         )
     }
 

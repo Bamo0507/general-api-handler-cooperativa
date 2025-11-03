@@ -7,7 +7,10 @@ use crate::{
         redis::Payment as RedisPayment,
         PayedTo,
     },
-    repos::{auth::utils::hashing_composite_key, graphql::utils::get_multiple_models_by_id},
+    repos::{
+        auth::utils::hashing_composite_key,
+        graphql::utils::{get_models_with_user_name, get_multiple_models_by_id},
+    },
 };
 use actix_web::web;
 use chrono::Utc;
@@ -56,103 +59,40 @@ impl PaymentRepo {
     }
 
     /// Obtiene todos los pagos de todos los socios con nombre del presentador y being_payed
+    /// Usa el helper genérico get_models_with_user_name para evitar código repetitivo
     pub fn get_all_payments(&self) -> Result<Vec<Payment>, String> {
-        let mut con = self.pool.get().map_err(|_| "Couldn't connect to pool")?;
+        get_models_with_user_name(
+            "users:*:payments:*".to_string(),
+            r"users:(?<hash>\w+):payments:\w+",
+            "payments".to_string(),
+            self.pool.clone(),
+            |redis_payment: RedisPayment, payment_id, presented_by_name| {
+                // Mapear being_payed de PayedTo a PayedToInfo
+                let being_payed_info: Vec<PayedToInfo> = redis_payment
+                    .being_payed
+                    .iter()
+                    .map(|pt| PayedToInfo {
+                        model_type: pt.model_type.clone(),
+                        amount: pt.amount,
+                        model_key: pt.model_key.clone(),
+                    })
+                    .collect();
 
-        // escaneamos todas las keys de pagos de todos los usuarios
-        match con.scan_match::<String, String>("users:*:payments:*".to_string()) {
-            Ok(keys) => {
-                let mut payments_list: Vec<Payment> = Vec::new();
-                let key_vec: Vec<String> = keys.collect();
-
-                // regex para extraer el hash del usuario de la key
-                let re_user_hash = Regex::new(r"users:(?<hash>\w+):payments:\w+").unwrap();
-
-                for key in key_vec {
-                    // extraer hash del usuario de la key
-                    let user_hash = match re_user_hash.captures(&key) {
-                        Some(caps) => caps["hash"].to_string(),
-                        None => {
-                            println!("get_all_payments - couldn't extract user hash from key: {}", key);
-                            continue;
-                        }
-                    };
-
-                    // obtener el payment de redis
-                    let redis_raw_res = con.json_get::<String, &str, redis::Value>(key.clone(), "$");
-                    let redis_raw = match redis_raw_res {
-                        Ok(v) => v,
-                        Err(e) => {
-                            println!("get_all_payments - json_get failed for key {}: {:?}", key, e);
-                            continue;
-                        }
-                    };
-
-                    let nested_data = match from_redis_value::<String>(&redis_raw) {
-                        Ok(s) => s,
-                        Err(e) => {
-                            println!("get_all_payments - from_redis_value failed for key {}: {:?}", key, e);
-                            continue;
-                        }
-                    };
-
-                    // parsear como array o como objeto individual
-                    let parsed_vec_res = from_str::<Vec<RedisPayment>>(nested_data.as_str());
-                    let mut parsed_objects: Vec<RedisPayment> = match parsed_vec_res {
-                        Ok(v) => v,
-                        Err(_) => match from_str::<RedisPayment>(nested_data.as_str()) {
-                            Ok(obj) => vec![obj],
-                            Err(e) => {
-                                println!("get_all_payments - JSON parse failed for key {}: {}", key, e);
-                                continue;
-                            }
-                        },
-                    };
-
-                    if parsed_objects.is_empty() {
-                        continue;
-                    }
-
-                    let redis_payment = parsed_objects.pop().unwrap();
-
-                    // obtener el nombre completo del usuario que presentó el pago
-                    let presented_by_name = con
-                        .get::<String, String>(format!("users:{}:complete_name", user_hash))
-                        .unwrap_or_else(|_| "Nombre no encontrado".to_string());
-
-                    // mapear being_payed de PayedTo a PayedToInfo
-                    let being_payed_info: Vec<PayedToInfo> = redis_payment
-                        .being_payed
-                        .iter()
-                        .map(|pt| PayedToInfo {
-                            model_type: pt.model_type.clone(),
-                            amount: pt.amount,
-                            model_key: pt.model_key.clone(),
-                        })
-                        .collect();
-
-                    // mapear a graphql payment con los campos nuevos
-                    let payment_id = crate::repos::graphql::utils::get_key(key.clone(), "payments".to_owned());
-
-                    payments_list.push(Payment {
-                        id: payment_id,
-                        name: redis_payment.name.clone(),
-                        total_amount: redis_payment.total_amount,
-                        payment_date: redis_payment.date_created.clone(),
-                        ticket_num: redis_payment.ticket_number.clone(),
-                        account_num: redis_payment.account_number.clone(),
-                        commentary: redis_payment.comments.clone(),
-                        photo: redis_payment.comprobante_bucket.clone(),
-                        state: PaymentStatus::from_string(redis_payment.status.clone()),
-                        presented_by_name,
-                        being_payed: being_payed_info,
-                    });
+                Payment {
+                    id: payment_id,
+                    name: redis_payment.name.clone(),
+                    total_amount: redis_payment.total_amount,
+                    payment_date: redis_payment.date_created.clone(),
+                    ticket_num: redis_payment.ticket_number.clone(),
+                    account_num: redis_payment.account_number.clone(),
+                    commentary: redis_payment.comments.clone(),
+                    photo: redis_payment.comprobante_bucket.clone(),
+                    state: PaymentStatus::from_string(redis_payment.status.clone()),
+                    presented_by_name,
+                    being_payed: being_payed_info,
                 }
-
-                Ok(payments_list)
-            }
-            Err(_) => Err("Couldn't scan for payment keys".to_string()),
-        }
+            },
+        )
     }
 
     // TODO: implement payment creation

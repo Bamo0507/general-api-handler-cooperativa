@@ -134,6 +134,9 @@ impl GraphQLMappable<GraphQLFine> for Fine {
             status: FineStatus::from_string((*self.status).to_string()),
             amount: self.amount as f64,
             reason: (*self.motive).to_string(),
+            // campo que requiere contexto adicional se llena con default aquí
+            // solo get_user_fines lo llena correctamente con datos de redis
+            presented_by_name: "N/A".to_string(),
         }
     }
 }

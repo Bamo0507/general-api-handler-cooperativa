@@ -141,6 +141,8 @@ pub struct Fine {
     pub amount: f64,
     pub status: FineStatus,
     pub reason: String,
+    /// nombre completo del socio que recibió la multa
+    pub presented_by_name: String,
 }
 
 #[derive(Clone, Serialize, Deserialize, GraphQLObject, Debug)]
