@@ -19,9 +19,9 @@ pub struct GeneralInfo {
 //for simplicity will use the same model for graphQL and redis
 #[derive(Debug, Clone, Serialize, Deserialize, GraphQLInputObject)]
 pub struct PayedTo {
-    model_type: String,
-    amount: f64,
-    model_key: String,
+    pub model_type: String,
+    pub amount: f64,
+    pub model_key: String,
 }
 
 impl Default for PayedTo {

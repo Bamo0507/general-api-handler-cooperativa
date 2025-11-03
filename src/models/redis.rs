@@ -4,7 +4,7 @@ use crate::{
     models::{
         graphql::{
             Fine as GraphQLFine, FineStatus, Loan as GraphQLLoan, LoanStatus,
-            Payment as GraphQLPayment, PaymentStatus,
+            Payment as GraphQLPayment, PaymentStatus, PayedToInfo,
         },
         GraphQLMappable, PayedTo,
     },
@@ -42,6 +42,17 @@ impl Default for Payment {
 
 impl GraphQLMappable<GraphQLPayment> for Payment {
     fn to_graphql_type(&self, key: String) -> GraphQLPayment {
+        // mapear being_payed a PayedToInfo
+        let being_payed_info: Vec<PayedToInfo> = self
+            .being_payed
+            .iter()
+            .map(|pt| PayedToInfo {
+                model_type: pt.model_type.clone(),
+                amount: pt.amount,
+                model_key: pt.model_key.clone(),
+            })
+            .collect();
+
         GraphQLPayment {
             id: get_key(key, "payments".to_owned()),
             name: (*self.name).to_owned(),
@@ -52,6 +63,10 @@ impl GraphQLMappable<GraphQLPayment> for Payment {
             commentary: self.comments.clone(), // f*** options, can't do low level stuff some times
             photo: (*self.comprobante_bucket).to_string(),
             state: PaymentStatus::from_string((*self.status).to_string()),
+            // campos que requieren contexto adicional se llenan con defaults aquí
+            // solo get_all_payments los llena correctamente con datos de redis
+            presented_by_name: "N/A".to_string(),
+            being_payed: being_payed_info,
         }
     }
 }
