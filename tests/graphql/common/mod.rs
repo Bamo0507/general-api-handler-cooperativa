@@ -72,7 +72,7 @@ pub fn insert_payment_helper_and_return(context: &GeneralContext, payment: &Paym
         total_amount: payment.total_amount,
         name: payment.name.clone(),
         comments: payment.commentary.clone(),
-        comprobante_bucket: payment.photo.clone(),
+        comprobante_bucket: payment.photo_path.clone(),
         ticket_number: payment.ticket_num.clone(),
         status: payment.state.as_str().to_string(),
         being_payed: vec![],
@@ -102,7 +102,7 @@ mod integration {
             ticket_num: "T1".to_string(),
             account_num: "ACC1".to_string(),
             commentary: Some("Pago guard 1".to_string()),
-            photo: "url1".to_string(),
+            photo_path: "url1".to_string(),
             state: PaymentStatus::Accepted,
         };
 
@@ -114,7 +114,7 @@ mod integration {
             ticket_num: "T2".to_string(),
             account_num: "ACC2".to_string(),
             commentary: Some("Pago guard 2".to_string()),
-            photo: "url2".to_string(),
+            photo_path: "url2".to_string(),
             state: PaymentStatus::Accepted,
         };
 

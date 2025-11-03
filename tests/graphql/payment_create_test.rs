@@ -12,9 +12,9 @@ fn redis_test_lock() -> &'static Mutex<()> {
 }
 // Include shared test helpers from tests/graphql/common/mod.rs
 include!("common/mod.rs");
-use general_api::repos::auth::utils::hashing_composite_key;
-use redis::{Value as RedisValue, from_redis_value};
 use general_api::models::redis::Payment as RedisPayment;
+use general_api::repos::auth::utils::hashing_composite_key;
+use redis::{from_redis_value, Value as RedisValue};
 use serde_json::from_str;
 
 #[test]
@@ -32,7 +32,7 @@ fn test_repo_create_payment_happy_path() {
         ticket_num: "RC1".to_string(),
         account_num: "RACC1".to_string(),
         commentary: Some("create repo test".to_string()),
-        photo: "url_create".to_string(),
+        photo_path: "url_create".to_string(),
         state: PaymentStatus::OnRevision,
     };
 
@@ -51,12 +51,18 @@ fn test_repo_create_payment_happy_path() {
 
     // Verificar existencia de la key en Redis
     let composite = hashing_composite_key(&[&access_token]);
-    let mut con = context.pool.get().expect("No se pudo obtener conexión de Redis");
+    let mut con = context
+        .pool
+        .get()
+        .expect("No se pudo obtener conexión de Redis");
     let keys: Vec<String> = con
         .scan_match(format!("users:{}:payments:*", composite))
         .unwrap()
         .collect();
-    assert!(!keys.is_empty(), "Expected at least one payment key in Redis");
+    assert!(
+        !keys.is_empty(),
+        "Expected at least one payment key in Redis"
+    );
     // Register created keys so the guard will remove them after the test
     for key in keys {
         guard.register_key(key);
@@ -70,7 +76,10 @@ fn test_create_then_get_all_returns_created_payment() {
     let mut guard = TestRedisGuard::new(context.pool.clone());
 
     let repo = context.payment_repo();
-    let access_token = format!("testuser_all_{}", chrono::Utc::now().timestamp_nanos_opt().unwrap());
+    let access_token = format!(
+        "testuser_all_{}",
+        chrono::Utc::now().timestamp_nanos_opt().unwrap()
+    );
 
     // create a payment using the repo
     let res = repo.create_payment(
@@ -97,7 +106,10 @@ fn test_create_then_get_all_returns_created_payment() {
         guard.register_key(key);
     }
 
-    assert!(found, "Expected created payment to appear in get_all_payments");
+    assert!(
+        found,
+        "Expected created payment to appear in get_all_payments"
+    );
 }
 
 #[test]
@@ -123,20 +135,29 @@ fn test_repo_create_payment_persists_json_content() {
 
     // Buscar la key creada y leer el JSON
     let composite = hashing_composite_key(&[&access_token]);
-    let mut con = context.pool.get().expect("No se pudo obtener conexión de Redis");
+    let mut con = context
+        .pool
+        .get()
+        .expect("No se pudo obtener conexión de Redis");
     let keys_iter = con
         .scan_match::<String, String>(format!("users:{}:payments:*", composite))
         .unwrap();
     let keys: Vec<String> = keys_iter.collect();
-    assert!(!keys.is_empty(), "Expected at least one payment key in Redis");
+    assert!(
+        !keys.is_empty(),
+        "Expected at least one payment key in Redis"
+    );
     for key in &keys {
         guard.register_key(key.clone());
     }
 
     // Leer primer key JSON y parsear
-    let redis_raw: RedisValue = con.json_get(keys[0].as_str(), "$").expect("json_get failed");
+    let redis_raw: RedisValue = con
+        .json_get(keys[0].as_str(), "$")
+        .expect("json_get failed");
     let nested_data = from_redis_value::<String>(&redis_raw).expect("from_redis_value failed");
-    let parsed: Vec<RedisPayment> = from_str(nested_data.as_str()).expect("serde_json parse failed");
+    let parsed: Vec<RedisPayment> =
+        from_str(nested_data.as_str()).expect("serde_json parse failed");
     let rp = parsed.get(0).expect("No element in parsed vector");
 
     assert_eq!(rp.name, payment_name);
@@ -173,7 +194,10 @@ fn test_repo_create_payment_twice_creates_two_keys() {
     );
 
     let composite = hashing_composite_key(&[&access_token]);
-    let mut con = context.pool.get().expect("No se pudo obtener conexión de Redis");
+    let mut con = context
+        .pool
+        .get()
+        .expect("No se pudo obtener conexión de Redis");
     let keys: Vec<String> = con
         .scan_match(format!("users:{}:payments:*", composite))
         .unwrap()
@@ -215,7 +239,10 @@ fn test_create_payment_collision_behavior() {
     );
 
     let composite = hashing_composite_key(&[&access_token]);
-    let mut con = context.pool.get().expect("No se pudo obtener conexión de Redis");
+    let mut con = context
+        .pool
+        .get()
+        .expect("No se pudo obtener conexión de Redis");
     let keys: Vec<String> = con
         .scan_match(format!("users:{}:payments:*", composite))
         .unwrap()
@@ -238,12 +265,21 @@ fn test_guard_does_not_remove_unrelated_keys() {
     let guard = TestRedisGuard::new(context.pool.clone());
 
     // Create an unrelated key that should NOT be removed by the guard
-    let mut con = context.pool.get().expect("No se pudo obtener conexión de Redis");
+    let mut con = context
+        .pool
+        .get()
+        .expect("No se pudo obtener conexión de Redis");
     let unrelated_key = "unrelated:test:key".to_string();
-    let _: () = con.set(&unrelated_key, "preserve").expect("couldn't set unrelated key");
+    let _: () = con
+        .set(&unrelated_key, "preserve")
+        .expect("couldn't set unrelated key");
 
     // Drop guard without registering any keys; it should not delete unrelated keys
     drop(guard);
     let exists: bool = con.exists(&unrelated_key).unwrap_or(false);
-    assert!(exists, "TestRedisGuard removed an unrelated key: {}", unrelated_key);
+    assert!(
+        exists,
+        "TestRedisGuard removed an unrelated key: {}",
+        unrelated_key
+    );
 }

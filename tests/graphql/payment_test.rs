@@ -1,18 +1,21 @@
 // Pruebas unitarias para la query get_all_payments
 // No se usa dotenv, las variables se cargan directamente
 
-use general_api::models::graphql::Payment;
-use general_api::endpoints::handlers::graphql::payment::PaymentQuery;
 use super::common::{create_test_context, insert_payment_helper_and_return, TestRedisGuard};
-use general_api::test_sync::REDIS_TEST_LOCK;
+use general_api::endpoints::handlers::graphql::payment::PaymentQuery;
+use general_api::models::graphql::Payment;
 use general_api::repos::auth::utils::hashing_composite_key;
+use general_api::test_sync::REDIS_TEST_LOCK;
 use redis::Commands;
 
 #[test]
 fn test_get_all_payments_returns_all_inserted_payments() {
     // Serializar pruebas que tocan Redis sin dependencias externas
     // Acquire a blocking mutex guard to serialize access across tests
-    let _guard = REDIS_TEST_LOCK.get_or_init(|| std::sync::Mutex::new(())).lock().unwrap();
+    let _guard = REDIS_TEST_LOCK
+        .get_or_init(|| std::sync::Mutex::new(()))
+        .lock()
+        .unwrap();
     // Crear contexto y guard para limpieza de claves de test
     let context = create_test_context();
     let mut guard = TestRedisGuard::new(context.pool.clone());
@@ -29,7 +32,7 @@ fn test_get_all_payments_returns_all_inserted_payments() {
             ticket_num: "A123".to_string(),
             account_num: "ACC1".to_string(),
             commentary: Some("Pago test 1".to_string()),
-            photo: "url1".to_string(),
+            photo_path: "url1".to_string(),
             state: PaymentStatus::from_string("ACCEPTED".to_string()),
         },
         Payment {
@@ -40,7 +43,7 @@ fn test_get_all_payments_returns_all_inserted_payments() {
             ticket_num: "B456".to_string(),
             account_num: "ACC2".to_string(),
             commentary: Some("Pago test 2".to_string()),
-            photo: "url2".to_string(),
+            photo_path: "url2".to_string(),
             state: PaymentStatus::from_string("ON_REVISION".to_string()),
         },
     ];
@@ -57,8 +60,14 @@ fn test_get_all_payments_returns_all_inserted_payments() {
         let pool = context.pool.clone();
         let mut con = pool.get().expect("No se pudo obtener conexión de Redis");
 
-        assert!(con.exists::<_, bool>(&inserted_keys[0]).unwrap(), "No se encontró la clave del pago 1 en Redis");
-        assert!(con.exists::<_, bool>(&inserted_keys[1]).unwrap(), "No se encontró la clave del pago 2 en Redis");
+        assert!(
+            con.exists::<_, bool>(&inserted_keys[0]).unwrap(),
+            "No se encontró la clave del pago 1 en Redis"
+        );
+        assert!(
+            con.exists::<_, bool>(&inserted_keys[1]).unwrap(),
+            "No se encontró la clave del pago 2 en Redis"
+        );
     }
 
     // Ejecutar la query
@@ -75,14 +84,18 @@ fn test_get_all_payments_returns_all_inserted_payments() {
     // porque el entorno de pruebas puede tener otros elementos). Buscamos por id y comparamos campos.
     for expected in expected_sorted.iter() {
         let found = result.iter().find(|r| r.id == expected.id);
-        assert!(found.is_some(), "Expected payment with id {} not found", expected.id);
+        assert!(
+            found.is_some(),
+            "Expected payment with id {} not found",
+            expected.id
+        );
         let actual = found.unwrap();
         assert_eq!(expected.total_amount, actual.total_amount);
         assert_eq!(expected.payment_date, actual.payment_date);
         assert_eq!(expected.ticket_num, actual.ticket_num);
         assert_eq!(expected.account_num, actual.account_num);
         assert_eq!(expected.commentary, actual.commentary);
-        assert_eq!(expected.photo, actual.photo);
+        assert_eq!(expected.photo_path, actual.photo_path);
         assert_eq!(expected.state, actual.state);
     }
 }

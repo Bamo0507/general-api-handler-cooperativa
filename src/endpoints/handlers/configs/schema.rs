@@ -1,6 +1,6 @@
 use actix_web::web::Data;
 use aws_sdk_s3::Client as S3Client;
-use juniper::{EmptyMutation, EmptySubscription, GraphQLType, GraphQLTypeAsync, RootNode};
+use juniper::{EmptySubscription, GraphQLType, GraphQLTypeAsync, RootNode};
 use r2d2::Pool;
 use redis::Client as RedisClient;
 

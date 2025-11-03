@@ -1,5 +1,6 @@
 use crate::models::graphql::PaymentStatus;
 use crate::models::GraphQLMappable;
+use crate::repos::graphql::utils::get_multiple_models_by_pattern;
 use crate::{
     models::{
         graphql::{Affiliate, Payment, PaymentHistory},
@@ -8,7 +9,7 @@ use crate::{
     },
     repos::{auth::utils::hashing_composite_key, graphql::utils::get_multiple_models_by_id},
 };
-use actix_web::web;
+use actix_web::web::Data;
 use chrono::Utc;
 use r2d2::Pool;
 use redis::{from_redis_value, Client, Commands, JsonCommands};
@@ -16,7 +17,7 @@ use regex::Regex;
 use serde_json::from_str;
 
 pub struct PaymentRepo {
-    pub pool: web::Data<Pool<Client>>,
+    pub pool: Data<Pool<Client>>,
 }
 
 impl PaymentRepo {
@@ -58,7 +59,7 @@ impl PaymentRepo {
     pub fn get_all_payments(&self) -> Result<Vec<Payment>, String> {
         // usamos el helper que acepta un patrón porque necesitamos spannear todos los users
         // los otros helpers construyen patrón desde access token y no sirven para esto
-        crate::repos::graphql::utils::get_multiple_models_by_pattern::<Payment, RedisPayment>(
+        get_multiple_models_by_pattern::<Payment, RedisPayment>(
             "users:*:payments:*".to_string(),
             self.pool.clone(),
         )

@@ -34,7 +34,7 @@ pub fn insert_payment_helper(context: &GeneralContext, payment: &Payment) -> Str
         total_amount: payment.total_amount,
         name: payment.name.clone(),
         comments: payment.commentary.clone(),
-        comprobante_bucket: payment.photo.clone(),
+        comprobante_bucket: payment.photo_path.clone(),
         ticket_number: payment.ticket_num.clone(),
         status: payment.state.as_str().to_string(),
         being_payed: vec![], // tests typically don't set this; leave empty default or fill as needed
