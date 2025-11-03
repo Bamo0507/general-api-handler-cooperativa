@@ -125,6 +125,8 @@ pub struct Loan {
     pub total: f64,
     pub status: LoanStatus, //TODO: ASk bryan how to do this
     pub reason: String,
+    /// nombre completo del socio que solicitó el préstamo
+    pub presented_by_name: String,
 }
 
 #[derive(Clone, Serialize, Deserialize, GraphQLObject, Debug)]
