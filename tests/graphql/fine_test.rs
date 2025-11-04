@@ -90,12 +90,16 @@ fn test_get_user_fines_returns_with_presented_by_name() {
     
     // Insertar affiliate key que mapea a nuestro user_hash
     let affiliate_key = format!("test_affiliate_{}", now);
-    let affiliate_hash = hashing_composite_key(&[&affiliate_key]);
     let affiliate_redis_key = format!("users:{}:affiliate_key", user_hash);
+    let affiliate_to_db_key = format!("affiliate_key_to_db_access:{}", affiliate_key);
     {
         let mut con = context.pool.get().expect("No se pudo obtener conexión de Redis");
+        // Guardar users:{hash}:affiliate_key
         let _: redis::RedisResult<()> = con.set(&affiliate_redis_key, &affiliate_key);
         guard.register_key(affiliate_redis_key.clone());
+        // Guardar affiliate_key_to_db_access:{affiliate_key} -> user_hash (esto es lo que faltaba)
+        let _: redis::RedisResult<()> = con.set(&affiliate_to_db_key, &user_hash);
+        guard.register_key(affiliate_to_db_key.clone());
     }
 
     // Ahora get_user_fines debería poder encontrar las multas usando affiliate_key como access_token
@@ -149,10 +153,15 @@ fn test_get_user_fines_defaults_to_na_when_no_user_name() {
     // Insertar affiliate key
     let affiliate_key = format!("test_affiliate_na_{}", now);
     let affiliate_redis_key = format!("users:{}:affiliate_key", user_hash);
+    let affiliate_to_db_key = format!("affiliate_key_to_db_access:{}", affiliate_key);
     {
         let mut con = context.pool.get().expect("No se pudo obtener conexión de Redis");
+        // Guardar users:{hash}:affiliate_key
         let _: redis::RedisResult<()> = con.set(&affiliate_redis_key, &affiliate_key);
         guard.register_key(affiliate_redis_key.clone());
+        // Guardar affiliate_key_to_db_access:{affiliate_key} -> user_hash
+        let _: redis::RedisResult<()> = con.set(&affiliate_to_db_key, &user_hash);
+        guard.register_key(affiliate_to_db_key.clone());
     }
 
     let fine_repo = FineRepo {
