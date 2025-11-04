@@ -133,6 +133,8 @@ pub struct Fine {
     pub amount: f64,
     pub status: FineStatus,
     pub reason: String,
+    // nombre de quien presentó la multa (viene del complete_name del usuario)
+    pub presented_by_name: String,
 }
 
 #[derive(Clone, Serialize, Deserialize, GraphQLObject, Debug)]
@@ -153,6 +155,11 @@ pub struct Payment {
     pub commentary: Option<String>,
     pub photo: String,        // For bucket use
     pub state: PaymentStatus, // Following bryan's enums
+    // lo que el usuario está pagando con este pago (préstamos, cuotas, multas, etc)
+    // viene del array being_payed que manda el usuario al crear el pago
+    pub being_payed: Vec<crate::models::PayedTo>,
+    // nombre de quien presentó/creó el pago (viene del complete_name del usuario con el access_token)
+    pub presented_by_name: String,
 }
 
 #[derive(Clone, Serialize, Deserialize, GraphQLObject, Debug)]
@@ -231,4 +238,20 @@ pub struct Quota {
     pub nombre_usuario: Option<String>,
     /// Identificador único para frontend (formato: "Nombre - Mes Año")
     pub identifier: Option<String>,
+}
+
+// implementaciones del trait WithPresenterName para que el helper genérico
+// pueda asignar el nombre del presentador a estos modelos
+use crate::models::WithPresenterName;
+
+impl WithPresenterName for Payment {
+    fn set_presenter_name(&mut self, name: String) {
+        self.presented_by_name = name;
+    }
+}
+
+impl WithPresenterName for Fine {
+    fn set_presenter_name(&mut self, name: String) {
+        self.presented_by_name = name;
+    }
 }
