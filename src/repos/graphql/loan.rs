@@ -3,11 +3,12 @@ use r2d2::Pool;
 use redis::Client;
 
 use redis::{from_redis_value, Commands, JsonCommands, Value as RedisValue};
+use regex::Regex;
 use serde_json::from_str;
 
 use crate::repos::graphql::utils::{get_multiple_models_by_id, get_multiple_models_by_pattern};
 use crate::{
-    models::{graphql::Loan, redis::Loan as RedisLoan},
+    models::{graphql::{Loan, LoanStatus}, redis::Loan as RedisLoan},
     repos::auth::utils::hashing_composite_key,
 };
 
@@ -31,14 +32,90 @@ impl LoanRepo {
         )
     }
 
-    /// obtiene todos los préstamos de todos los socios
+    /// obtiene todos los préstamos de todos los socios con nombre del solicitante
     pub fn get_all_loans(&self) -> Result<Vec<Loan>, String> {
-        // usamos el helper que acepta un patrón porque necesitamos spannear todos los users
-        // los otros helpers construyen patrón desde access token y no sirven para esto
-        get_multiple_models_by_pattern::<Loan, RedisLoan>(
-            "users:*:loans:*".to_string(),
-            self.pool.clone(),
-        )
+        let mut con = self.pool.get().map_err(|_| "Couldn't connect to pool")?;
+
+        // escaneamos todas las keys de préstamos de todos los usuarios
+        match con.scan_match::<String, String>("users:*:loans:*".to_string()) {
+            Ok(keys) => {
+                let mut loans_list: Vec<Loan> = Vec::new();
+                let key_vec: Vec<String> = keys.collect();
+
+                // regex para extraer el hash del usuario de la key
+                let re_user_hash = Regex::new(r"users:(?<hash>\w+):loans:\w+").unwrap();
+
+                for key in key_vec {
+                    // extraer hash del usuario de la key
+                    let user_hash = match re_user_hash.captures(&key) {
+                        Some(caps) => caps["hash"].to_string(),
+                        None => {
+                            println!("get_all_loans - couldn't extract user hash from key: {}", key);
+                            continue;
+                        }
+                    };
+
+                    // obtener el loan de redis
+                    let redis_raw_res = con.json_get::<String, &str, redis::Value>(key.clone(), "$");
+                    let redis_raw = match redis_raw_res {
+                        Ok(v) => v,
+                        Err(e) => {
+                            println!("get_all_loans - json_get failed for key {}: {:?}", key, e);
+                            continue;
+                        }
+                    };
+
+                    let nested_data = match from_redis_value::<String>(&redis_raw) {
+                        Ok(s) => s,
+                        Err(e) => {
+                            println!("get_all_loans - from_redis_value failed for key {}: {:?}", key, e);
+                            continue;
+                        }
+                    };
+
+                    // parsear como array o como objeto individual
+                    let parsed_vec_res = from_str::<Vec<RedisLoan>>(nested_data.as_str());
+                    let mut parsed_objects: Vec<RedisLoan> = match parsed_vec_res {
+                        Ok(v) => v,
+                        Err(_) => match from_str::<RedisLoan>(nested_data.as_str()) {
+                            Ok(obj) => vec![obj],
+                            Err(e) => {
+                                println!("get_all_loans - JSON parse failed for key {}: {}", key, e);
+                                continue;
+                            }
+                        },
+                    };
+
+                    if parsed_objects.is_empty() {
+                        continue;
+                    }
+
+                    let redis_loan = parsed_objects.pop().unwrap();
+
+                    // obtener el nombre completo del usuario que solicitó el préstamo
+                    let presented_by_name = con
+                        .get::<String, String>(format!("users:{}:complete_name", user_hash))
+                        .unwrap_or_else(|_| "Nombre no encontrado".to_string());
+
+                    // mapear a graphql loan con los campos nuevos
+                    let loan_id = crate::repos::graphql::utils::get_key(key.clone(), "loans".to_owned());
+
+                    loans_list.push(Loan {
+                        id: loan_id,
+                        quotas: redis_loan.total_quota,
+                        payed: redis_loan.payed,
+                        debt: redis_loan.debt,
+                        total: redis_loan.total,
+                        status: LoanStatus::from_string(redis_loan.status.clone()),
+                        reason: redis_loan.reason.clone(),
+                        presented_by_name,
+                    });
+                }
+
+                Ok(loans_list)
+            }
+            Err(_) => Err("Couldn't scan for loan keys".to_string()),
+        }
     }
 
     pub fn create_loan(
