@@ -34,6 +34,8 @@ fn test_repo_create_payment_happy_path() {
         commentary: Some("create repo test".to_string()),
         photo: "url_create".to_string(),
         state: PaymentStatus::OnRevision,
+        being_payed: vec![],
+        presented_by_name: "N/A".to_string(),
     };
 
     // Llamar al repo a través del contexto con la firma real

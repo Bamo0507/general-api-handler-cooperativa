@@ -164,6 +164,59 @@ where
     }
 }
 
+/// versión de get_multiple_models_by_id que retorna también las keys
+/// sirve para después enriquecer los objetos con presented_by_name u otra info
+pub fn get_multiple_models_by_id_with_keys<GraphQLType, RedisType>(
+    access_token: Option<String>,
+    db_token: Option<String>,
+    pool: Data<Pool<Client>>,
+    redis_key_type: String,
+) -> Result<(Vec<GraphQLType>, Vec<String>), String>
+where
+    RedisType: DeserializeOwned + Clone + GraphQLMappable<GraphQLType> + Debug,
+{
+    let mut db_access_token;
+    let mut con = pool.get().expect("Couldn't connect to pool");
+
+    if (access_token == None) && (db_token == None) {
+        return Err("At leat one of the token most be something".to_owned());
+    }
+
+    if let Some(token) = access_token {
+        db_access_token = hashing_composite_key(&[&token]);
+    } else {
+        db_access_token = db_token.unwrap();
+    }
+
+    match con
+        .scan_match::<String, String>(format!("users:{}:{}:*", db_access_token, redis_key_type))
+    {
+        Ok(keys) => {
+            let mut graphql_object_list: Vec<GraphQLType> = Vec::new();
+            let mut key_list: Vec<String> = Vec::new();
+
+            let mut con = pool.get().expect("Couldn't connect to pool");
+
+            for key in keys {
+                let redis_raw = con
+                    .json_get::<String, &str, RedisValue>(key.to_owned(), "$")
+                    .unwrap();
+
+                let nested_data = from_redis_value::<String>(&redis_raw).unwrap();
+
+                let redis_object_parsed =
+                    from_str::<Vec<RedisType>>(nested_data.as_str()).unwrap()[0].clone();
+
+                graphql_object_list.push(redis_object_parsed.to_graphql_type(key.clone()));
+                key_list.push(key);
+            }
+
+            Ok((graphql_object_list, key_list))
+        }
+        Err(_) => Err("Couldn't get users payments".to_string()),
+    }
+}
+
 /// Function for generalizing the fetching for redis values and turnining them in to GraphQLObject
 pub fn get_multiple_models<GraphQLType, RedisType>(
     access_token: String,
@@ -328,4 +381,142 @@ where
         }
         Err(_) => Err("Couldn't get users payments".to_string()),
     }
+}
+
+/// versión nueva del helper que retorna tanto los objetos como las keys
+/// sirve para después poder enriquecer los objetos con info adicional (ej: presented_by_name)
+/// no modificamos el helper original para no romper código existente (non-breaking change)
+pub fn get_multiple_models_by_pattern_with_keys<GraphQLType, RedisType>(
+    pattern: String,
+    pool: Data<Pool<Client>>,
+) -> Result<(Vec<GraphQLType>, Vec<String>), String>
+where
+    RedisType: DeserializeOwned + Clone + GraphQLMappable<GraphQLType> + Debug,
+{
+    let mut con = pool.get().expect("Couldn't connect to pool");
+
+    match con.scan_match::<String, String>(pattern) {
+        Ok(keys) => {
+            let mut graphql_object_list: Vec<GraphQLType> = Vec::new();
+            let mut key_list: Vec<String> = Vec::new();
+
+            // conn for fetching redis models
+            let mut con = pool.get().expect("Couldn't connect to pool");
+
+            // Collect keys into a Vec so we can log and iterate deterministically for debugging
+            let key_vec: Vec<String> = keys.collect();
+            println!(
+                "DEBUG get_multiple_models_by_pattern_with_keys - scanned keys: {:?}",
+                key_vec
+            );
+
+            for key in key_vec {
+                let redis_raw_res = con.json_get::<String, &str, redis::Value>(key.to_owned(), "$");
+                let redis_raw = match redis_raw_res {
+                    Ok(v) => v,
+                    Err(e) => {
+                        println!("DEBUG get_multiple_models_by_pattern_with_keys - json_get failed for key {}: {:?}", key, e);
+                        continue; // skip invalid/non-json keys
+                    }
+                };
+
+                let nested_data_res = from_redis_value::<String>(&redis_raw);
+                let nested_data = match nested_data_res {
+                    Ok(s) => s,
+                    Err(e) => {
+                        println!("DEBUG get_multiple_models_by_pattern_with_keys - from_redis_value failed for key {}: {:?}", key, e);
+                        continue;
+                    }
+                };
+
+                let parsed_vec_res = from_str::<Vec<RedisType>>(nested_data.as_str());
+                let mut parsed_objects: Vec<RedisType> = match parsed_vec_res {
+                    Ok(v) => v,
+                    Err(_) => match from_str::<RedisType>(nested_data.as_str()) {
+                        Ok(obj) => vec![obj],
+                        Err(e) => {
+                            println!("DEBUG get_multiple_models_by_pattern_with_keys - JSON parse failed for key {}: {} -> {}", key, nested_data, e);
+                            continue;
+                        }
+                    },
+                };
+
+                if parsed_objects.is_empty() {
+                    continue;
+                }
+
+                for redis_object_parsed in parsed_objects {
+                    graphql_object_list.push(redis_object_parsed.to_graphql_type(key.clone()));
+                    // guardamos la key correspondiente para poder usar después
+                    key_list.push(key.clone());
+                }
+            }
+
+            Ok((graphql_object_list, key_list))
+        }
+        Err(_) => Err("Couldn't get users payments".to_string()),
+    }
+}
+
+/// helper para extraer el user_hash de una key de redis con el pattern users:{hash}:*
+/// sirve para después buscar el complete_name del usuario
+/// retorna None si la key no matchea el patrón esperado
+pub fn extract_user_hash_from_key(key: &str) -> Option<String> {
+    // regex para capturar el hash entre users: y el siguiente :
+    let re = Regex::new(r"users:(?<hash>[a-fA-F0-9]+):").ok()?;
+    let captures = re.captures(key)?;
+    Some(captures["hash"].to_string())
+}
+
+/// helper genérico que toma una lista de objetos y les asigna el presented_by_name
+/// usando el trait WithPresenterName. funciona con cualquier modelo (Payment, Fine, Loan, etc)
+/// que implemente el trait. extrae el user_hash de cada key, fetchea el complete_name desde redis
+/// y lo asigna al objeto. si no encuentra el nombre usa DEFAULT_PRESENTER_NAME
+pub fn enrich_with_presenter_names<T>(
+    mut objects: Vec<T>,
+    keys: Vec<String>,
+    pool: &Pool<Client>,
+) -> Vec<T>
+where
+    T: crate::models::WithPresenterName,
+{
+    // aseguramos que tengamos la misma cantidad de objetos y keys
+    if objects.len() != keys.len() {
+        println!(
+            "WARNING: enrich_with_presenter_names - objects.len() ({}) != keys.len() ({})",
+            objects.len(),
+            keys.len()
+        );
+        return objects;
+    }
+
+    for (obj, key) in objects.iter_mut().zip(keys.iter()) {
+        if let Some(user_hash) = extract_user_hash_from_key(key) {
+            // intentamos fetchear el complete_name del usuario
+            let mut con = pool.get().expect("Couldn't connect to pool");
+            let name_result = con.get::<String, String>(format!("users:{}:complete_name", user_hash));
+
+            let name = match name_result {
+                Ok(n) => n,
+                Err(_) => {
+                    println!(
+                        "WARNING: enrich_with_presenter_names - no complete_name for user_hash {}",
+                        user_hash
+                    );
+                    crate::models::DEFAULT_PRESENTER_NAME.to_string()
+                }
+            };
+
+            obj.set_presenter_name(name);
+        } else {
+            // si no pudimos extraer el hash, usamos el default
+            println!(
+                "WARNING: enrich_with_presenter_names - couldn't extract user_hash from key: {}",
+                key
+            );
+            obj.set_presenter_name(crate::models::DEFAULT_PRESENTER_NAME.to_string());
+        }
+    }
+
+    objects
 }
