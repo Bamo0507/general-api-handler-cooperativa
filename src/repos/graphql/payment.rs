@@ -57,12 +57,21 @@ impl PaymentRepo {
 
     /// Obtiene todos los pagos de todos los socios
     pub fn get_all_payments(&self) -> Result<Vec<Payment>, String> {
-        // usamos el helper que acepta un patrón porque necesitamos spannear todos los users
-        // los otros helpers construyen patrón desde access token y no sirven para esto
-        crate::repos::graphql::utils::get_multiple_models_by_pattern::<Payment, RedisPayment>(
+        // usamos el helper que retorna tanto objetos como keys
+        let (payments, keys) = crate::repos::graphql::utils::get_multiple_models_by_pattern_with_keys::<Payment, RedisPayment>(
             "users:*:payments:*".to_string(),
             self.pool.clone(),
-        )
+        )?;
+
+        // enriquecemos los pagos con el presented_by_name usando el helper genérico
+        let pool_ref = self.pool.get_ref();
+        let enriched_payments = crate::repos::graphql::utils::enrich_with_presenter_names(
+            payments,
+            keys,
+            pool_ref,
+        );
+
+        Ok(enriched_payments)
     }
 
     // TODO: implement payment creation
@@ -73,7 +82,7 @@ impl PaymentRepo {
         total_amount: f64,
         ticket_number: String,
         account_number: String,
-        being_payed: Vec<PayedTo>,
+        being_payed: Vec<crate::models::PayedToInput>,
     ) -> Result<String, String> {
         // for the moment I'll just implement it as for creating a payment without the relation
         // wich the other fields
@@ -97,6 +106,12 @@ impl PaymentRepo {
 
             let date = Utc::now().date_naive().to_string();
 
+            // convertimos PayedToInput a PayedTo para guardarlo en redis
+            let being_payed_output: Vec<crate::models::PayedTo> = being_payed
+                .into_iter()
+                .map(|input| input.into())
+                .collect();
+
             let _: () = con
                 .json_set(
                     format!("users:{db_access_token}:payments:{payment_hash_key}"),
@@ -111,7 +126,7 @@ impl PaymentRepo {
                         account_number,
                         comments: None,
                         status: "ON_REVISION".to_owned(),
-                        being_payed,
+                        being_payed: being_payed_output,
                     },
                 )
                 .expect("PAYMENT CREATION: Couldn't Create Payment");
