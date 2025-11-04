@@ -55,7 +55,7 @@ impl PaymentMutation {
         total_amount: f64,
         ticket_number: String,
         account_number: String,
-        being_payed: Vec<PayedTo>,
+        being_payed: Vec<crate::models::PayedToInput>,
     ) -> Result<String, String> {
         context.payment_repo().create_payment(
             access_token,

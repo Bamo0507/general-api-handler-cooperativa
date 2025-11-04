@@ -19,6 +19,7 @@ fn test_get_all_payments_returns_all_inserted_payments() {
 
     // Insertar pagos de prueba
     use general_api::models::graphql::PaymentStatus;
+    use general_api::models::PayedTo;
     let now = chrono::Utc::now().timestamp_nanos_opt().unwrap();
     let payments = vec![
         Payment {
@@ -31,6 +32,8 @@ fn test_get_all_payments_returns_all_inserted_payments() {
             commentary: Some("Pago test 1".to_string()),
             photo: "url1".to_string(),
             state: PaymentStatus::from_string("ACCEPTED".to_string()),
+            being_payed: vec![],
+            presented_by_name: "N/A".to_string(),
         },
         Payment {
             id: format!("test_pago_{}_2", now),
@@ -42,6 +45,8 @@ fn test_get_all_payments_returns_all_inserted_payments() {
             commentary: Some("Pago test 2".to_string()),
             photo: "url2".to_string(),
             state: PaymentStatus::from_string("ON_REVISION".to_string()),
+            being_payed: vec![],
+            presented_by_name: "N/A".to_string(),
         },
     ];
 
@@ -84,6 +89,10 @@ fn test_get_all_payments_returns_all_inserted_payments() {
         assert_eq!(expected.commentary, actual.commentary);
         assert_eq!(expected.photo, actual.photo);
         assert_eq!(expected.state, actual.state);
+        // Validar los nuevos campos agregados (being_payed y presented_by_name)
+        assert_eq!(expected.being_payed, actual.being_payed, "being_payed should match");
+        // Como no insertamos users:{hash}:complete_name en el test, presented_by_name debe ser "N/A"
+        assert_eq!(actual.presented_by_name, "N/A", "presented_by_name should be N/A when no user data exists");
     }
 }
 

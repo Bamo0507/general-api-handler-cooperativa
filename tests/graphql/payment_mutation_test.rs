@@ -3,7 +3,7 @@
 
 use general_api::models::graphql::{Payment, PaymentStatus};
 use general_api::models::redis::Payment as RedisPayment;
-use general_api::models::PayedTo;
+use general_api::models::PayedToInput;
 use general_api::endpoints::handlers::graphql::payment::PaymentMutation;
 use super::common::{create_test_context, insert_payment_helper_and_return, TestRedisGuard};
 use general_api::repos::auth::utils::hashing_composite_key;
@@ -26,6 +26,8 @@ fn test_aprobar_pago_pendiente() {
         commentary: Some("Pago test 1".to_string()),
         photo: "url1".to_string(),
         state: PaymentStatus::OnRevision,
+        being_payed: vec![],
+        presented_by_name: "N/A".to_string(),
     };
     // Insertar bajo la clave global 'all' para que la mutación lo encuentre
     let all_vec = vec![String::from("all")];
@@ -40,7 +42,11 @@ fn test_aprobar_pago_pendiente() {
         comprobante_bucket: payment.photo.clone(),
         ticket_number: payment.ticket_num.clone(),
         status: payment.state.as_str().to_owned(),
-    being_payed: vec![PayedTo::default()],
+        being_payed: vec![general_api::models::PayedTo {
+            model_type: "LOAN".to_string(),
+            amount: 0.0,
+            model_key: "000000000000".to_string(),
+        }],
     };
     let _: () = redis.json_set(
         format!("users:{}:payments:{}", all_key, payment.id),
@@ -75,6 +81,8 @@ fn test_rechazar_pago_pendiente_con_comentario() {
         commentary: Some("Pago test 2".to_string()),
         photo: "url2".to_string(),
         state: PaymentStatus::OnRevision,
+        being_payed: vec![],
+        presented_by_name: "N/A".to_string(),
     };
     let k = insert_payment_helper_and_return(&context, &payment);
     guard.register_key(k);
@@ -107,6 +115,8 @@ fn test_rechazar_pago_pendiente_sin_comentario() {
         commentary: Some("Pago test 3".to_string()),
         photo: "url3".to_string(),
         state: PaymentStatus::OnRevision,
+        being_payed: vec![],
+        presented_by_name: "N/A".to_string(),
     };
     let k = insert_payment_helper_and_return(&context, &payment);
     guard.register_key(k);
@@ -138,6 +148,8 @@ fn test_mutar_pago_ya_finalizado() {
         commentary: Some("Pago test 4".to_string()),
         photo: "url4".to_string(),
         state: PaymentStatus::Accepted,
+        being_payed: vec![],
+        presented_by_name: "N/A".to_string(),
     };
     let k = insert_payment_helper_and_return(&context, &payment);
     guard.register_key(k);
@@ -169,6 +181,8 @@ fn test_mutar_con_estado_invalido() {
         commentary: Some("Pago test 5".to_string()),
         photo: "url5".to_string(),
         state: PaymentStatus::OnRevision,
+        being_payed: vec![],
+        presented_by_name: "N/A".to_string(),
     };
     let k = insert_payment_helper_and_return(&context, &payment);
     guard.register_key(k);
