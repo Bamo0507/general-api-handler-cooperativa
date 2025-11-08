@@ -32,13 +32,14 @@ pub struct LoanMutation;
 impl LoanMutation {
     pub async fn create_user_loan(
         context: &GeneralContext,
-        access_token: String,
+        affiliate_key: String,
         total_quota: i32,
         base_needed_payment: f64,
+        interest_rate: f64,
         reason: String,
     ) -> Result<String, String> {
         context
             .loan_repo()
-            .create_loan(access_token, total_quota, base_needed_payment, reason)
+            .create_loan(affiliate_key, total_quota, base_needed_payment, interest_rate, reason)
     }
 }
