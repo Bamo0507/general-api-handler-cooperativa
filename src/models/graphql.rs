@@ -125,6 +125,7 @@ pub struct Loan {
     pub total: f64,
     pub status: LoanStatus, //TODO: ASk bryan how to do this
     pub reason: String,
+    pub interest_rate: f64, // tasa de interés del préstamo
 }
 
 #[derive(Clone, Serialize, Deserialize, GraphQLObject, Debug)]

@@ -43,31 +43,32 @@ impl LoanRepo {
 
     pub fn create_loan(
         &self,
-        access_token: String,
+        affiliate_key: String,
         total_quota: i32,
         base_needed_payment: f64,
+        interest_rate: f64,
         reason: String,
     ) -> Result<String, String> {
         let mut con = &mut self.pool.get().expect("Couldn't connect to pool");
 
-        // obtenemos el db_access_token desde el access_token
+        // obtenemos el db_affiliate_key desde el affiliate_key
 
-        let db_access_token = hashing_composite_key(&[&access_token]);
+        let db_affiliate_key = hashing_composite_key(&[&affiliate_key]);
 
         if let Ok(keys) =
-            con.scan_match::<String, String>(format!("users:{}:loans:*", db_access_token))
+            con.scan_match::<String, String>(format!("users:{}:loans:*", db_affiliate_key))
         {
             let keys_parsed: Vec<String> = keys.collect();
 
             // para crear el loan y evitar colisiones
             let loan_hash_key =
-                hashing_composite_key(&[&keys_parsed.len().to_string(), &db_access_token]);
+                hashing_composite_key(&[&keys_parsed.len().to_string(), &db_affiliate_key]);
 
             let con = &mut self.pool.get().expect("Couldn't connect to pool");
 
             let _: () = con
                 .json_set(
-                    format!("users:{}:loans:{}", db_access_token, loan_hash_key),
+                    format!("users:{}:loans:{}", db_affiliate_key, loan_hash_key),
                     "$",
                     &RedisLoan {
                         total_quota,
@@ -77,6 +78,7 @@ impl LoanRepo {
                         total: base_needed_payment,
                         status: "PENDING".to_owned(),
                         reason,
+                        interest_rate,
                     },
                 )
                 .expect("LOAN CREATION: Couldn't Create Loan");
