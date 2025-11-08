@@ -52,6 +52,11 @@ impl GraphQLMappable<GraphQLPayment> for Payment {
             commentary: self.comments.clone(), // f*** options, can't do low level stuff some times
             photo: (*self.comprobante_bucket).to_string(),
             state: PaymentStatus::from_string((*self.status).to_string()),
+            // clonamos el array de being_payed del redis model
+            being_payed: self.being_payed.clone(),
+            // el nombre real se fetchea después en el repo con el helper genérico enrich_with_presenter_names
+            // acá ponemos el default porque este trait no tiene acceso al pool de redis
+            presented_by_name: crate::models::DEFAULT_PRESENTER_NAME.to_string(),
         }
     }
 }
@@ -94,6 +99,9 @@ impl GraphQLMappable<GraphQLLoan> for Loan {
             status: LoanStatus::from_string((*self.status).to_string()),
             reason: (*self.reason).to_string(),
             interest_rate: self.interest_rate,
+            // campo que requiere contexto adicional se llena con default aquí
+            // solo get_all_loans lo llena correctamente con datos de redis
+            presented_by_name: "N/A".to_string(),
         }
     }
 }
@@ -122,6 +130,8 @@ impl GraphQLMappable<GraphQLFine> for Fine {
             status: FineStatus::from_string((*self.status).to_string()),
             amount: self.amount as f64,
             reason: (*self.motive).to_string(),
+            // el nombre real se fetchea después en el repo con el helper genérico
+            presented_by_name: crate::models::DEFAULT_PRESENTER_NAME.to_string(),
         }
     }
 }

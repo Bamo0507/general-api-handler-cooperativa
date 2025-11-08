@@ -21,12 +21,26 @@ pub struct FineRepo {
 
 impl FineRepo {
     pub fn get_user_fines(&self, access_token: String) -> Result<Vec<Fine>, String> {
-        get_multiple_models_by_id::<Fine, RedisFine>(
-            Some(access_token),
+        // primero obtenemos el db_access_token (user_hash) desde el affiliate_key
+        let db_access_token = get_db_access_token_with_affiliate_key(access_token, self.pool.clone())?;
+        
+        // usamos la versión _with_keys para poder enriquecer con presented_by_name
+        let (fines, keys) = crate::repos::graphql::utils::get_multiple_models_by_id_with_keys::<Fine, RedisFine>(
             None,
+            Some(db_access_token),
             self.pool.clone(),
-            "fines".to_owned(), // TODO: see a way to don't burn the keys
-        )
+            "fines".to_owned(),
+        )?;
+
+        // enriquecemos las multas con el nombre del presentador
+        let pool_ref = self.pool.get_ref();
+        let enriched_fines = crate::repos::graphql::utils::enrich_with_presenter_names(
+            fines,
+            keys,
+            pool_ref,
+        );
+
+        Ok(enriched_fines)
     }
 
     pub fn create_fine(
