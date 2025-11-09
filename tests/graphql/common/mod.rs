@@ -7,6 +7,12 @@ use general_api::models::graphql::Payment;
 
 
 pub fn create_test_context() -> GeneralContext {
+    // Ensure environment variables expected by `Env::env_init()` are present
+    // so tests running in isolation don't panic on missing env vars.
+    std::env::set_var("HOST", "127.0.0.1");
+    std::env::set_var("PORT", "8080");
+    std::env::set_var("REDIS_URL", "redis://127.0.0.1/");
+
     let client = Client::open("redis://127.0.0.1/").expect("No se pudo conectar a Redis");
     let pool = Pool::builder().build(client).expect("No se pudo crear el pool de Redis");
     GeneralContext { pool: Data::new(pool) }

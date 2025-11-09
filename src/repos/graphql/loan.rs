@@ -6,7 +6,7 @@ use redis::{from_redis_value, Commands, JsonCommands, Value as RedisValue};
 use regex::Regex;
 use serde_json::from_str;
 
-use crate::repos::graphql::utils::{get_multiple_models_by_id, get_multiple_models_by_pattern};
+use crate::repos::graphql::utils::{get_db_access_token_with_affiliate_key, get_multiple_models_by_id, get_multiple_models_by_pattern};
 use crate::{
     models::{graphql::{Loan, LoanStatus}, redis::Loan as RedisLoan},
     repos::auth::utils::hashing_composite_key,
@@ -127,26 +127,30 @@ impl LoanRepo {
         interest_rate: f64,
         reason: String,
     ) -> Result<String, String> {
+        // obtenemos el db_access_token usando el affiliate_key
+        // este helper busca en redis la key affiliate_key_to_db_access:{affiliate_key}
+        // y retorna el db_composite_key correcto del usuario
+        let db_access_token = get_db_access_token_with_affiliate_key(
+            affiliate_key.clone(),
+            self.pool.clone(),
+        )?;
+
         let mut con = &mut self.pool.get().expect("Couldn't connect to pool");
 
-        // obtenemos el db_affiliate_key desde el affiliate_key
-
-        let db_affiliate_key = hashing_composite_key(&[&affiliate_key]);
-
         if let Ok(keys) =
-            con.scan_match::<String, String>(format!("users:{}:loans:*", db_affiliate_key))
+            con.scan_match::<String, String>(format!("users:{}:loans:*", db_access_token))
         {
             let keys_parsed: Vec<String> = keys.collect();
 
             // para crear el loan y evitar colisiones
             let loan_hash_key =
-                hashing_composite_key(&[&keys_parsed.len().to_string(), &db_affiliate_key]);
+                hashing_composite_key(&[&keys_parsed.len().to_string(), &db_access_token]);
 
             let con = &mut self.pool.get().expect("Couldn't connect to pool");
 
             let _: () = con
                 .json_set(
-                    format!("users:{}:loans:{}", db_affiliate_key, loan_hash_key),
+                    format!("users:{}:loans:{}", db_access_token, loan_hash_key),
                     "$",
                     &RedisLoan {
                         total_quota,
