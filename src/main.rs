@@ -18,6 +18,8 @@ async fn main() -> std::io::Result<()> {
     let host = config.host;
     let bucket_name = config.bucket_name;
 
+    println!("bucket name: {bucket_name}");
+
     // Weird bugg in server
     println!("{}", config.redis_url);
 
