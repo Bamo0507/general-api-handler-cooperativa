@@ -27,23 +27,30 @@ fn test_repo_get_user_loans_by_access_token() {
     let repo = context.loan_repo();
 
     // crear dos préstamos para el usuario
-    let _ = repo.create_loan(
-        token_info.access_token.clone(),
-        6,
-        1000.0,
-        0.10,
-        "préstamo test 1".to_string(),
-    );
-    let _ = repo.create_loan(
-        token_info.access_token.clone(),
-        12,
-        2000.0,
-        0.08,
-        "préstamo test 2".to_string(),
-    );
+    // capture returned keys and fail fast if creation fails
+    let _res1 = repo
+        .create_loan(
+            affiliate_key.clone(),
+            6,
+            1000.0,
+            0.10,
+            "préstamo test 1".to_string(),
+        )
+        .expect("create_loan 1 failed");
+
+    let _res2 = repo
+        .create_loan(
+            affiliate_key.clone(),
+            12,
+            2000.0,
+            0.08,
+            "préstamo test 2".to_string(),
+        )
+        .expect("create_loan 2 failed");
 
     // ahora obtener los préstamos usando get_user_loans
-    let loans = repo.get_user_loans(token_info.access_token.clone())
+    let loans = repo
+        .get_user_loans(token_info.access_token.clone())
         .expect("get_user_loans should not fail");
 
     // Deben existir al menos dos préstamos y deben tener los reasons correctos
