@@ -70,6 +70,7 @@ pub struct Loan {
     pub total: f64,
     pub status: String, //TODO: ASk bryan how to do this
     pub reason: String,
+    pub interest_rate: f64, // tasa de interés del préstamo
 }
 
 impl Default for Loan {
@@ -82,6 +83,7 @@ impl Default for Loan {
             total: 0.,
             status: "Not Done".to_owned(),
             reason: "None".to_owned(),
+            interest_rate: 0.,
         }
     }
 }
@@ -96,6 +98,7 @@ impl GraphQLMappable<GraphQLLoan> for Loan {
             total: self.total,
             status: LoanStatus::from_string((*self.status).to_string()),
             reason: (*self.reason).to_string(),
+            interest_rate: self.interest_rate,
             // campo que requiere contexto adicional se llena con default aquí
             // solo get_all_loans lo llena correctamente con datos de redis
             presented_by_name: "N/A".to_string(),

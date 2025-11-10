@@ -74,7 +74,7 @@ fn redis_test_lock() -> &'static Mutex<()> {
 
 // include shared test helpers from tests/graphql/common/mod.rs
 include!("common/mod.rs");
-use general_api::repos::auth::utils::hashing_composite_key;
+use general_api::repos::auth::{create_user_with_access_token, utils::hashing_composite_key};
 use redis::{Value as RedisValue, from_redis_value};
 use general_api::models::redis::Loan as RedisLoan;
 use serde_json::from_str;
@@ -85,15 +85,34 @@ fn test_repo_create_loan_happy_path() {
     let context = create_test_context();
     let mut guard = TestRedisGuard::new(context.pool.clone());
 
-    let access_token = format!("testuser_loan_{}", chrono::Utc::now().timestamp_nanos_opt().unwrap());
-    let db_access_token = hashing_composite_key(&[&access_token]);
+    // crear usuario primero para establecer el mapeo affiliate_key
+    let user_name = format!("testuser_loan_{}", chrono::Utc::now().timestamp_nanos_opt().unwrap());
+    let password = "testpass123".to_string();
+    let real_name = "Test User Loan".to_string();
+
+    let token_info = create_user_with_access_token(user_name.clone(), password, real_name)
+        .expect("Failed to create user");
+
+    // calcular affiliate_key de la misma forma que lo hace create_user_with_access_token
+    let affiliate_key = hashing_composite_key(&[&user_name]);
+    let db_access_token = hashing_composite_key(&[&token_info.access_token]);
+
+    // registrar keys de usuario para limpieza
+    guard.register_key(format!("users_on_used:{}", user_name));
+    guard.register_key(format!("affiliate_keys:{}", affiliate_key));
+    guard.register_key(format!("affiliate_key_to_db_access:{}", affiliate_key));
+    guard.register_key(format!("users:{}:complete_name", db_access_token));
+    guard.register_key(format!("users:{}:affiliate_key", db_access_token));
+    guard.register_key(format!("users:{}:payed_to_capital", db_access_token));
+    guard.register_key(format!("users:{}:owed_capital", db_access_token));
 
     // llamar al repo a través del contexto
     let repo = context.loan_repo();
     let res = repo.create_loan(
-        access_token.clone(),
+        affiliate_key.clone(),
         12,
         5000.0,
+        0.15, // interest_rate 15%
         "compra de equipo".to_string(),
     );
     assert!(res.is_ok(), "create_loan retornó error: {:?}", res);
@@ -118,8 +137,25 @@ fn test_repo_create_loan_persists_json_content() {
     let context = create_test_context();
     let mut guard = TestRedisGuard::new(context.pool.clone());
 
-    let access_token = format!("testuser_content_{}", chrono::Utc::now().timestamp_nanos_opt().unwrap());
-    let db_access_token = hashing_composite_key(&[&access_token]);
+    // crear usuario primero para establecer el mapeo affiliate_key
+    let user_name = format!("testuser_content_{}", chrono::Utc::now().timestamp_nanos_opt().unwrap());
+    let password = "testpass456".to_string();
+    let real_name = "Test User Content".to_string();
+
+    let token_info = create_user_with_access_token(user_name.clone(), password, real_name)
+        .expect("Failed to create user");
+
+    let affiliate_key = hashing_composite_key(&[&user_name]);
+    let db_access_token = hashing_composite_key(&[&token_info.access_token]);
+
+    // registrar keys de usuario para limpieza
+    guard.register_key(format!("users_on_used:{}", user_name));
+    guard.register_key(format!("affiliate_keys:{}", affiliate_key));
+    guard.register_key(format!("affiliate_key_to_db_access:{}", affiliate_key));
+    guard.register_key(format!("users:{}:complete_name", db_access_token));
+    guard.register_key(format!("users:{}:affiliate_key", db_access_token));
+    guard.register_key(format!("users:{}:payed_to_capital", db_access_token));
+    guard.register_key(format!("users:{}:owed_capital", db_access_token));
 
     let repo = context.loan_repo();
     let total_quota = 24;
@@ -127,9 +163,10 @@ fn test_repo_create_loan_persists_json_content() {
     let reason = "préstamo para vivienda".to_string();
 
     let res = repo.create_loan(
-        access_token.clone(),
+        affiliate_key.clone(),
         total_quota,
         base_needed_payment,
+        0.12, // interest_rate 12%
         reason.clone(),
     );
     assert!(res.is_ok());
@@ -160,6 +197,7 @@ fn test_repo_create_loan_persists_json_content() {
     assert!((rl.total - base_needed_payment).abs() < 1e-6, "total debería ser igual a base_needed_payment");
     assert_eq!(rl.status, "PENDING");
     assert_eq!(rl.reason, reason);
+    assert!((rl.interest_rate - 0.12).abs() < 1e-6, "interest_rate debería ser 0.12");
 }
 
 #[test]
@@ -168,21 +206,40 @@ fn test_repo_create_loan_twice_creates_two_keys() {
     let context = create_test_context();
     let mut guard = TestRedisGuard::new(context.pool.clone());
 
-    let access_token = format!("testuser_two_{}", chrono::Utc::now().timestamp_nanos_opt().unwrap());
-    let db_access_token = hashing_composite_key(&[&access_token]);
+    // crear usuario primero para establecer el mapeo affiliate_key
+    let user_name = format!("testuser_two_{}", chrono::Utc::now().timestamp_nanos_opt().unwrap());
+    let password = "testpass789".to_string();
+    let real_name = "Test User Two Loans".to_string();
+
+    let token_info = create_user_with_access_token(user_name.clone(), password, real_name)
+        .expect("Failed to create user");
+
+    let affiliate_key = hashing_composite_key(&[&user_name]);
+    let db_access_token = hashing_composite_key(&[&token_info.access_token]);
+
+    // registrar keys de usuario para limpieza
+    guard.register_key(format!("users_on_used:{}", user_name));
+    guard.register_key(format!("affiliate_keys:{}", affiliate_key));
+    guard.register_key(format!("affiliate_key_to_db_access:{}", affiliate_key));
+    guard.register_key(format!("users:{}:complete_name", db_access_token));
+    guard.register_key(format!("users:{}:affiliate_key", db_access_token));
+    guard.register_key(format!("users:{}:payed_to_capital", db_access_token));
+    guard.register_key(format!("users:{}:owed_capital", db_access_token));
 
     let repo = context.loan_repo();
 
     let _ = repo.create_loan(
-        access_token.clone(),
+        affiliate_key.clone(),
         6,
         1000.0,
+        0.10, // interest_rate 10%
         "préstamo 1".to_string(),
     );
     let _ = repo.create_loan(
-        access_token.clone(),
+        affiliate_key.clone(),
         12,
         2000.0,
+        0.08, // interest_rate 8%
         "préstamo 2".to_string(),
     );
 
@@ -207,22 +264,41 @@ fn test_create_loan_collision_behavior() {
     let context = create_test_context();
     let mut guard = TestRedisGuard::new(context.pool.clone());
 
-    let access_token = format!("testuser_collision_{}", chrono::Utc::now().timestamp_nanos_opt().unwrap());
-    let db_access_token = hashing_composite_key(&[&access_token]);
+    // crear usuario primero para establecer el mapeo affiliate_key
+    let user_name = format!("testuser_collision_{}", chrono::Utc::now().timestamp_nanos_opt().unwrap());
+    let password = "testpass101".to_string();
+    let real_name = "Test User Collision".to_string();
+
+    let token_info = create_user_with_access_token(user_name.clone(), password, real_name)
+        .expect("Failed to create user");
+
+    let affiliate_key = hashing_composite_key(&[&user_name]);
+    let db_access_token = hashing_composite_key(&[&token_info.access_token]);
+
+    // registrar keys de usuario para limpieza
+    guard.register_key(format!("users_on_used:{}", user_name));
+    guard.register_key(format!("affiliate_keys:{}", affiliate_key));
+    guard.register_key(format!("affiliate_key_to_db_access:{}", affiliate_key));
+    guard.register_key(format!("users:{}:complete_name", db_access_token));
+    guard.register_key(format!("users:{}:affiliate_key", db_access_token));
+    guard.register_key(format!("users:{}:payed_to_capital", db_access_token));
+    guard.register_key(format!("users:{}:owed_capital", db_access_token));
 
     let repo = context.loan_repo();
 
     // crear dos loans con parámetros idénticos; current implementation usa count-based hash key
     let _ = repo.create_loan(
-        access_token.clone(),
+        affiliate_key.clone(),
         10,
         3000.0,
+        0.20, // interest_rate 20%
         "mismo motivo".to_string(),
     );
     let _ = repo.create_loan(
-        access_token.clone(),
+        affiliate_key.clone(),
         10,
         3000.0,
+        0.20, // interest_rate 20%
         "mismo motivo".to_string(),
     );
 
@@ -250,15 +326,34 @@ fn test_create_then_get_all_returns_created_loan() {
     let context = create_test_context();
     let mut guard = TestRedisGuard::new(context.pool.clone());
 
+    // crear usuario primero para establecer el mapeo affiliate_key
+    let user_name = format!("testuser_getall_{}", chrono::Utc::now().timestamp_nanos_opt().unwrap());
+    let password = "testpass202".to_string();
+    let real_name = "Test User GetAll".to_string();
+
+    let token_info = create_user_with_access_token(user_name.clone(), password, real_name)
+        .expect("Failed to create user");
+
+    let affiliate_key = hashing_composite_key(&[&user_name]);
+    let db_access_token = hashing_composite_key(&[&token_info.access_token]);
+
+    // registrar keys de usuario para limpieza
+    guard.register_key(format!("users_on_used:{}", user_name));
+    guard.register_key(format!("affiliate_keys:{}", affiliate_key));
+    guard.register_key(format!("affiliate_key_to_db_access:{}", affiliate_key));
+    guard.register_key(format!("users:{}:complete_name", db_access_token));
+    guard.register_key(format!("users:{}:affiliate_key", db_access_token));
+    guard.register_key(format!("users:{}:payed_to_capital", db_access_token));
+    guard.register_key(format!("users:{}:owed_capital", db_access_token));
+
     let repo = context.loan_repo();
-    let access_token = format!("testuser_getall_{}", chrono::Utc::now().timestamp_nanos_opt().unwrap());
-    let db_access_token = hashing_composite_key(&[&access_token]);
 
     // crear un loan usando el repo
     let res = repo.create_loan(
-        access_token.clone(),
+        affiliate_key.clone(),
         18,
         7500.0,
+        0.18, // interest_rate 18%
         "préstamo para get_all test".to_string(),
     );
     assert!(res.is_ok(), "create_loan failed: {:?}", res);

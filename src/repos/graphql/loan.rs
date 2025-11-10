@@ -6,7 +6,7 @@ use redis::{from_redis_value, Commands, JsonCommands, Value as RedisValue};
 use regex::Regex;
 use serde_json::from_str;
 
-use crate::repos::graphql::utils::{get_multiple_models_by_id, get_multiple_models_by_pattern};
+use crate::repos::graphql::utils::{get_db_access_token_with_affiliate_key, get_multiple_models_by_id, get_multiple_models_by_pattern};
 use crate::{
     models::{graphql::{Loan, LoanStatus}, redis::Loan as RedisLoan},
     repos::auth::utils::hashing_composite_key,
@@ -108,6 +108,7 @@ impl LoanRepo {
                         total: redis_loan.total,
                         status: LoanStatus::from_string(redis_loan.status.clone()),
                         reason: redis_loan.reason.clone(),
+                        interest_rate: redis_loan.interest_rate,
                         presented_by_name,
                     });
                 }
@@ -120,16 +121,21 @@ impl LoanRepo {
 
     pub fn create_loan(
         &self,
-        access_token: String,
+        affiliate_key: String,
         total_quota: i32,
         base_needed_payment: f64,
+        interest_rate: f64,
         reason: String,
     ) -> Result<String, String> {
+        // obtenemos el db_access_token usando el affiliate_key
+        // este helper busca en redis la key affiliate_key_to_db_access:{affiliate_key}
+        // y retorna el db_composite_key correcto del usuario
+        let db_access_token = get_db_access_token_with_affiliate_key(
+            affiliate_key.clone(),
+            self.pool.clone(),
+        )?;
+
         let mut con = &mut self.pool.get().expect("Couldn't connect to pool");
-
-        // obtenemos el db_access_token desde el access_token
-
-        let db_access_token = hashing_composite_key(&[&access_token]);
 
         if let Ok(keys) =
             con.scan_match::<String, String>(format!("users:{}:loans:*", db_access_token))
@@ -154,6 +160,7 @@ impl LoanRepo {
                         total: base_needed_payment,
                         status: "PENDING".to_owned(),
                         reason,
+                        interest_rate,
                     },
                 )
                 .expect("LOAN CREATION: Couldn't Create Loan");
