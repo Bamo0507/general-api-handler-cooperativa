@@ -53,6 +53,7 @@ pub async fn upload_ticket_payments(
     match s3_client
         .put_object()
         .bucket(bucket_name.as_str())
+        .set_body(Some(body))
         .key(format!("payment-tickets/{file_name}.pdf"))
         .send()
         .await
