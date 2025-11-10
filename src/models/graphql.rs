@@ -125,6 +125,8 @@ pub struct Loan {
     pub total: f64,
     pub status: LoanStatus, //TODO: ASk bryan how to do this
     pub reason: String,
+    /// tasa de interés del préstamo
+    pub interest_rate: f64,
     /// nombre completo del socio que solicitó el préstamo
     pub presented_by_name: String,
 }
