@@ -1,3 +1,67 @@
+#[test]
+fn test_repo_get_user_loans_by_access_token() {
+    let _guard = redis_test_lock().lock().unwrap();
+    let context = create_test_context();
+    let mut guard = TestRedisGuard::new(context.pool.clone());
+
+    // crear usuario primero para establecer el mapeo affiliate_key
+    let user_name = format!("testuser_getloans_{}", chrono::Utc::now().timestamp_nanos_opt().unwrap());
+    let password = "testpass_getloans".to_string();
+    let real_name = "Test User GetLoans".to_string();
+
+    let token_info = create_user_with_access_token(user_name.clone(), password, real_name)
+        .expect("Failed to create user");
+
+    let affiliate_key = hashing_composite_key(&[&user_name]);
+    let db_access_token = hashing_composite_key(&[&token_info.access_token]);
+
+    // registrar keys de usuario para limpieza
+    guard.register_key(format!("users_on_used:{}", user_name));
+    guard.register_key(format!("affiliate_keys:{}", affiliate_key));
+    guard.register_key(format!("affiliate_key_to_db_access:{}", affiliate_key));
+    guard.register_key(format!("users:{}:complete_name", db_access_token));
+    guard.register_key(format!("users:{}:affiliate_key", db_access_token));
+    guard.register_key(format!("users:{}:payed_to_capital", db_access_token));
+    guard.register_key(format!("users:{}:owed_capital", db_access_token));
+
+    let repo = context.loan_repo();
+
+    // crear dos préstamos para el usuario
+    let _ = repo.create_loan(
+        token_info.access_token.clone(),
+        6,
+        1000.0,
+        0.10,
+        "préstamo test 1".to_string(),
+    );
+    let _ = repo.create_loan(
+        token_info.access_token.clone(),
+        12,
+        2000.0,
+        0.08,
+        "préstamo test 2".to_string(),
+    );
+
+    // ahora obtener los préstamos usando get_user_loans
+    let loans = repo.get_user_loans(token_info.access_token.clone())
+        .expect("get_user_loans should not fail");
+
+    // Deben existir al menos dos préstamos y deben tener los reasons correctos
+    let reasons: Vec<String> = loans.iter().map(|l| l.reason.clone()).collect();
+    assert!(reasons.contains(&"préstamo test 1".to_string()), "Debe contener préstamo test 1");
+    assert!(reasons.contains(&"préstamo test 2".to_string()), "Debe contener préstamo test 2");
+    assert!(loans.len() >= 2, "Debe haber al menos dos préstamos para el usuario");
+
+    // registrar las keys de los préstamos para limpieza
+    let mut con = context.pool.get().expect("no se pudo obtener conexión de redis");
+    let keys: Vec<String> = con
+        .scan_match(format!("users:{}:loans:*", db_access_token))
+        .unwrap()
+        .collect();
+    for key in keys {
+        guard.register_key(key);
+    }
+}
 // tests para create_loan (repo-level)
 // usamos los mismos helpers y patrón de runtime que en los tests existentes
 
