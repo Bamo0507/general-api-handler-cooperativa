@@ -10,11 +10,17 @@ pub struct UploadForm {
 }
 
 #[derive(Clone, Serialize, Deserialize)]
-pub struct FileCredentials {
+pub struct FilePayloadRetrival {
+    pub access_token: String,
+    pub ticket_path: String,
+}
+
+#[derive(Clone, Serialize, Deserialize)]
+pub struct FilePayloadUpload {
     pub access_token: String,
 }
 
-#[derive(Serialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct FileUploadInfo {
-    pub file_path: String,
+    pub ticket_path: String,
 }

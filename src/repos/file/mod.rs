@@ -6,8 +6,10 @@ use actix_files::NamedFile;
 use actix_web::{
     http::header::{ContentDisposition, DispositionType},
     mime::Mime,
+    HttpResponse,
 };
 use aws_sdk_s3::{primitives::ByteStream, Client as S3Client};
+use tokio::fs::read;
 
 use crate::{
     models::{
@@ -59,12 +61,12 @@ pub async fn upload_ticket_payment(
         .put_object()
         .bucket(bucket_name.as_str())
         .set_body(Some(body))
-        .key(format!("payment-tickets/{file_name}"))
+        .key(format!("payment-tickets/{file_name}.jpeg"))
         .send()
         .await
     {
         Ok(_) => Ok(FileUploadInfo {
-            file_path: format!("payment-tickets/{file_name}"),
+            ticket_path: format!("payment-tickets/{file_name}.jpeg"),
         }),
         Err(e) => {
             println!("{e:?}");
@@ -80,7 +82,7 @@ pub async fn get_ticket_payment(
     ticket_path: String,
     s3_client: Arc<S3Client>,
     bucket_name: Arc<String>,
-) -> Result<NamedFile, StatusMessage> {
+) -> Result<HttpResponse, StatusMessage> {
     // in case it doesn't have good credentials, a bit of deffensive programming
     if !check_file_upload_credentials(&access_token) {
         return Err(StatusMessage {
@@ -88,10 +90,13 @@ pub async fn get_ticket_payment(
         });
     }
 
-    let file_path = format!("/tmp/general_api/{ticket_path}");
+    let file_path = format!("./{ticket_path}");
     // we need to write it somewhere, then when can delete it
-    let mut tmp_file = File::create(&file_path).map_err(|_| StatusMessage {
-        message: "couldn't create temp file".to_owned(),
+    let mut tmp_file = File::create(&file_path).map_err(|err| {
+        println!("{err:?}");
+        StatusMessage {
+            message: "couldn't create temp file".to_owned(),
+        }
     })?;
 
     // byte stream from s3 bucket
@@ -112,19 +117,10 @@ pub async fn get_ticket_payment(
         })?;
     }
 
-    if let Ok(file) = NamedFile::open(&file_path) {
-        let content_type: Mime = "application/pdf".parse().unwrap();
-        return Ok(
-            NamedFile::set_content_type(file, content_type).set_content_disposition(
-                ContentDisposition {
-                    disposition: DispositionType::Inline,
-                    parameters: Vec::new(), // we ain't going to pass s***
-                },
-            ),
-        );
+    match read(file_path).await {
+        Ok(image) => Ok(HttpResponse::Ok().content_type("image/png").body(image)),
+        Err(_) => Err(StatusMessage {
+            message: "Couldn't send Named file".to_owned(),
+        }),
     }
-
-    Err(StatusMessage {
-        message: "Couldn't send Named file".to_owned(),
-    })
 }

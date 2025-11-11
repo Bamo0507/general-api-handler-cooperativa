@@ -1,21 +1,24 @@
 use actix_files::NamedFile;
 use actix_multipart::form::MultipartForm;
 use actix_web::{
-    error::ErrorBadRequest,
     mime::Mime,
     web::{Data, Query},
-    HttpResponse, Responder,
+    HttpRequest, HttpResponse, Responder,
 };
 use aws_sdk_s3::Client as S3Client;
 
 use crate::{
-    models::file::{FileCredentials, UploadForm},
+    endpoints::handlers::rest::file,
+    models::{
+        file::{FilePayloadRetrival, FilePayloadUpload, UploadForm},
+        StatusMessage,
+    },
     repos::file::{get_ticket_payment, upload_ticket_payment},
 };
 
 pub async fn upload_ticket_for_payment(
     MultipartForm(form): MultipartForm<UploadForm>,
-    file_upload_credentials: Query<FileCredentials>,
+    file_upload_credentials: Query<FilePayloadUpload>,
     s3_client: Data<S3Client>,
     bucket_name: Data<String>,
 ) -> HttpResponse {
@@ -35,20 +38,21 @@ pub async fn upload_ticket_for_payment(
 }
 
 pub async fn get_ticket_from_payment(
-    file_getter_credentials: Query<FileCredentials>,
-    ticket_path: String,
+    file_getter_credentials: Query<FilePayloadRetrival>,
     s3_client: Data<S3Client>,
     bucket_name: Data<String>,
 ) -> HttpResponse {
     let file_getter_credentials = file_getter_credentials.into_inner();
 
-    let ticket = get_ticket_payment(
+    match get_ticket_payment(
         file_getter_credentials.access_token,
-        ticket_path,
+        file_getter_credentials.ticket_path,
         s3_client.into_inner(),
         bucket_name.into_inner(),
     )
-    .await;
-
-    todo!()
+    .await
+    {
+        Ok(res) => res,
+        Err(msg) => HttpResponse::Ok().json(msg),
+    }
 }
