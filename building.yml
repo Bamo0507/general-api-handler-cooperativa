@@ -1,7 +1,7 @@
 services:
-  general-api-handler:
+  backend:
     build: .
     ports: 
-      - "5086:5086"
+      - "${PORT}:${PORT}"
     env_file:
       - .env
