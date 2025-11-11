@@ -42,6 +42,7 @@ fn test_repo_create_payment_happy_path() {
     let res = repo.create_payment(
         access_token.clone(),
         payment.name.clone(),
+        "si".to_owned(),
         payment.total_amount,
         payment.ticket_num.clone(),
         payment.account_num.clone(),
@@ -85,6 +86,7 @@ fn test_create_then_get_all_returns_created_payment() {
     let res = repo.create_payment(
         access_token.clone(),
         "AllTest".to_string(),
+        "si".to_owned(),
         42.0,
         "T_ALL".to_string(),
         "A_ALL".to_string(),
@@ -126,6 +128,7 @@ fn test_repo_create_payment_persists_json_content() {
     let res = repo.create_payment(
         access_token.clone(),
         payment_name.clone(),
+        "si".to_owned(),
         total_amount,
         "RC_CONTENT".to_string(),
         "RACC_CONTENT".to_string(),
@@ -179,6 +182,7 @@ fn test_repo_create_payment_twice_creates_two_keys() {
     let _ = repo.create_payment(
         access_token.clone(),
         "N1".to_string(),
+        "si".to_owned(),
         1.0,
         "T1".to_string(),
         "A1".to_string(),
@@ -187,6 +191,7 @@ fn test_repo_create_payment_twice_creates_two_keys() {
     let _ = repo.create_payment(
         access_token.clone(),
         "N2".to_string(),
+        "si".to_owned(),
         2.0,
         "T2".to_string(),
         "A2".to_string(),
@@ -224,6 +229,7 @@ fn test_create_payment_collision_behavior() {
     let _ = repo.create_payment(
         access_token.clone(),
         "SameName".to_string(),
+        "si".to_owned(),
         10.0,
         "T1".to_string(),
         "A1".to_string(),
@@ -232,6 +238,7 @@ fn test_create_payment_collision_behavior() {
     let _ = repo.create_payment(
         access_token.clone(),
         "SameName".to_string(),
+        "si".to_owned(),
         10.0,
         "T1".to_string(),
         "A1".to_string(),

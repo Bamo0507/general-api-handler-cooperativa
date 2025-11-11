@@ -69,6 +69,7 @@ impl PaymentRepo {
         &self,
         access_token: String,
         name: String,
+        comprobante_path: String,
         total_amount: f64,
         ticket_number: String,
         account_number: String,
@@ -106,7 +107,8 @@ impl PaymentRepo {
                         ticket_number,
                         date_created: date,
                         //TODO: add impl for bucket paths
-                        comprobante_bucket: String::new(),
+                        comprobante_bucket: comprobante_path, // I fucked up big time with the name of
+                        // this shit, imma kms
                         account_number,
                         comments: None,
                         status: "ON_REVISION".to_owned(),
