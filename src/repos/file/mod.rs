@@ -108,7 +108,7 @@ pub async fn get_ticket_payment(
         .unwrap();
 
     // we write bytes to the tmp_file (if they exist)
-    if let Some(bytes) = raw_file.body.try_next().await.map_err(|_| StatusMessage {
+    while let Some(bytes) = raw_file.body.try_next().await.map_err(|_| StatusMessage {
         message: "couldn't open raw file".to_owned(),
     })? {
         tmp_file.write_all(&bytes).map_err(|_| StatusMessage {
