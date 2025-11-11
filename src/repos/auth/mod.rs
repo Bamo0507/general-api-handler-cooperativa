@@ -211,11 +211,7 @@ pub fn configure_security_answer(
     Ok(())
 }
 
-/// Configure all 3 security answers for a user
-/// 
-/// # Arguments
-/// * `user_name` - Username to configure
-/// * `answers` - Array of 3 answers [answer_for_q0, answer_for_q1, answer_for_q2]
+/// guarda las 3 respuestas de seguridad para un usuario
 pub fn configure_all_security_answers(
     user_name: String,
     answers: [String; 3],
@@ -224,17 +220,17 @@ pub fn configure_all_security_answers(
         .get()
         .expect("Couldn't connect to pool");
 
-    // Get affiliate_key from username
+    // obtiene affiliate_key del username
     let affiliate_key = hashing_composite_key(&[&user_name]);
 
-    // Get db_composite_key from Redis mapping
+    // obtiene db_composite_key del mapping en redis
     let db_composite_key: String = con
         .get(format!("affiliate_key_to_db_access:{}", &affiliate_key))
         .map_err(|_| StatusMessage {
             message: "Usuario no encontrado".to_string(),
         })?;
 
-    // Save all 3 answers with their indices
+    // guarda las 3 respuestas hasheadas con su índice
     for (index, answer) in answers.iter().enumerate() {
         let normalized_answer = answer.trim().to_lowercase();
         let answer_hash = hashing_composite_key(&[&normalized_answer]);
@@ -252,15 +248,7 @@ pub fn configure_all_security_answers(
     Ok(())
 }
 
-/// Validate security answer for password recovery
-/// 
-/// # Arguments
-/// * `user_name` - Username attempting to recover password
-/// * `question_index` - Index of the question (0, 1, or 2)
-/// * `security_answer` - Answer provided by user
-/// 
-/// # Returns
-/// Ok(db_composite_key) if answer is correct, Err(StatusMessage) if incorrect or user not found
+/// valida la respuesta de seguridad para recuperación de contraseña
 pub fn validate_security_answer(
     user_name: String,
     question_index: u8,
@@ -270,28 +258,28 @@ pub fn validate_security_answer(
         .get()
         .expect("Couldn't connect to pool");
 
-    // Get affiliate_key from username
+    // obtiene affiliate_key del username
     let affiliate_key = hashing_composite_key(&[&user_name]);
 
-    // Get db_composite_key from Redis mapping
+    // obtiene db_composite_key del mapping
     let db_composite_key: String = con
         .get(format!("affiliate_key_to_db_access:{}", &affiliate_key))
         .map_err(|_| StatusMessage {
             message: "Usuario no encontrado".to_string(),
         })?;
 
-    // Check if user has security question configured for this index
+    // obtiene la respuesta hasheada guardada en ese índice
     let stored_answer_hash: String = con
         .get(format!("users:{}:security_answer_{}", &db_composite_key, question_index))
         .map_err(|_| StatusMessage {
             message: "Usuario sin pregunta de seguridad configurada".to_string(),
         })?;
 
-    // Normalize and hash the provided answer
+    // normaliza y hashea la respuesta que el usuario ingresó
     let normalized_answer = security_answer.trim().to_lowercase();
     let provided_answer_hash = hashing_composite_key(&[&normalized_answer]);
 
-    // Compare hashes
+    // compara los hashes
     if provided_answer_hash == stored_answer_hash {
         Ok(db_composite_key)
     } else {
@@ -301,16 +289,7 @@ pub fn validate_security_answer(
     }
 }
 
-/// Reset password using security answer validation
-/// 
-/// # Arguments
-/// * `user_name` - Username
-/// * `question_index` - Index of the question (0, 1, or 2)
-/// * `security_answer` - Answer to security question (for validation)
-/// * `new_pass` - New password
-/// 
-/// # Returns
-/// Ok(TokenInfo) with new access_token if successful, Err(StatusMessage) otherwise
+/// resetea la contraseña validando respuesta de seguridad
 pub fn reset_password(
     user_name: String,
     question_index: u8,
@@ -321,22 +300,22 @@ pub fn reset_password(
         .get()
         .expect("Couldn't connect to pool");
 
-    // Step 1: Validate security answer (this also gets old db_composite_key)
+    // valida la respuesta y obtiene el db_composite_key anterior
     let old_db_composite_key = validate_security_answer(user_name.clone(), question_index, security_answer)?;
 
-    // Step 2: Generate new hashes with new password
+    // genera los nuevos hashes con la nueva contraseña
     let new_access_token = hashing_composite_key(&[&user_name, &new_pass]);
     let new_db_composite_key = hashing_composite_key(&[&new_access_token]);
     let affiliate_key = hashing_composite_key(&[&user_name]);
 
-    // Step 3: Get user's complete_name (needed for new account creation)
+    // obtiene el nombre del usuario (lo necesita para la nueva entrada)
     let real_name: String = con
         .get(format!("users:{}:complete_name", &old_db_composite_key))
         .map_err(|_| StatusMessage {
             message: "No se pudo obtener datos del usuario".to_string(),
         })?;
 
-    // Step 4: Get all 3 security answers (to copy them)
+    // obtiene las 3 respuestas de seguridad (para copiarlas)
     let mut security_answers = Vec::new();
     for i in 0..3 {
         let answer_hash: String = con
@@ -345,8 +324,8 @@ pub fn reset_password(
         security_answers.push(answer_hash);
     }
 
-    // Step 5: Copy all user data to new keys (with new db_composite_key)
-    // Base user info
+    // copia todos los datos del usuario a las nuevas claves (con el nuevo db_composite_key)
+    // datos base del usuario
     let _: () = con
         .set(
             format!("users:{}:complete_name", &new_db_composite_key),
@@ -365,7 +344,7 @@ pub fn reset_password(
             message: "No se pudo crear nuevo usuario".to_string(),
         })?;
 
-    // Security question data - copy all 3 answers
+    // copia las 3 respuestas de seguridad
     for (index, answer_hash) in security_answers.iter().enumerate() {
         if !answer_hash.is_empty() {
             let _: () = con
@@ -379,7 +358,7 @@ pub fn reset_password(
         }
     }
 
-    // Copy financial fields
+    // copia campos financieros
     let payed_to_capital: f64 = con
         .get(format!("users:{}:payed_to_capital", &old_db_composite_key))
         .unwrap_or(0.0);
@@ -404,7 +383,7 @@ pub fn reset_password(
             message: "No se pudo copiar datos financieros".to_string(),
         })?;
 
-    // Copy user type
+    // copia tipo de usuario
     let is_directive: bool = con
         .get(format!("users:{}:is_directive", &old_db_composite_key))
         .unwrap_or(false);
@@ -439,7 +418,7 @@ pub fn reset_password(
             message: "No se pudo inicializar contadores".to_string(),
         })?;
 
-    // Step 6: Update affiliate_key_to_db_access mapping to new db_composite_key
+    // crea el nuevo mapping con las nuevas claves
     let _: () = con
         .set(
             format!("affiliate_key_to_db_access:{}", &affiliate_key),
@@ -449,7 +428,7 @@ pub fn reset_password(
             message: "No se pudo actualizar mapeo de usuario".to_string(),
         })?;
 
-    // Step 7: Delete all old user keys (for data security - prevent reusing old access_token)
+    // elimina todas las claves viejas del usuario anterior (seguridad: invalida el token anterior)
     let old_keys_to_delete = vec![
         format!("users:{}:complete_name", &old_db_composite_key),
         format!("users:{}:affiliate_key", &old_db_composite_key),
@@ -468,7 +447,7 @@ pub fn reset_password(
         let _: Result<(), _> = con.del(&key);
     }
 
-    // Return new token
+    // retorna el nuevo token con datos actualizados
     Ok(TokenInfo {
         user_name,
         access_token: new_access_token,

@@ -30,7 +30,7 @@ pub async fn user_login(user_data: web::Query<LoginInfo>) -> HttpResponse {
     ))
 }
 
-/// Get security questions for password recovery
+/// obtiene las preguntas de seguridad para recuperación de contraseña
 /// 
 /// GET /general/security-questions?user_name=username
 pub async fn get_security_questions_handler(query: web::Query<String>) -> HttpResponse {
@@ -43,7 +43,7 @@ pub async fn get_security_questions_handler(query: web::Query<String>) -> HttpRe
     HttpResponse::Ok().json(response)
 }
 
-/// Validate security answer for password recovery
+/// valida la respuesta de seguridad para recuperación de contraseña
 /// 
 /// POST /general/validate-security-answer
 pub async fn validate_security_answer_handler(
@@ -65,7 +65,7 @@ pub async fn validate_security_answer_handler(
     }
 }
 
-/// Reset password with security answer validation
+/// resetea la contraseña validando respuesta de seguridad
 /// 
 /// POST /general/reset-password
 pub async fn reset_password_handler(
