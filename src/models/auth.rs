@@ -53,6 +53,7 @@ pub struct SecurityQuestionsResponse {
 #[derive(Clone, Deserialize, Debug)]
 pub struct ValidateSecurityAnswerRequest {
     pub user_name: String,
+    pub question_index: u8,  // 0, 1, or 2
     pub security_answer: String,
 }
 
@@ -64,6 +65,7 @@ pub struct ValidateSecurityAnswerResponse {
 #[derive(Clone, Deserialize, Debug)]
 pub struct ResetPasswordRequest {
     pub user_name: String,
+    pub question_index: u8,  // 0, 1, or 2
     pub security_answer: String,
     pub new_pass_code: String,
 }

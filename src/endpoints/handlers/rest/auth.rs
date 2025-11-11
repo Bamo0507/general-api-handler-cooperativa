@@ -51,7 +51,7 @@ pub async fn validate_security_answer_handler(
 ) -> HttpResponse {
     let data = body.into_inner();
     
-    match validate_security_answer(data.user_name, data.security_answer) {
+    match validate_security_answer(data.user_name, data.question_index, data.security_answer) {
         Ok(_) => {
             HttpResponse::Ok().json(ValidateSecurityAnswerResponse {
                 message: "Respuesta válida".to_string(),
@@ -73,7 +73,7 @@ pub async fn reset_password_handler(
 ) -> HttpResponse {
     let data = body.into_inner();
     
-    match reset_password(data.user_name, data.security_answer, data.new_pass_code) {
+    match reset_password(data.user_name, data.question_index, data.security_answer, data.new_pass_code) {
         Ok(token_info) => HttpResponse::Ok().json(token_info),
         Err(err) => {
             HttpResponse::BadRequest().json(crate::models::StatusMessage {

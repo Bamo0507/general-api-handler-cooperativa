@@ -10,7 +10,7 @@ use general_api::{
     repos::{
         auth::{
             create_user_with_access_token, get_user_access_token, utils::hashing_composite_key,
-            configure_security_answer, validate_security_answer, reset_password,
+            configure_all_security_answers, validate_security_answer, reset_password,
         },
         graphql::payment::PaymentRepo,
     },
@@ -37,8 +37,9 @@ fn cleanup_test_user(username: &str) {
         format!("users:{}:is_directive", db_access_token),
         format!("users:{}:payments", db_access_token),
         format!("users:{}:loans", db_access_token),
-        format!("users:{}:security_question_index", db_access_token),
-        format!("users:{}:security_answer", db_access_token),
+        format!("users:{}:security_answer_0", db_access_token),
+        format!("users:{}:security_answer_1", db_access_token),
+        format!("users:{}:security_answer_2", db_access_token),
     ];
     for clave in claves {
         let del_result: Result<(), _> = con.del(&clave);
@@ -50,14 +51,20 @@ fn cleanup_test_user(username: &str) {
 }
 
 /// Helper function to seed security questions for test users
-/// Creates 5 test users with security questions configured
-fn seed_security_questions() -> Vec<(String, String)> {
+/// Creates 5 test users with 3 security questions/answers each
+fn seed_security_questions() -> Vec<(String, [String; 3])> {
     let mut test_users = Vec::new();
     
     for i in 1..=5 {
         let username = format!("security_test_user_{}", i);
         let password = "ElTestoPaga".to_string();
-        let answer = format!("test_answer_{}", i);
+        
+        // Create 3 answers for this user
+        let answers = [
+            format!("test_answer_{}_0", i),
+            format!("test_answer_{}_1", i),
+            format!("test_answer_{}_2", i),
+        ];
         
         // Cleanup first
         cleanup_test_user(&username);
@@ -70,16 +77,14 @@ fn seed_security_questions() -> Vec<(String, String)> {
         );
         
         if creation_result.is_ok() {
-            // Configure security question for this user
-            let question_index = ((i - 1) % 3) as u8; // Cycle through 0, 1, 2
-            let config_result = configure_security_answer(
+            // Configure all 3 security answers for this user
+            let config_result = configure_all_security_answers(
                 username.clone(),
-                question_index,
-                answer.clone(),
+                answers.clone(),
             );
             
             if config_result.is_ok() {
-                test_users.push((username, answer));
+                test_users.push((username, answers));
             }
         }
     }
@@ -248,10 +253,10 @@ fn test_validate_security_answer_correct() {
     let test_users = seed_security_questions();
     assert!(!test_users.is_empty(), "Should have seeded test users");
     
-    let (username, answer) = test_users.first().unwrap();
+    let (username, answers) = test_users.first().unwrap();
     
-    // Validate with correct answer
-    let result = validate_security_answer(username.clone(), answer.clone());
+    // Validate with correct answer from index 0
+    let result = validate_security_answer(username.clone(), 0, answers[0].clone());
     assert!(result.is_ok(), "Should validate correct answer: {:?}", result.err());
     
     // The result should be the db_composite_key
@@ -270,11 +275,11 @@ fn test_validate_security_answer_incorrect() {
     let test_users = seed_security_questions();
     assert!(!test_users.is_empty(), "Should have seeded test users");
     
-    let (username, _correct_answer) = test_users.first().unwrap();
+    let (username, _answers) = test_users.first().unwrap();
     let wrong_answer = "completely_wrong_answer";
     
     // Validate with incorrect answer
-    let result = validate_security_answer(username.clone(), wrong_answer.to_string());
+    let result = validate_security_answer(username.clone(), 0, wrong_answer.to_string());
     assert!(result.is_err(), "Should reject incorrect answer");
     
     let error_msg = result.unwrap_err();
@@ -296,7 +301,7 @@ fn test_reset_password_success() {
     let test_users = seed_security_questions();
     assert!(!test_users.is_empty(), "Should have seeded test users");
     
-    let (username, answer) = test_users.first().unwrap();
+    let (username, answers) = test_users.first().unwrap();
     let new_password = "NewPassword123";
     
     // Get original token for comparison
@@ -305,10 +310,11 @@ fn test_reset_password_success() {
         "ElTestoPaga".to_string(),
     ).expect("Should get original token");
     
-    // Reset password
+    // Reset password with question_index 0
     let result = reset_password(
         username.clone(),
-        answer.clone(),
+        0,
+        answers[0].clone(),
         new_password.to_string(),
     );
     
@@ -364,6 +370,7 @@ fn test_reset_password_without_question() {
     // Try to reset password without configuring security question
     let result = reset_password(
         username.clone(),
+        0,
         "some_answer".to_string(),
         "NewPassword".to_string(),
     );

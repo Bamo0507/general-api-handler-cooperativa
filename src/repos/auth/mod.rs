@@ -211,16 +211,59 @@ pub fn configure_security_answer(
     Ok(())
 }
 
+/// Configure all 3 security answers for a user
+/// 
+/// # Arguments
+/// * `user_name` - Username to configure
+/// * `answers` - Array of 3 answers [answer_for_q0, answer_for_q1, answer_for_q2]
+pub fn configure_all_security_answers(
+    user_name: String,
+    answers: [String; 3],
+) -> Result<(), StatusMessage> {
+    let mut con = get_pool_connection()
+        .get()
+        .expect("Couldn't connect to pool");
+
+    // Get affiliate_key from username
+    let affiliate_key = hashing_composite_key(&[&user_name]);
+
+    // Get db_composite_key from Redis mapping
+    let db_composite_key: String = con
+        .get(format!("affiliate_key_to_db_access:{}", &affiliate_key))
+        .map_err(|_| StatusMessage {
+            message: "Usuario no encontrado".to_string(),
+        })?;
+
+    // Save all 3 answers with their indices
+    for (index, answer) in answers.iter().enumerate() {
+        let normalized_answer = answer.trim().to_lowercase();
+        let answer_hash = hashing_composite_key(&[&normalized_answer]);
+
+        let _: () = con
+            .set(
+                format!("users:{}:security_answer_{}", &db_composite_key, index),
+                answer_hash,
+            )
+            .map_err(|_| StatusMessage {
+                message: format!("No se pudo guardar la respuesta {} de seguridad", index),
+            })?;
+    }
+
+    Ok(())
+}
+
 /// Validate security answer for password recovery
 /// 
 /// # Arguments
 /// * `user_name` - Username attempting to recover password
+/// * `question_index` - Index of the question (0, 1, or 2)
 /// * `security_answer` - Answer provided by user
 /// 
 /// # Returns
 /// Ok(db_composite_key) if answer is correct, Err(StatusMessage) if incorrect or user not found
 pub fn validate_security_answer(
     user_name: String,
+    question_index: u8,
     security_answer: String,
 ) -> Result<String, StatusMessage> {
     let mut con = get_pool_connection()
@@ -237,9 +280,9 @@ pub fn validate_security_answer(
             message: "Usuario no encontrado".to_string(),
         })?;
 
-    // Check if user has security question configured
+    // Check if user has security question configured for this index
     let stored_answer_hash: String = con
-        .get(format!("users:{}:security_answer", &db_composite_key))
+        .get(format!("users:{}:security_answer_{}", &db_composite_key, question_index))
         .map_err(|_| StatusMessage {
             message: "Usuario sin pregunta de seguridad configurada".to_string(),
         })?;
@@ -262,6 +305,7 @@ pub fn validate_security_answer(
 /// 
 /// # Arguments
 /// * `user_name` - Username
+/// * `question_index` - Index of the question (0, 1, or 2)
 /// * `security_answer` - Answer to security question (for validation)
 /// * `new_pass` - New password
 /// 
@@ -269,6 +313,7 @@ pub fn validate_security_answer(
 /// Ok(TokenInfo) with new access_token if successful, Err(StatusMessage) otherwise
 pub fn reset_password(
     user_name: String,
+    question_index: u8,
     security_answer: String,
     new_pass: String,
 ) -> Result<TokenInfo, StatusMessage> {
@@ -277,7 +322,7 @@ pub fn reset_password(
         .expect("Couldn't connect to pool");
 
     // Step 1: Validate security answer (this also gets old db_composite_key)
-    let old_db_composite_key = validate_security_answer(user_name.clone(), security_answer)?;
+    let old_db_composite_key = validate_security_answer(user_name.clone(), question_index, security_answer)?;
 
     // Step 2: Generate new hashes with new password
     let new_access_token = hashing_composite_key(&[&user_name, &new_pass]);
@@ -291,18 +336,14 @@ pub fn reset_password(
             message: "No se pudo obtener datos del usuario".to_string(),
         })?;
 
-    // Step 4: Get security question index and answer (to copy them)
-    let security_question_index: String = con
-        .get(format!("users:{}:security_question_index", &old_db_composite_key))
-        .map_err(|_| StatusMessage {
-            message: "No se pudo obtener pregunta de seguridad".to_string(),
-        })?;
-
-    let security_answer_hash: String = con
-        .get(format!("users:{}:security_answer", &old_db_composite_key))
-        .map_err(|_| StatusMessage {
-            message: "No se pudo obtener respuesta de seguridad".to_string(),
-        })?;
+    // Step 4: Get all 3 security answers (to copy them)
+    let mut security_answers = Vec::new();
+    for i in 0..3 {
+        let answer_hash: String = con
+            .get(format!("users:{}:security_answer_{}", &old_db_composite_key, i))
+            .unwrap_or_default();
+        security_answers.push(answer_hash);
+    }
 
     // Step 5: Copy all user data to new keys (with new db_composite_key)
     // Base user info
@@ -324,24 +365,19 @@ pub fn reset_password(
             message: "No se pudo crear nuevo usuario".to_string(),
         })?;
 
-    // Security question data
-    let _: () = con
-        .set(
-            format!("users:{}:security_question_index", &new_db_composite_key),
-            &security_question_index,
-        )
-        .map_err(|_| StatusMessage {
-            message: "No se pudo guardar pregunta de seguridad".to_string(),
-        })?;
-
-    let _: () = con
-        .set(
-            format!("users:{}:security_answer", &new_db_composite_key),
-            &security_answer_hash,
-        )
-        .map_err(|_| StatusMessage {
-            message: "No se pudo guardar respuesta de seguridad".to_string(),
-        })?;
+    // Security question data - copy all 3 answers
+    for (index, answer_hash) in security_answers.iter().enumerate() {
+        if !answer_hash.is_empty() {
+            let _: () = con
+                .set(
+                    format!("users:{}:security_answer_{}", &new_db_composite_key, index),
+                    answer_hash,
+                )
+                .map_err(|_| StatusMessage {
+                    message: "No se pudo guardar respuesta de seguridad".to_string(),
+                })?;
+        }
+    }
 
     // Copy financial fields
     let payed_to_capital: f64 = con
