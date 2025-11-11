@@ -10,6 +10,7 @@ use general_api::{
     repos::{
         auth::{
             create_user_with_access_token, get_user_access_token, utils::hashing_composite_key,
+            configure_security_answer, validate_security_answer, reset_password,
         },
         graphql::payment::PaymentRepo,
     },
@@ -36,6 +37,8 @@ fn cleanup_test_user(username: &str) {
         format!("users:{}:is_directive", db_access_token),
         format!("users:{}:payments", db_access_token),
         format!("users:{}:loans", db_access_token),
+        format!("users:{}:security_question_index", db_access_token),
+        format!("users:{}:security_answer", db_access_token),
     ];
     for clave in claves {
         let del_result: Result<(), _> = con.del(&clave);
@@ -44,6 +47,44 @@ fn cleanup_test_user(username: &str) {
 
     // Esperar un poco para asegurar que Redis procese la eliminación
     std::thread::sleep(std::time::Duration::from_millis(100));
+}
+
+/// Helper function to seed security questions for test users
+/// Creates 5 test users with security questions configured
+fn seed_security_questions() -> Vec<(String, String)> {
+    let mut test_users = Vec::new();
+    
+    for i in 1..=5 {
+        let username = format!("security_test_user_{}", i);
+        let password = "ElTestoPaga".to_string();
+        let answer = format!("test_answer_{}", i);
+        
+        // Cleanup first
+        cleanup_test_user(&username);
+        
+        // Create user
+        let creation_result = create_user_with_access_token(
+            username.clone(),
+            password.clone(),
+            format!("Test User {}", i),
+        );
+        
+        if creation_result.is_ok() {
+            // Configure security question for this user
+            let question_index = ((i - 1) % 3) as u8; // Cycle through 0, 1, 2
+            let config_result = configure_security_answer(
+                username.clone(),
+                question_index,
+                answer.clone(),
+            );
+            
+            if config_result.is_ok() {
+                test_users.push((username, answer));
+            }
+        }
+    }
+    
+    test_users
 }
 
 /// Tests for checking login function integrity
@@ -196,5 +237,139 @@ fn check_if_can_acess_data() {
     );
     
     // Limpiar después del test
+    cleanup_test_user(&username);
+}
+
+/// Test for validating security answer - correct answer path
+#[test]
+fn test_validate_security_answer_correct() {
+    let _ = dotenv();
+    
+    let test_users = seed_security_questions();
+    assert!(!test_users.is_empty(), "Should have seeded test users");
+    
+    let (username, answer) = test_users.first().unwrap();
+    
+    // Validate with correct answer
+    let result = validate_security_answer(username.clone(), answer.clone());
+    assert!(result.is_ok(), "Should validate correct answer: {:?}", result.err());
+    
+    // The result should be the db_composite_key
+    let _db_composite_key = result.unwrap();
+    assert!(!_db_composite_key.is_empty(), "db_composite_key should not be empty");
+    
+    // Cleanup
+    cleanup_test_user(username);
+}
+
+/// Test for validating security answer - incorrect answer path
+#[test]
+fn test_validate_security_answer_incorrect() {
+    let _ = dotenv();
+    
+    let test_users = seed_security_questions();
+    assert!(!test_users.is_empty(), "Should have seeded test users");
+    
+    let (username, _correct_answer) = test_users.first().unwrap();
+    let wrong_answer = "completely_wrong_answer";
+    
+    // Validate with incorrect answer
+    let result = validate_security_answer(username.clone(), wrong_answer.to_string());
+    assert!(result.is_err(), "Should reject incorrect answer");
+    
+    let error_msg = result.unwrap_err();
+    assert!(
+        error_msg.message.contains("Respuesta incorrecta") || error_msg.message.contains("incorrecta"),
+        "Should return incorrect answer message, got: {}",
+        error_msg.message
+    );
+    
+    // Cleanup
+    cleanup_test_user(username);
+}
+
+/// Test for reset password - successful reset path
+#[test]
+fn test_reset_password_success() {
+    let _ = dotenv();
+    
+    let test_users = seed_security_questions();
+    assert!(!test_users.is_empty(), "Should have seeded test users");
+    
+    let (username, answer) = test_users.first().unwrap();
+    let new_password = "NewPassword123";
+    
+    // Get original token for comparison
+    let original_token = get_user_access_token(
+        username.clone(),
+        "ElTestoPaga".to_string(),
+    ).expect("Should get original token");
+    
+    // Reset password
+    let result = reset_password(
+        username.clone(),
+        answer.clone(),
+        new_password.to_string(),
+    );
+    
+    assert!(result.is_ok(), "Should reset password successfully: {:?}", result.err());
+    
+    let new_token_info = result.unwrap();
+    assert!(!new_token_info.access_token.is_empty(), "Should return new access_token");
+    
+    // Verify new token is different from old token
+    assert_ne!(
+        original_token.access_token,
+        new_token_info.access_token,
+        "New token should be different from old token"
+    );
+    
+    // Verify user can login with new password
+    let new_login_result = get_user_access_token(
+        username.clone(),
+        new_password.to_string(),
+    );
+    
+    assert!(new_login_result.is_ok(), "Should be able to login with new password");
+    let new_login_token = new_login_result.unwrap();
+    assert_eq!(
+        new_login_token.access_token,
+        new_token_info.access_token,
+        "New login token should match reset password token"
+    );
+    
+    // Cleanup
+    cleanup_test_user(username);
+}
+
+/// Test for reset password without configured security question
+#[test]
+fn test_reset_password_without_question() {
+    let _ = dotenv();
+    
+    // Create a user without security question
+    let username = format!("no_security_user_{}", Alphanumeric.sample_string(&mut rng(), 8));
+    let password = "ElTestoPaga".to_string();
+    
+    cleanup_test_user(&username);
+    
+    let creation_result = create_user_with_access_token(
+        username.clone(),
+        password.clone(),
+        "Test User No Question".to_string(),
+    );
+    
+    assert!(creation_result.is_ok(), "Should create test user");
+    
+    // Try to reset password without configuring security question
+    let result = reset_password(
+        username.clone(),
+        "some_answer".to_string(),
+        "NewPassword".to_string(),
+    );
+    
+    assert!(result.is_err(), "Should fail when security question not configured");
+    
+    // Cleanup
     cleanup_test_user(&username);
 }

@@ -1,5 +1,12 @@
 use serde::{Deserialize, Serialize};
 
+// Preguntas de seguridad disponibles (hardcodeadas)
+pub const SECURITY_QUESTIONS: [&str; 3] = [
+    "¿Cuál fue el nombre de la primera escuela o colegio al que asististe?",
+    "¿En qué colonia o barrio viviste durante tu infancia?",
+    "¿Cuál era tu materia o clase favorita en la escuela?",
+];
+
 #[derive(Clone, Deserialize, Debug)]
 pub struct SignUpInfo {
     pub user_name: String,
@@ -34,4 +41,34 @@ impl ToString for UserType {
             UserType::General => "General".to_owned(),
         }
     }
+}
+
+// Password Recovery - Request/Response Structs
+
+#[derive(Clone, Serialize)]
+pub struct SecurityQuestionsResponse {
+    pub questions: Vec<String>,
+}
+
+#[derive(Clone, Deserialize, Debug)]
+pub struct ValidateSecurityAnswerRequest {
+    pub user_name: String,
+    pub security_answer: String,
+}
+
+#[derive(Clone, Serialize)]
+pub struct ValidateSecurityAnswerResponse {
+    pub message: String,
+}
+
+#[derive(Clone, Deserialize, Debug)]
+pub struct ResetPasswordRequest {
+    pub user_name: String,
+    pub security_answer: String,
+    pub new_pass_code: String,
+}
+
+#[derive(Clone, Serialize)]
+pub struct ResetPasswordResponse {
+    pub access_token: String,
 }
