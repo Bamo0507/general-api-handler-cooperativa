@@ -16,7 +16,7 @@ jobs:
       - run: cat ~/.keys/CSPI_KEY.pem
       - name: entering dev vm
         run: |
-            ssh -i ~/.keys/CSPI_KEY.pem -o StrictHostKeyChecking=no  ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
+            ssh -i ~/.keys/CSPI_KEY.pem -o StrictHostKeyChecking=no -o "ServerAliveInterval 60" ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
               cd general-api-handler-cooperativa
               git pull
               sudo docker compose -f init-server.yml down
