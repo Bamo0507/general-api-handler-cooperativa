@@ -449,6 +449,25 @@ pub fn reset_password(
             message: "No se pudo actualizar mapeo de usuario".to_string(),
         })?;
 
+    // Step 7: Delete all old user keys (for data security - prevent reusing old access_token)
+    let old_keys_to_delete = vec![
+        format!("users:{}:complete_name", &old_db_composite_key),
+        format!("users:{}:affiliate_key", &old_db_composite_key),
+        format!("users:{}:payed_to_capital", &old_db_composite_key),
+        format!("users:{}:owed_capital", &old_db_composite_key),
+        format!("users:{}:is_directive", &old_db_composite_key),
+        format!("users:{}:payments", &old_db_composite_key),
+        format!("users:{}:loans", &old_db_composite_key),
+        format!("users:{}:fines", &old_db_composite_key),
+        format!("users:{}:security_answer_0", &old_db_composite_key),
+        format!("users:{}:security_answer_1", &old_db_composite_key),
+        format!("users:{}:security_answer_2", &old_db_composite_key),
+    ];
+    
+    for key in old_keys_to_delete {
+        let _: Result<(), _> = con.del(&key);
+    }
+
     // Return new token
     Ok(TokenInfo {
         user_name,
