@@ -106,9 +106,8 @@ impl PaymentRepo {
                         total_amount,
                         ticket_number,
                         date_created: date,
-                        //TODO: add impl for bucket paths
                         comprobante_bucket: comprobante_path, // I fucked up big time with the name of
-                        // this shit, imma kms
+                        // this shitty, imma kms
                         account_number,
                         comments: None,
                         status: "ON_REVISION".to_owned(),

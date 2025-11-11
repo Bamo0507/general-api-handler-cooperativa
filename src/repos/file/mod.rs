@@ -1,6 +1,6 @@
 pub mod utils;
 
-use std::{io::Read, sync::Arc};
+use std::sync::Arc;
 
 use aws_sdk_s3::{primitives::ByteStream, Client as S3Client};
 
@@ -14,7 +14,7 @@ use crate::{
 
 //TODO: refactor this for multiple documents
 
-pub async fn upload_ticket_payments(
+pub async fn upload_ticket_payment(
     form: UploadForm,
     access_token: String,
     s3_client: Arc<S3Client>,
@@ -54,12 +54,12 @@ pub async fn upload_ticket_payments(
         .put_object()
         .bucket(bucket_name.as_str())
         .set_body(Some(body))
-        .key(format!("payment-tickets/{file_name}.pdf"))
+        .key(format!("payment-tickets/{file_name}"))
         .send()
         .await
     {
         Ok(_) => Ok(FileUploadInfo {
-            file_path: format!("payment-tickets/{file_name}.pdf"),
+            file_path: format!("payment-tickets/{file_name}"),
         }),
         Err(e) => {
             println!("{e:?}");

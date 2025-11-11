@@ -97,10 +97,10 @@ pub fn get_multiple_models_by_id<GraphQLType, RedisType>(
 where
     RedisType: DeserializeOwned + Clone + GraphQLMappable<GraphQLType> + Debug,
 {
-    let mut db_access_token;
+    let db_access_token;
     let mut con = pool.get().expect("Couldn't connect to pool");
 
-    if (access_token == None) && (db_token == None) {
+    if (access_token.is_none()) && (db_token.is_none()) {
         return Err("At leat one of the token most be something".to_owned());
     }
 
