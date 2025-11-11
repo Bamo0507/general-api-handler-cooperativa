@@ -1,6 +1,6 @@
 pub mod utils;
 
-use std::sync::Arc;
+use std::{fs::File, io::Write, sync::Arc};
 
 use aws_sdk_s3::{primitives::ByteStream, Client as S3Client};
 
@@ -68,4 +68,44 @@ pub async fn upload_ticket_payment(
             })
         }
     }
+}
+
+pub async fn get_ticket_payment(
+    access_token: String,
+    ticket_path: String,
+    s3_client: Arc<S3Client>,
+    bucket_name: Arc<String>,
+) -> Result<File, StatusMessage> {
+    // in case it doesn't have good credentials, a bit of deffensive programming
+    if !check_file_upload_credentials(&access_token) {
+        return Err(StatusMessage {
+            message: "Couldn't verify user".to_owned(),
+        });
+    }
+
+    // we need to write it somewhere, then when can delete it
+    let mut tmp_file =
+        File::create(format!("/tmp/general_api/{ticket_path}")).map_err(|_| StatusMessage {
+            message: "couldn't create temp file".to_owned(),
+        })?;
+
+    // byte stream from s3 bucket
+    let mut raw_file = s3_client
+        .get_object()
+        .bucket(bucket_name.as_str())
+        .key(ticket_path)
+        .send()
+        .await
+        .unwrap();
+
+    // we write bytes to the tmp_file (if they exist)
+    if let Some(bytes) = raw_file.body.try_next().await.map_err(|_| StatusMessage {
+        message: "couldn't open raw file".to_owned(),
+    })? {
+        tmp_file.write_all(&bytes).map_err(|_| StatusMessage {
+            message: "couldn't write to temp file".to_owned(),
+        })?;
+    }
+
+    Ok(tmp_file)
 }
