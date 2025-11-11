@@ -108,7 +108,7 @@ impl LoanRepo {
                         total: redis_loan.total,
                         status: LoanStatus::from_string(redis_loan.status.clone()),
                         reason: redis_loan.reason.clone(),
-                        interest_rate: redis_loan.interest_rate,
+                        interest_rate: redis_loan.interest_rate.unwrap_or(0.0),
                         presented_by_name,
                     });
                 }
@@ -160,7 +160,7 @@ impl LoanRepo {
                         total: base_needed_payment,
                         status: "PENDING".to_owned(),
                         reason,
-                        interest_rate,
+                        interest_rate: Some(interest_rate),
                     },
                 )
                 .expect("LOAN CREATION: Couldn't Create Loan");

@@ -133,7 +133,7 @@ fn test_repo_create_loan_persists_json_content() {
     assert!((rl.total - base_needed_payment).abs() < 1e-6, "total debería ser igual a base_needed_payment");
     assert_eq!(rl.status, "PENDING");
     assert_eq!(rl.reason, reason);
-    assert!((rl.interest_rate - 0.12).abs() < 1e-6, "interest_rate debería ser 0.12");
+    assert!((rl.interest_rate.unwrap_or(0.0) - 0.12).abs() < 1e-6, "interest_rate debería ser 0.12");
 }
 
 #[test]
