@@ -23,7 +23,6 @@ async fn main() -> std::io::Result<()> {
     // Weird bugg in server
     println!("{}", config.redis_url);
 
-    std::env::set_var("RUST_LOG", "debug");
     env_logger::init();
 
     // aws client pool
