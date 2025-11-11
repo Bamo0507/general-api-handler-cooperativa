@@ -46,7 +46,7 @@ pub async fn get_ticket_from_payment(
 
     match get_ticket_payment(
         file_getter_credentials.access_token,
-        file_getter_credentials.ticket_path,
+        file_getter_credentials.ticket_id,
         s3_client.into_inner(),
         bucket_name.into_inner(),
     )

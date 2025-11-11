@@ -12,7 +12,7 @@ pub struct UploadForm {
 #[derive(Clone, Serialize, Deserialize)]
 pub struct FilePayloadRetrival {
     pub access_token: String,
-    pub ticket_path: String,
+    pub ticket_id: String,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -22,5 +22,5 @@ pub struct FilePayloadUpload {
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct FileUploadInfo {
-    pub ticket_path: String,
+    pub ticket_id: String,
 }

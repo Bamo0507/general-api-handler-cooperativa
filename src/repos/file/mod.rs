@@ -66,7 +66,7 @@ pub async fn upload_ticket_payment(
         .await
     {
         Ok(_) => Ok(FileUploadInfo {
-            ticket_path: format!("payment-tickets/{file_name}.jpeg"),
+            ticket_id: file_name,
         }),
         Err(e) => {
             println!("{e:?}");
@@ -79,7 +79,7 @@ pub async fn upload_ticket_payment(
 
 pub async fn get_ticket_payment(
     access_token: String,
-    ticket_path: String,
+    ticket_name: String,
     s3_client: Arc<S3Client>,
     bucket_name: Arc<String>,
 ) -> Result<HttpResponse, StatusMessage> {
@@ -90,9 +90,8 @@ pub async fn get_ticket_payment(
         });
     }
 
-    let file_path = format!("./{ticket_path}");
     // we need to write it somewhere, then when can delete it
-    let mut tmp_file = File::create(&file_path).map_err(|err| {
+    let mut tmp_file = File::create(&ticket_name).map_err(|err| {
         println!("{err:?}");
         StatusMessage {
             message: "couldn't create temp file".to_owned(),
@@ -103,7 +102,7 @@ pub async fn get_ticket_payment(
     let mut raw_file = s3_client
         .get_object()
         .bucket(bucket_name.as_str())
-        .key(ticket_path)
+        .key(format!("payment-tickets/{ticket_name}.jpeg"))
         .send()
         .await
         .unwrap();
@@ -117,8 +116,8 @@ pub async fn get_ticket_payment(
         })?;
     }
 
-    match read(file_path).await {
-        Ok(image) => Ok(HttpResponse::Ok().content_type("image/png").body(image)),
+    match read(ticket_name).await {
+        Ok(image) => Ok(HttpResponse::Ok().content_type("image/jpeg").body(image)),
         Err(_) => Err(StatusMessage {
             message: "Couldn't send Named file".to_owned(),
         }),
