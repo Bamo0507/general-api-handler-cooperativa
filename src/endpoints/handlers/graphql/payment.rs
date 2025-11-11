@@ -47,10 +47,12 @@ pub struct PaymentMutation;
     Context = GeneralContext,
 )]
 impl PaymentMutation {
-    //TODO: add for adding ticket path
+    /// mutation for adding payments in general
+    /// Take in mind that u have to inject the path for the ticket manually
     pub async fn create_user_payment(
         context: &GeneralContext,
         access_token: String,
+        comprobante_path: String,
         name: String,
         total_amount: f64,
         ticket_number: String,
@@ -60,6 +62,7 @@ impl PaymentMutation {
         context.payment_repo().create_payment(
             access_token,
             name,
+            comprobante_path,
             total_amount,
             ticket_number,
             account_number,
@@ -74,6 +77,9 @@ impl PaymentMutation {
         new_state: String,
         commentary: String,
     ) -> Result<Payment, String> {
-        context.payment_repo().approve_or_reject_payment(id, new_state, commentary).await
+        context
+            .payment_repo()
+            .approve_or_reject_payment(id, new_state, commentary)
+            .await
     }
 }

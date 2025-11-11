@@ -1,4 +1,4 @@
-// TODO: Refactor all of them with default imp
+use std::fs::File;
 
 use juniper::{GraphQLEnum, GraphQLObject};
 use serde::{Deserialize, Serialize};
@@ -157,7 +157,7 @@ pub struct Payment {
     pub ticket_num: String,
     pub account_num: String,
     pub commentary: Option<String>,
-    pub photo: String,        // For bucket use
+    pub photo_path: String,   // For bucket use
     pub state: PaymentStatus, // Following bryan's enums
     // lo que el usuario está pagando con este pago (préstamos, cuotas, multas, etc)
     // viene del array being_payed que manda el usuario al crear el pago

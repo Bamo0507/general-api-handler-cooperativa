@@ -50,7 +50,7 @@ impl GraphQLMappable<GraphQLPayment> for Payment {
             payment_date: (*self.date_created).to_string(),
             ticket_num: (*self.ticket_number).to_string(),
             commentary: self.comments.clone(), // f*** options, can't do low level stuff some times
-            photo: (*self.comprobante_bucket).to_string(),
+            photo_path: (*self.comprobante_bucket).to_string(),
             state: PaymentStatus::from_string((*self.status).to_string()),
             // clonamos el array de being_payed del redis model
             being_payed: self.being_payed.clone(),

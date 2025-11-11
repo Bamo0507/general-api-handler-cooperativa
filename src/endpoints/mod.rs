@@ -7,6 +7,7 @@ use serde_json::json;
 use crate::models::GeneralInfo;
 
 pub mod auth_endpoints;
+pub mod file_endpoints;
 pub mod graphql_endpoints;
 
 pub mod handlers;

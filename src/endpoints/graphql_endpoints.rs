@@ -11,13 +11,13 @@ use super::handlers::{
     },
 };
 
-//This is pretty much boilerplate for any Graphql api
+//this is pretty much boilerplate for any Graphql api
 
 pub fn graphql_config(config: &mut ServiceConfig) {
-    //General variables
+    // redis pool
     let pool = get_pool_connection();
 
-    //Instance of Schemas with generic function
+    //instance of Schemas with generic function
     let payment_schema = create_schema(PaymentQuery {}, PaymentMutation {});
     let loan_schema = create_schema(LoanQuery {}, LoanMutation {});
     let fine_schema = create_schema(FineQuery {}, FineMutation {});

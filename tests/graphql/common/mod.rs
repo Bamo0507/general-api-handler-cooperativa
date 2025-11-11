@@ -5,14 +5,18 @@ use redis::{Client, Commands, JsonCommands};
 use general_api::endpoints::handlers::configs::schema::GeneralContext;
 use general_api::models::graphql::Payment;
 
-
 pub fn create_test_context() -> GeneralContext {
     let client = Client::open("redis://127.0.0.1/").expect("No se pudo conectar a Redis");
-    let pool = Pool::builder().build(client).expect("No se pudo crear el pool de Redis");
-    GeneralContext { pool: Data::new(pool) }
+    let pool = Pool::builder()
+        .build(client)
+        .expect("No se pudo crear el pool de Redis");
+    //TODO: see a way to inject the s3 client in the context
+
+    //GeneralContext {
+    //    pool: Data::new(pool),
+    //};
+    todo!()
 }
-
-
 
 /// Guarda claves creadas por tests y las borra automáticamente al hacer `drop`
 pub struct TestRedisGuard {
@@ -23,7 +27,10 @@ pub struct TestRedisGuard {
 impl TestRedisGuard {
     /// Crea un nuevo guard vinculado a un pool de Redis
     pub fn new(pool: Data<Pool<Client>>) -> Self {
-        TestRedisGuard { pool, keys: Vec::new() }
+        TestRedisGuard {
+            pool,
+            keys: Vec::new(),
+        }
     }
 
     /// Registra una clave para su posterior eliminación
@@ -43,13 +50,11 @@ impl Drop for TestRedisGuard {
     }
 }
 
-
-
 /// Inserta un pago en Redis y devuelve la clave usada
 pub fn insert_payment_helper_and_return(context: &GeneralContext, payment: &Payment) -> String {
+    use chrono::Utc;
     use general_api::models::redis::Payment as RedisPayment;
     use general_api::repos::auth::utils::hashing_composite_key;
-    use chrono::Utc;
 
     let pool = context.pool.clone();
     let mut con = pool.get().expect("No se pudo obtener conexión de Redis");
@@ -67,7 +72,7 @@ pub fn insert_payment_helper_and_return(context: &GeneralContext, payment: &Paym
         total_amount: payment.total_amount,
         name: payment.name.clone(),
         comments: payment.commentary.clone(),
-        comprobante_bucket: payment.photo.clone(),
+        comprobante_bucket: payment.photo_path.clone(),
         ticket_number: payment.ticket_num.clone(),
         status: payment.state.as_str().to_string(),
         being_payed: vec![],
@@ -76,7 +81,6 @@ pub fn insert_payment_helper_and_return(context: &GeneralContext, payment: &Paym
     let _: redis::RedisResult<()> = con.json_set(&redis_key, "$", &redis_payment);
     redis_key
 }
-
 
 #[cfg(test)]
 mod integration {
@@ -98,7 +102,7 @@ mod integration {
             ticket_num: "T1".to_string(),
             account_num: "ACC1".to_string(),
             commentary: Some("Pago guard 1".to_string()),
-            photo: "url1".to_string(),
+            photo_path: "url1".to_string(),
             state: PaymentStatus::Accepted,
             being_payed: vec![],
             presented_by_name: "N/A".to_string(),
@@ -112,7 +116,7 @@ mod integration {
             ticket_num: "T2".to_string(),
             account_num: "ACC2".to_string(),
             commentary: Some("Pago guard 2".to_string()),
-            photo: "url2".to_string(),
+            photo_path: "url2".to_string(),
             state: PaymentStatus::Accepted,
             being_payed: vec![],
             presented_by_name: "N/A".to_string(),

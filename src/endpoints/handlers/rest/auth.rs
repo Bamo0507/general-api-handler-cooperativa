@@ -1,7 +1,11 @@
+use actix_multipart::form::MultipartForm;
 use actix_web::{web, HttpResponse};
 
 use crate::{
-    models::auth::{LoginInfo, SignUpInfo},
+    models::{
+        auth::{LoginInfo, SignUpInfo},
+        file::UploadForm,
+    },
     repos::auth::{create_user_with_access_token, get_user_access_token},
 };
 

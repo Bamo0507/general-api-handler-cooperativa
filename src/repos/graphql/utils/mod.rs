@@ -13,18 +13,6 @@ use crate::{models::GraphQLMappable, repos::auth::utils::hashing_composite_key};
 use crate::endpoints::handlers::configs::schema::GeneralContext;
 use crate::models::graphql::Payment;
 
-/// Crea un contexto de test con pool de Redis real (localhost)
-pub fn create_test_context() -> GeneralContext {
-    // Conexión a Redis local para testing
-    let client = redis::Client::open("redis://127.0.0.1/").expect("No se pudo conectar a Redis");
-    let pool = Pool::builder()
-        .build(client)
-        .expect("No se pudo crear el pool de Redis");
-    GeneralContext {
-        pool: Data::new(pool),
-    }
-}
-
 /// Inserta un pago en Redis usando el pool del contexto y devuelve la clave Redis creada.
 /// Formato de la clave: users:{hash("all")}:payments:{id}
 pub fn insert_payment_helper(context: &GeneralContext, payment: &Payment) -> String {
@@ -46,7 +34,7 @@ pub fn insert_payment_helper(context: &GeneralContext, payment: &Payment) -> Str
         total_amount: payment.total_amount,
         name: payment.name.clone(),
         comments: payment.commentary.clone(),
-        comprobante_bucket: payment.photo.clone(),
+        comprobante_bucket: payment.photo_path.clone(),
         ticket_number: payment.ticket_num.clone(),
         status: payment.state.as_str().to_string(),
         being_payed: vec![], // tests typically don't set this; leave empty default or fill as needed
@@ -109,10 +97,10 @@ pub fn get_multiple_models_by_id<GraphQLType, RedisType>(
 where
     RedisType: DeserializeOwned + Clone + GraphQLMappable<GraphQLType> + Debug,
 {
-    let mut db_access_token;
+    let db_access_token;
     let mut con = pool.get().expect("Couldn't connect to pool");
 
-    if (access_token == None) && (db_token == None) {
+    if (access_token.is_none()) && (db_token.is_none()) {
         return Err("At leat one of the token most be something".to_owned());
     }
 
