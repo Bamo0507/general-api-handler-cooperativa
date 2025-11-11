@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use juniper::{GraphQLInputObject, GraphQLObject};
 use serde::{Deserialize, Serialize};
 

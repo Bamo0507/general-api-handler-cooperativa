@@ -1,3 +1,5 @@
+use std::fs::File;
+
 use actix_multipart::form::{tempfile::TempFile, MultipartForm};
 use serde::{Deserialize, Serialize};
 
@@ -8,7 +10,7 @@ pub struct UploadForm {
 }
 
 #[derive(Clone, Serialize, Deserialize)]
-pub struct FileUploadCredentials {
+pub struct FileCredentials {
     pub access_token: String,
 }
 
