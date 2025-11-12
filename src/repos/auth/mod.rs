@@ -1,5 +1,8 @@
-use redis::{cmd, Commands};
-use utils::hashing_composite_key;
+use redis::{cmd, Commands, JsonCommands};
+use utils::{
+    hashing_composite_key, get_db_key_from_username, copy_redis_field, 
+    copy_security_answers, delete_keys_by_pattern
+};
 
 use crate::{
     endpoints::handlers::configs::connection_pool::get_pool_connection,
@@ -174,15 +177,8 @@ pub fn configure_security_answer(
         .get()
         .expect("Couldn't connect to pool");
 
-    // Get affiliate_key from username
-    let affiliate_key = hashing_composite_key(&[&user_name]);
-
-    // Get db_composite_key from Redis mapping
-    let db_composite_key: String = con
-        .get(format!("affiliate_key_to_db_access:{}", &affiliate_key))
-        .map_err(|_| StatusMessage {
-            message: "Usuario no encontrado".to_string(),
-        })?;
+    // Get db_composite_key from username using helper
+    let db_composite_key = get_db_key_from_username(&user_name, &mut con)?;
 
     // Normalize answer: lowercase + trim
     let normalized_answer = security_answer.trim().to_lowercase();
@@ -261,15 +257,8 @@ pub fn validate_security_answer(
         .get()
         .expect("Couldn't connect to pool");
 
-    // obtiene affiliate_key del username
-    let affiliate_key = hashing_composite_key(&[&user_name]);
-
-    // obtiene db_composite_key del mapping
-    let db_composite_key: String = con
-        .get(format!("affiliate_key_to_db_access:{}", &affiliate_key))
-        .map_err(|_| StatusMessage {
-            message: "Usuario no encontrado".to_string(),
-        })?;
+    // obtiene db_composite_key del username usando helper
+    let db_composite_key = get_db_key_from_username(&user_name, &mut con)?;
 
     // obtiene la respuesta hasheada guardada en ese índice
     let stored_answer_hash: String = con
@@ -318,16 +307,8 @@ pub fn reset_password(
             message: "No se pudo obtener datos del usuario".to_string(),
         })?;
 
-    // obtiene las 3 respuestas de seguridad (para copiarlas)
-    let mut security_answers = Vec::new();
-    for i in 0..3 {
-        let answer_hash: String = con
-            .get(format!("users:{}:security_answer_{}", &old_db_composite_key, i))
-            .unwrap_or_default();
-        security_answers.push(answer_hash);
-    }
-
     // copia todos los datos del usuario a las nuevas claves (con el nuevo db_composite_key)
+    
     // datos base del usuario
     let _: () = con
         .set(
@@ -347,57 +328,45 @@ pub fn reset_password(
             message: "No se pudo crear nuevo usuario".to_string(),
         })?;
 
-    // copia las 3 respuestas de seguridad
-    for (index, answer_hash) in security_answers.iter().enumerate() {
-        if !answer_hash.is_empty() {
-            let _: () = con
-                .set(
-                    format!("users:{}:security_answer_{}", &new_db_composite_key, index),
-                    answer_hash,
-                )
-                .map_err(|_| StatusMessage {
-                    message: "No se pudo guardar respuesta de seguridad".to_string(),
-                })?;
+    // copia las 3 respuestas de seguridad usando helper
+    copy_security_answers(&mut con, &old_db_composite_key, &new_db_composite_key)?;
+
+    // copia campos financieros usando helper
+    copy_redis_field(&mut con, "payed_to_capital", &old_db_composite_key, &new_db_composite_key, 0.0)?;
+    copy_redis_field(&mut con, "owed_capital", &old_db_composite_key, &new_db_composite_key, 0.0)?;
+    
+    // copia tipo de usuario usando helper
+    copy_redis_field(&mut con, "is_directive", &old_db_composite_key, &new_db_composite_key, false)?;
+
+    // Copiar datos de payments, loans y fines del usuario (todas las claves individuales)
+    // Estos datos se almacenan como JSON, los copiamos directamente preservando su contenido
+    for data_type in &["payments", "loans", "fines"] {
+        let pattern = format!("users:{}:{}:*", &old_db_composite_key, data_type);
+        if let Ok(keys_iter) = con.scan_match::<String, String>(pattern) {
+            let old_keys: Vec<String> = keys_iter.collect();
+            
+            for old_key in old_keys {
+                // Extract the hash/id part after the data_type (último componente después del último :)
+                if let Some(hash_id) = old_key.split(':').last() {
+                    let new_key = format!("users:{}:{}:{}", &new_db_composite_key, data_type, hash_id);
+                    
+                    // Copiar datos JSON preservando la estructura exacta
+                    // Usar cmd("JSON.GET") directamente para obtener el JSON raw
+                    if let Ok(json_str) = cmd("JSON.GET")
+                        .arg(&old_key)
+                        .query::<String>(&mut con)
+                    {
+                        let _: Result<(), _> = cmd("JSON.SET")
+                            .arg(&new_key)
+                            .arg("$")
+                            .arg(&json_str)
+                            .query(&mut con)
+                            .map_err(|e| println!("Warning: couldn't copy {} data: {:?}", data_type, e));
+                    }
+                }
+            }
         }
     }
-
-    // copia campos financieros
-    let payed_to_capital: f64 = con
-        .get(format!("users:{}:payed_to_capital", &old_db_composite_key))
-        .unwrap_or(0.0);
-    let _: () = con
-        .set(
-            format!("users:{}:payed_to_capital", &new_db_composite_key),
-            payed_to_capital,
-        )
-        .map_err(|_| StatusMessage {
-            message: "No se pudo copiar datos financieros".to_string(),
-        })?;
-
-    let owed_capital: f64 = con
-        .get(format!("users:{}:owed_capital", &old_db_composite_key))
-        .unwrap_or(0.0);
-    let _: () = con
-        .set(
-            format!("users:{}:owed_capital", &new_db_composite_key),
-            owed_capital,
-        )
-        .map_err(|_| StatusMessage {
-            message: "No se pudo copiar datos financieros".to_string(),
-        })?;
-
-    // copia tipo de usuario
-    let is_directive: bool = con
-        .get(format!("users:{}:is_directive", &old_db_composite_key))
-        .unwrap_or(false);
-    let _: () = con
-        .set(
-            format!("users:{}:is_directive", &new_db_composite_key),
-            is_directive,
-        )
-        .map_err(|_| StatusMessage {
-            message: "No se pudo copiar tipo de usuario".to_string(),
-        })?;
 
     // Copy counters
     let _: () = con
@@ -450,7 +419,17 @@ pub fn reset_password(
         let _: Result<(), _> = con.del(&key);
     }
 
+    // Eliminar también todas las claves individuales de payments/loans/fines del db_key anterior usando helper
+    for data_type in &["payments", "loans", "fines"] {
+        let pattern = format!("users:{}:{}:*", &old_db_composite_key, data_type);
+        let _ = delete_keys_by_pattern(&mut con, pattern);
+    }
+
     // retorna el nuevo token con datos actualizados
+    let is_directive: bool = con
+        .get(format!("users:{}:is_directive", &new_db_composite_key))
+        .unwrap_or(false);
+    
     Ok(TokenInfo {
         user_name,
         access_token: new_access_token,

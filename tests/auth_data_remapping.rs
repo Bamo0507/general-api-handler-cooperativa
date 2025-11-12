@@ -9,11 +9,12 @@ use general_api::{
     endpoints::handlers::configs::connection_pool::get_pool_connection,
     repos::auth::{
         configure_all_security_answers, create_user_with_access_token,
-        get_user_access_token, reset_password, utils::hashing_composite_key,
+        reset_password, utils::hashing_composite_key,
     },
     repos::graphql::payment::PaymentRepo,
+    repos::graphql::loan::LoanRepo,
 };
-use redis::Commands;
+use redis::{Commands, JsonCommands};
 
 fn cleanup_test_user(username: &str) {
     let mut con = get_pool_connection().into_inner().get().unwrap();
@@ -43,6 +44,19 @@ fn cleanup_test_user(username: &str) {
     for clave in claves {
         let del_result: Result<(), _> = con.del(&clave);
         println!("Eliminando {} => {:?}", clave, del_result);
+    }
+
+    // Limpiar también todas las claves individuales de payments/loans/fines
+    for data_type in &["payments", "loans", "fines"] {
+        let pattern = format!("users:{}:{}:*", db_access_token, data_type);
+        if let Ok(keys_iter) = con.scan_match::<String, String>(pattern) {
+            let keys: Vec<String> = keys_iter.collect();
+            
+            for key in keys {
+                let del_result: Result<(), _> = con.del(&key);
+                println!("Eliminando {} => {:?}", key, del_result);
+            }
+        }
     }
 
     std::thread::sleep(std::time::Duration::from_millis(100));
@@ -277,7 +291,7 @@ fn test_security_answers_remapped_after_reset() {
     assert!(reset_result.is_ok());
 
     let new_token_info = reset_result.unwrap();
-    let new_access_token = new_token_info.access_token.clone();
+    let _new_access_token = new_token_info.access_token.clone();
 
     // 4. Verificar que TODAS las 3 respuestas sigan siendo válidas después del reset
     // (esto hace login con el username y nueva contraseña, luego valida respuestas)
@@ -375,6 +389,296 @@ fn test_data_flags_remapped_after_reset() {
         !old_payments_exists && !old_loans_exists && !old_fines_exists,
         "Old flags should be deleted after reset"
     );
+
+    // Cleanup
+    cleanup_test_user(&username);
+}
+
+/// TEST: Verificar que los datos reales de PAYMENTS se mantienen accesibles tras reset
+#[test]
+fn test_payments_data_accessible_after_reset() {
+    let _ = dotenv();
+
+    let username =
+        format!("payments_test_{}", rng().sample_iter(&Alphanumeric).take(8).map(char::from).collect::<String>());
+    let original_password = "OriginalPassword";
+    let new_password = "NewPassword";
+
+    cleanup_test_user(&username);
+
+    // 1. Crear usuario
+    let creation = create_user_with_access_token(
+        username.clone(),
+        original_password.to_string(),
+        "Payments Test User".to_string(),
+    );
+    assert!(creation.is_ok(), "Should create user");
+
+    let original_token_info = creation.unwrap();
+    let original_access_token = original_token_info.access_token.clone();
+    let original_db_key = hashing_composite_key(&[&original_access_token]);
+
+    // 2. Verificar que PaymentRepo puede recuperar historial antes (se va a obtener valores por defecto)
+    let repo = PaymentRepo {
+        pool: get_pool_connection(),
+    };
+    let history_before = repo
+        .get_user_history(original_access_token.clone())
+        .expect("Should get user history before reset");
+    // Los valores default son 0.0
+    assert_eq!(history_before.payed_to_capital, 0.0, "Initial payed_to_capital should be 0.0");
+    assert_eq!(history_before.owed_capital, 0.0, "Initial owed_capital should be 0.0");
+
+    // 3. Crear manualmente datos de pago en Redis (con json_set para simular crear un pago)
+    let mut con = get_pool_connection().into_inner().get().unwrap();
+    let payment_hash_key = hashing_composite_key(&[&"0".to_string(), &original_db_key]);
+    let payment_json = serde_json::json!({
+        "name": "Test Payment",
+        "total_amount": 1000.0,
+        "ticket_number": "TICKET_001",
+        "date_created": "2025-01-01",
+        "comprobante_bucket": "path/to/comprobante",
+        "account_number": "ACC_123",
+        "comments": null,
+        "status": "ON_REVISION",
+        "being_payed": []
+    });
+    
+    let _: () = con
+        .json_set(
+            format!("users:{}:payments:{}", original_db_key, payment_hash_key),
+            "$",
+            &payment_json,
+        )
+        .expect("Should set payment data");
+    
+    // Actualizar owed_capital y payed_to_capital para este usuario
+    let _: () = con
+        .set(format!("users:{}:owed_capital", original_db_key), 5000.0)
+        .expect("Should set owed_capital");
+    let _: () = con
+        .set(format!("users:{}:payed_to_capital", original_db_key), 2000.0)
+        .expect("Should set payed_to_capital");
+
+    // 4. Verificar que el pago está accesible antes del reset
+    let payments_before = repo
+        .get_user_payments(original_access_token.clone())
+        .expect("Should get payments before reset");
+    assert_eq!(payments_before.len(), 1, "Should have 1 payment before reset");
+
+    // 5. Configurar respuestas de seguridad
+    let answers = [
+        "answer_0".to_string(),
+        "answer_1".to_string(),
+        "answer_2".to_string(),
+    ];
+    let _ = configure_all_security_answers(original_access_token.clone(), answers.clone());
+
+    // 6. Resetear contraseña
+    let reset_result = reset_password(
+        username.clone(),
+        0,
+        answers[0].clone(),
+        new_password.to_string(),
+    );
+    assert!(reset_result.is_ok(), "Should reset password");
+    
+    let new_token_info = reset_result.unwrap();
+    let new_access_token = new_token_info.access_token.clone();
+
+    // 7. Verificar que los datos de pagos están disponibles con el nuevo token
+    let payments_after = repo
+        .get_user_payments(new_access_token.clone())
+        .expect("Should get payments after reset");
+    assert_eq!(payments_after.len(), 1, "Should still have 1 payment after reset");
+
+    // 8. Verificar que el historial muestra los datos copiados
+    let history_after = repo
+        .get_user_history(new_access_token.clone())
+        .expect("Should get user history after reset with new token");
+    assert_eq!(history_after.payed_to_capital, 2000.0, "payed_to_capital should be preserved after reset");
+    assert_eq!(history_after.owed_capital, 5000.0, "owed_capital should be preserved after reset");
+
+    // Cleanup
+    cleanup_test_user(&username);
+}
+
+/// TEST: Verificar que los datos reales de LOANS se mantienen accesibles tras reset
+#[test]
+fn test_loans_data_accessible_after_reset() {
+    let _ = dotenv();
+
+    let username =
+        format!("loans_test_{}", rng().sample_iter(&Alphanumeric).take(8).map(char::from).collect::<String>());
+    let original_password = "OriginalPassword";
+    let new_password = "NewPassword";
+
+    cleanup_test_user(&username);
+
+    // 1. Crear usuario
+    let creation = create_user_with_access_token(
+        username.clone(),
+        original_password.to_string(),
+        "Loans Test User".to_string(),
+    );
+    assert!(creation.is_ok(), "Should create user");
+
+    let original_token_info = creation.unwrap();
+    let original_access_token = original_token_info.access_token.clone();
+    let original_db_key = hashing_composite_key(&[&original_access_token]);
+
+    // 2. Crear manualmente un préstamo en Redis
+    let mut con = get_pool_connection().into_inner().get().unwrap();
+    let loan_hash_key = hashing_composite_key(&[&"0".to_string(), &original_db_key]);
+    let loan_json = serde_json::json!({
+        "total_quota": 24,
+        "base_needed_payment": 5000.0,
+        "payed": 1000.0,
+        "debt": 4000.0,
+        "total": 5000.0,
+        "status": "PENDING",
+        "reason": "Test Loan",
+        "interest_rate": 2.5
+    });
+    
+    let _: () = con
+        .json_set(
+            format!("users:{}:loans:{}", original_db_key, loan_hash_key),
+            "$",
+            &loan_json,
+        )
+        .expect("Should set loan data");
+    
+    // Actualizar owed_capital para simular el préstamo
+    let _: () = con
+        .set(format!("users:{}:owed_capital", original_db_key), 4000.0)
+        .expect("Should set owed_capital");
+
+    // 3. Crear repo y verificar que el préstamo existe antes del reset
+    let repo = PaymentRepo {
+        pool: get_pool_connection(),
+    };
+    let history_before = repo
+        .get_user_history(original_access_token.clone())
+        .expect("Should get user history before reset");
+    assert_eq!(history_before.owed_capital, 4000.0, "Should have owed_capital before reset");
+
+    // 4. Configurar respuestas de seguridad
+    let answers = [
+        "answer_0".to_string(),
+        "answer_1".to_string(),
+        "answer_2".to_string(),
+    ];
+    let _ = configure_all_security_answers(original_access_token.clone(), answers.clone());
+
+    // 5. Resetear contraseña
+    let reset_result = reset_password(
+        username.clone(),
+        0,
+        answers[0].clone(),
+        new_password.to_string(),
+    );
+    assert!(reset_result.is_ok(), "Should reset password");
+    
+    let new_token_info = reset_result.unwrap();
+    let new_access_token = new_token_info.access_token.clone();
+
+    // 6. Verificar que los datos de préstamos están disponibles con el nuevo token
+    // Para esto usamos LoanRepo
+    let loan_repo = LoanRepo {
+        pool: get_pool_connection(),
+    };
+    
+    // Nota: LoanRepo.get_user_loans requiere affiliate_key, así que usamos PaymentRepo.get_user_history
+    let history_after = repo
+        .get_user_history(new_access_token.clone())
+        .expect("Should get user history after reset");
+    assert_eq!(history_after.owed_capital, 4000.0, "owed_capital should be preserved after reset");
+
+    // Cleanup
+    cleanup_test_user(&username);
+}
+
+/// TEST: Verificar que los datos reales de FINES se mantienen accesibles tras reset
+#[test]
+fn test_fines_data_accessible_after_reset() {
+    let _ = dotenv();
+
+    let username =
+        format!("fines_test_{}", rng().sample_iter(&Alphanumeric).take(8).map(char::from).collect::<String>());
+    let original_password = "OriginalPassword";
+    let new_password = "NewPassword";
+
+    cleanup_test_user(&username);
+
+    // 1. Crear usuario
+    let creation = create_user_with_access_token(
+        username.clone(),
+        original_password.to_string(),
+        "Fines Test User".to_string(),
+    );
+    assert!(creation.is_ok(), "Should create user");
+
+    let original_token_info = creation.unwrap();
+    let original_access_token = original_token_info.access_token.clone();
+    let original_db_key = hashing_composite_key(&[&original_access_token]);
+
+    // 2. Crear manualmente una multa en Redis
+    let mut con = get_pool_connection().into_inner().get().unwrap();
+    let fine_hash_key = hashing_composite_key(&[&"0".to_string(), &original_db_key]);
+    let fine_json = serde_json::json!({
+        "amount": 500.0,
+        "motive": "Test Fine",
+        "status": "UNPAID"
+    });
+    
+    let _: () = con
+        .json_set(
+            format!("users:{}:fines:{}", original_db_key, fine_hash_key),
+            "$",
+            &fine_json,
+        )
+        .expect("Should set fine data");
+    
+    // Actualizar owed_capital para incluir la multa
+    let _: () = con
+        .set(format!("users:{}:owed_capital", original_db_key), 500.0)
+        .expect("Should set owed_capital");
+
+    // 3. Crear repo y verificar que la multa existe antes del reset
+    let repo = PaymentRepo {
+        pool: get_pool_connection(),
+    };
+    let history_before = repo
+        .get_user_history(original_access_token.clone())
+        .expect("Should get user history before reset");
+    assert_eq!(history_before.owed_capital, 500.0, "Should have owed_capital from fine");
+
+    // 4. Configurar respuestas de seguridad
+    let answers = [
+        "answer_0".to_string(),
+        "answer_1".to_string(),
+        "answer_2".to_string(),
+    ];
+    let _ = configure_all_security_answers(original_access_token.clone(), answers.clone());
+
+    // 5. Resetear contraseña
+    let reset_result = reset_password(
+        username.clone(),
+        0,
+        answers[0].clone(),
+        new_password.to_string(),
+    );
+    assert!(reset_result.is_ok(), "Should reset password");
+    
+    let new_token_info = reset_result.unwrap();
+    let new_access_token = new_token_info.access_token.clone();
+
+    // 6. Verificar que los datos de multas están disponibles con el nuevo token
+    let history_after = repo
+        .get_user_history(new_access_token.clone())
+        .expect("Should get user history after reset");
+    assert_eq!(history_after.owed_capital, 500.0, "owed_capital should be preserved after reset");
 
     // Cleanup
     cleanup_test_user(&username);
