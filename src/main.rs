@@ -23,31 +23,7 @@ async fn main() -> std::io::Result<()> {
 
     env_logger::init();
 
-    let s3_config: SdkConfig = if (config.tls_on == 0) {
-        let pem_contents = fs::read("/etc/ssl/cloudflare.crt").expect("could not read CA pem");
-        let trust_store = tls::TrustStore::empty().with_pem_certificate(&*pem_contents);
-
-        let tls_context = tls::TlsContext::builder()
-            .with_trust_store(trust_store)
-            .build()
-            .expect("valid TLS context");
-
-        let http_client = Builder::new()
-            .tls_provider(tls::Provider::Rustls(
-                tls::rustls_provider::CryptoMode::AwsLc,
-            ))
-            .tls_context(tls_context)
-            .build_https();
-
-        // Build AWS config from env vars + custom HTTP client
-        aws_config::defaults(BehaviorVersion::latest())
-            .region(Region::new(config.aws_region))
-            .http_client(http_client)
-            .load()
-            .await
-    } else {
-        aws_config::load_from_env().await
-    };
+    let s3_config: SdkConfig = aws_config::load_from_env().await;
 
     let s3_client = S3Client::new(&s3_config);
 

@@ -22,9 +22,6 @@ pub struct Env {
 
     #[envconfig(from = "AWS_REGION")]
     pub aws_region: String,
-
-    #[envconfig(from = "TLS_ON")]
-    pub tls_on: usize,
 }
 
 impl Env {
