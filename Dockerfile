@@ -1,9 +1,11 @@
-ARG RUST_VERSION=1.84.1
+ARG RUST_VERSION=1.90.0
 ARG APP_NAME=general-api
 FROM rust:${RUST_VERSION}-slim-bullseye AS build
 ARG APP_NAME
 WORKDIR /app
 
+
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates
 
 # THx docker docks :D
 #For taking advatange of rust cache
@@ -19,6 +21,8 @@ cp ./target/release/$APP_NAME /bin/server
 EOF
 
 FROM debian:bullseye-slim AS final
+
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates
 
 COPY --from=build /bin/server /bin/
 

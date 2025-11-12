@@ -1,24 +1,93 @@
-name: dev-server-deployment
+
+name: build-and-deploy-tarball
+
 
 on:
   push:
-    branches:
-    - dev-deployment
+    branches: ["dev-deployment"]
+
 
 jobs:
-  deploy:
+  build-and-deploy-tarball:
     runs-on: ubuntu-latest
+    
     steps:
-      - uses: actions/checkout@v3
-      - run: mkdir ~/.keys
-      - run: touch ~/.keys/CSPI_KEY.pem
-      - run: echo "${{secrets.CSPI_KEY}}" >> ~/.keys/CSPI_KEY.pem &&  chmod 400 ~/.keys/CSPI_KEY.pem 
-      - run: cat ~/.keys/CSPI_KEY.pem
-      - name: entering dev vm
+      - name: checkout
+        uses: actions/checkout@v4
+
+      - name: setup for docker building tools
+        uses: docker/setup-buildx-action@v3
+
+      - name: install utilities
         run: |
-            ssh -i ~/.keys/CSPI_KEY.pem -o StrictHostKeyChecking=no  ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
-              cd general-api-handler-cooperativa
-              git pull
-              sudo docker compose -f init-server.yml down
-              sudo docker compose -f init-server.yml up --force-recreate --build -d
-            EOF
+          sudo apt-get install docker-compose
+        
+      - name: create .env for remote
+        run: |
+          cat > .env <<EOF
+          HOST=${{ secrets.HOST }}
+          PORT=${{ secrets.PORT }}
+          REDIS_URL=${{ secrets.REDIS_URL }}
+          BUCKET_NAME=${{ secrets.BUCKET_NAME }}
+          AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION=${{ secrets.AWS_REGION }}
+          EOF
+
+      - name: build images
+        run: |
+          docker-compose -f building.yml build
+
+      - name: save image
+        run: |
+          mkdir payload
+          docker save general-api-handler-cooperativa_backend:latest > ./payload/image.tar
+      
+
+      - name: move payload
+        run: |
+          mv ./deploy.yml ./payload/deploy.yml
+
+      - name: rsync deployments
+        uses: burnett01/rsync-deployments@7.1.0
+        with:
+          switches: -avzr
+          path: payload/
+          remote_path: /home/${{ secrets.SSH_USER }}/general_cspi/
+          remote_host: ${{ secrets.SSH_HOST }}
+          remote_user: ${{ secrets.SSH_USER }}
+          remote_key: ${{ secrets.CSPI_KEY }}
+
+
+      - name: setting up key for remote shell from runner
+        run: |
+             mkdir ~/.keys
+             touch ~/.keys/vps_key.pem
+             echo "${{ secrets.CSPI_KEY }}" >> ~/.keys/vps_key.pem &&  chmod 400 ~/.keys/vps_key.pem 
+             cat ~/.keys/vps_key.pem
+
+      - name: setting up .env on 
+        run: |
+          ssh -i ~/.keys/vps_key.pem -o StrictHostKeyChecking=no  ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
+            cd ~/general_cspi
+
+            echo "PORT=${{ secrets.PORT }}
+          BUCKET_NAME=${{ secrets.BUCKET_NAME }}
+          AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION=${{ secrets.AWS_REGION }}
+          HOST=${{ secrets.HOST }}
+          REDIS_URL=${{ secrets.REDIS_URL }}" | cat > .env
+
+          EOF
+
+      - name: copying needed files and run compose
+        run: |
+          ssh -i ~/.keys/vps_key.pem -o StrictHostKeyChecking=no  ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
+            cd ~/general_cspi
+
+            sudo docker load < image.tar
+            sudo docker-compose -f deploy.yml down
+            sudo docker-compose -f deploy.yml up --build -d
+          EOF
+
