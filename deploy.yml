@@ -5,3 +5,8 @@ services:
       - "${PORT}:${PORT}"
     env_file:
       - .env
+    volumes:
+      - crt: /etc/ssl/cloudflare.crt
+
+volumes:
+  crt:
