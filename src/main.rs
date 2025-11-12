@@ -24,7 +24,7 @@ async fn main() -> std::io::Result<()> {
     env_logger::init();
 
     let s3_config: SdkConfig = if (config.tls_on == 0) {
-        let pem_contents = fs::read("/etc/ssl/cloudflare.crt").expect("could not read CA pem");
+        let pem_contents = fs::read("./cld.crt").expect("could not read CA pem");
         let trust_store = tls::TrustStore::empty().with_pem_certificate(&*pem_contents);
 
         let tls_context = tls::TlsContext::builder()
