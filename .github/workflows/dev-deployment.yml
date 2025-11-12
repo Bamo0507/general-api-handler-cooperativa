@@ -51,7 +51,7 @@ jobs:
           username: ${{ secrets.SSH_HOST }}
           key: ${{ secrets.CSPI_KEY }}
           source: deploy.yml
-          target: "/home/${{ secrets.SSH_USER }}/"
+          target: "/home/ubuntu"
           overwrite: true
           debug: true 
           timeout: 120s
@@ -60,7 +60,7 @@ jobs:
         run: |
              mkdir ~/.keys
              touch ~/.keys/vps_key.pem
-             echo "${{secrets.CSPI_KEY}}" >> ~/.keys/vps_key.pem &&  chmod 400 ~/.keys/vps_key.pem 
+             echo "${{ secrets.CSPI_KEY }}" >> ~/.keys/vps_key.pem &&  chmod 400 ~/.keys/vps_key.pem 
              cat ~/.keys/vps_key.pem
 
       - name: setting up .env on 
