@@ -107,7 +107,8 @@ pub async fn get_ticket_payment(
         .await
     {
         Ok(file) => file,
-        Err(_) => {
+        Err(err) => {
+            eprintln!("{err:?}");
             return Err(StatusMessage {
                 message: "couldn't get file".to_owned(),
             });
