@@ -50,7 +50,7 @@ jobs:
           host: ${{ secrets.SSH_USER }}
           username: ${{ secrets.SSH_HOST }}
           key: ${{ secrets.CSPI_KEY }}
-          source: deploy.yml
+          source: "deploy.yml"
           target: "/home/${{ secrets.SSH_USER }}/general_cspi/"
           overwrite: true
           debug: true 
