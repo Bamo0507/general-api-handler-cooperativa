@@ -56,16 +56,6 @@ jobs:
      #     debug: true 
      #     timeout: 120s
 
-      - name: Deploy to sandbox via rsync
-        uses: trendyminds/github-actions-rsync@master
-        with:
-          RSYNC_OPTIONS: -avzr
-          RSYNC_TARGET: "/home/${{ secrets.SSH_USER }}/general_cspi/"
-          RSYNC_SOURCE: dbg_dir/
-        env:
-          SSH_PRIVATE_KEY: ${{secrets.CSPI_KEY}}
-          SSH_USERNAME: ${{secrets.SSH_USER}}
-          SSH_HOSTNAME: ${{secrets.SSH_HOST}}
 
       - name: setting up key for remote shell from runner
         run: |
