@@ -40,15 +40,19 @@ jobs:
 
       - name: save image
         run: |
-          mkdir images
-          docker save general-api-handler-cooperativa_backend:latest > ./images/image.tar
+          mkdir payload
+          docker save general-api-handler-cooperativa_backend:latest > ./payload/image.tar
       
+
+      - name: move payload
+        run: |
+          mv ./deploy.yml ./payload/deploy.yml
 
       - name: rsync deployments
         uses: burnett01/rsync-deployments@7.1.0
         with:
-          switches: -avzr --delete
-          path: images/
+          switches: -avzr
+          path: payload/
           remote_path: /home/${{ secrets.SSH_USER }}/general_cspi/
           remote_host: ${{ secrets.SSH_HOST }}
           remote_user: ${{ secrets.SSH_USER }}
@@ -82,7 +86,7 @@ jobs:
           ssh -i ~/.keys/vps_key.pem -o StrictHostKeyChecking=no  ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
             cd ~/general_cspi
 
-            sudo docker load < images/image.tar
+            sudo docker load < image.tar
             sudo docker compose -f deploy.yml down
             sudo docker compose -f deploy.yml up --build -d
           EOF
