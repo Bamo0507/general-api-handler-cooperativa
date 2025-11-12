@@ -43,16 +43,15 @@ jobs:
           docker save general-api-handler-cooperativa_backend:latest > ./images/image.tar
       
       - name: copy tars to VPS
-        uses: appleboy/scp-action@master
+        uses: trendyminds/github-actions-rsync@master
         with:
-          host: ${{ secrets.SSH_USER }}
-          username: ${{ secrets.SSH_HOST }}
-          key: ${{ secrets.CSPI_KEY }}
-          source: "./images/*, deploy.yml"
-          target: "/home/${{ secrets.SSH_USER }}"
-          overwrite: true
-          timeout: 120s
-          debug: true 
+          RSYNC_OPTIONS: -avzr --delete --exclude node_modules --exclude '.git*'
+          RSYNC_TARGET: /home/${{ secrets.SSH_USER }}
+          RSYNC_SOURCE: ./images/*, deploy.yml
+        env:
+          SSH_PRIVATE_KEY: ${{secrets.CSPI_KEY}}
+          SSH_USERNAME: ${{secrets.SSH_USER}}
+          SSH_HOSTNAME: ${{secrets.SSH_HOST}}
 
       - name: setting up key for remote shell from runner
         run: |
