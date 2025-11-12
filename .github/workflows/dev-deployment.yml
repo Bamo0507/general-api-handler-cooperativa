@@ -44,17 +44,15 @@ jobs:
       #    docker save general-api-handler-cooperativa_backend:latest > ./images/image.tar
       
 
-      - name: copy tars to VPS
-        uses: appleboy/scp-action@master
+      - name: rsync deployments
+        uses: burnett01/rsync-deployments@7.1.0
         with:
-          host: ${{ secrets.SSH_USER }}
-          username: ${{ secrets.SSH_HOST }}
-          key: ${{ secrets.CSPI_KEY }}
-          source: "deploy.yml"
-          target: "/home/${{ secrets.SSH_USER }}/general_cspi/"
-          overwrite: true
-          debug: true 
-          timeout: 120s
+          switches: -avzr --delete
+          path: deploy.yml
+          remote_path: /home/${{ secrets.SSH_USER }}/general_cspi/
+          remote_host: ${{ secrets.SSH_HOST }}
+          remote_user: ${{ secrets.SSH_USER }}
+          remote_key: ${{ secrets.CSPI_KEY }}
 
 
       - name: setting up key for remote shell from runner
