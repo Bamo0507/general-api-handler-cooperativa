@@ -2,10 +2,28 @@ use actix_web::{web, HttpResponse};
 
 use crate::{
     models::auth::{LoginInfo, SignUpInfo, SecurityQuestionsResponse, ValidateSecurityAnswerRequest, 
-                   ValidateSecurityAnswerResponse, ResetPasswordRequest, SECURITY_QUESTIONS},
+                   ValidateSecurityAnswerResponse, ResetPasswordRequest, SECURITY_QUESTIONS, ConfigureAllSecurityAnswersRequest},
     repos::auth::{create_user_with_access_token, get_user_access_token, validate_security_answer,
-                 reset_password},
+                 reset_password, configure_all_security_answers},
 };
+
+/// guarda las 3 respuestas de seguridad para un usuario
+/// 
+/// POST /general/configure-security-answers
+pub async fn configure_all_security_answers_handler(
+    body: web::Json<ConfigureAllSecurityAnswersRequest>,
+) -> HttpResponse {
+    let data = body.into_inner();
+    match configure_all_security_answers(data.access_token, data.answers) {
+        Ok(_) => HttpResponse::Ok().json(crate::models::StatusMessage {
+            message: "Respuestas de seguridad guardadas correctamente".to_string(),
+        }),
+        Err(err) => HttpResponse::BadRequest().json(crate::models::StatusMessage {
+            message: err.message,
+        }),
+    }
+}
+
 
 //Just for returning the access token for the user
 //Won't be use on mobile prod
@@ -30,16 +48,15 @@ pub async fn user_login(user_data: web::Query<LoginInfo>) -> HttpResponse {
     ))
 }
 
+
 /// obtiene las preguntas de seguridad para recuperación de contraseña
 /// 
 /// GET /general/security-questions?user_name=username
-pub async fn get_security_questions_handler(query: web::Query<String>) -> HttpResponse {
-    let _user_name = query.into_inner();
-    
+pub async fn get_security_questions_handler(query: web::Query<crate::models::auth::SecurityQuestionsQuery>) -> HttpResponse {
+    let _user_name = query.user_name.clone();
     let response = SecurityQuestionsResponse {
         questions: SECURITY_QUESTIONS.iter().map(|q| q.to_string()).collect(),
     };
-    
     HttpResponse::Ok().json(response)
 }
 

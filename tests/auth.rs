@@ -52,43 +52,35 @@ fn cleanup_test_user(username: &str) {
 
 /// Helper function to seed security questions for test users
 /// Creates 5 test users with 3 security questions/answers each
-fn seed_security_questions() -> Vec<(String, [String; 3])> {
+fn seed_security_questions() -> Vec<(String, String, [String; 3])> {
     let mut test_users = Vec::new();
-    
     for i in 1..=5 {
         let username = format!("security_test_user_{}", i);
         let password = "ElTestoPaga".to_string();
-        
-        // Create 3 answers for this user
         let answers = [
             format!("test_answer_{}_0", i),
             format!("test_answer_{}_1", i),
             format!("test_answer_{}_2", i),
         ];
-        
-        // Cleanup first
         cleanup_test_user(&username);
-        
-        // Create user
         let creation_result = create_user_with_access_token(
             username.clone(),
             password.clone(),
             format!("Test User {}", i),
         );
-        
-        if creation_result.is_ok() {
-            // Configure all 3 security answers for this user
+        if let Ok(token_info) = creation_result {
             let config_result = configure_all_security_answers(
-                username.clone(),
+                token_info.access_token.clone(),
                 answers.clone(),
             );
-            
-            if config_result.is_ok() {
-                test_users.push((username, answers));
+            if let Err(e) = &config_result {
+                println!("Failed to configure security answers for {}: {:?}", username, e);
             }
+            test_users.push((username, token_info.access_token, answers));
+        } else {
+            println!("Failed to create user {}: {:?}", username, creation_result.err());
         }
     }
-    
     test_users
 }
 
@@ -253,8 +245,7 @@ fn test_validate_security_answer_correct() {
     let test_users = seed_security_questions();
     assert!(!test_users.is_empty(), "Should have seeded test users");
     
-    let (username, answers) = test_users.first().unwrap();
-    
+    let (username, _access_token, answers) = test_users.first().unwrap();
     // Validate with correct answer from index 0
     let result = validate_security_answer(username.clone(), 0, answers[0].clone());
     assert!(result.is_ok(), "Should validate correct answer: {:?}", result.err());
@@ -275,7 +266,7 @@ fn test_validate_security_answer_incorrect() {
     let test_users = seed_security_questions();
     assert!(!test_users.is_empty(), "Should have seeded test users");
     
-    let (username, _answers) = test_users.first().unwrap();
+    let (username, _access_token, _answers) = test_users.first().unwrap();
     let wrong_answer = "completely_wrong_answer";
     
     // Validate with incorrect answer
@@ -301,15 +292,13 @@ fn test_reset_password_success() {
     let test_users = seed_security_questions();
     assert!(!test_users.is_empty(), "Should have seeded test users");
     
-    let (username, answers) = test_users.first().unwrap();
+    let (username, _access_token, answers) = test_users.first().unwrap();
     let new_password = "NewPassword123";
-    
     // Get original token for comparison
     let original_token = get_user_access_token(
         username.clone(),
         "ElTestoPaga".to_string(),
     ).expect("Should get original token");
-    
     // Reset password with question_index 0
     let result = reset_password(
         username.clone(),
@@ -317,25 +306,20 @@ fn test_reset_password_success() {
         answers[0].clone(),
         new_password.to_string(),
     );
-    
     assert!(result.is_ok(), "Should reset password successfully: {:?}", result.err());
-    
     let new_token_info = result.unwrap();
     assert!(!new_token_info.access_token.is_empty(), "Should return new access_token");
-    
     // Verify new token is different from old token
     assert_ne!(
         original_token.access_token,
         new_token_info.access_token,
         "New token should be different from old token"
     );
-    
     // Verify user can login with new password
     let new_login_result = get_user_access_token(
         username.clone(),
         new_password.to_string(),
     );
-    
     assert!(new_login_result.is_ok(), "Should be able to login with new password");
     let new_login_token = new_login_result.unwrap();
     assert_eq!(
@@ -343,7 +327,6 @@ fn test_reset_password_success() {
         new_token_info.access_token,
         "New login token should match reset password token"
     );
-    
     // Cleanup
     cleanup_test_user(username);
 }

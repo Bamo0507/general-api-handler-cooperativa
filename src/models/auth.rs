@@ -1,3 +1,12 @@
+#[derive(Clone, Deserialize, Debug)]
+pub struct ConfigureAllSecurityAnswersRequest {
+    pub access_token: String,
+    pub answers: [String; 3],
+}
+#[derive(Deserialize)]
+pub struct SecurityQuestionsQuery {
+    pub user_name: String,
+}
 use serde::{Deserialize, Serialize};
 
 // Preguntas de seguridad disponibles (hardcodeadas)
@@ -20,7 +29,7 @@ pub struct LoginInfo {
     pub pass_code: String, //TODO: Convience bryan to pass this info hashed
 }
 
-#[derive(Clone, Serialize)]
+#[derive(Clone, Serialize, Debug)]
 pub struct TokenInfo {
     pub user_name: String,
     pub access_token: String,

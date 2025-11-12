@@ -211,24 +211,27 @@ pub fn configure_security_answer(
     Ok(())
 }
 
-/// guarda las 3 respuestas de seguridad para un usuario
+/// guarda las 3 respuestas de seguridad para un usuario usando access_token
 pub fn configure_all_security_answers(
-    user_name: String,
+    access_token: String,
     answers: [String; 3],
 ) -> Result<(), StatusMessage> {
     let mut con = get_pool_connection()
         .get()
         .expect("Couldn't connect to pool");
 
-    // obtiene affiliate_key del username
-    let affiliate_key = hashing_composite_key(&[&user_name]);
+    // obtiene db_composite_key del access_token
+    let db_composite_key = hashing_composite_key(&[&access_token]);
 
-    // obtiene db_composite_key del mapping en redis
-    let db_composite_key: String = con
-        .get(format!("affiliate_key_to_db_access:{}", &affiliate_key))
-        .map_err(|_| StatusMessage {
-            message: "Usuario no encontrado".to_string(),
-        })?;
+    // verifica que el usuario exista
+    let exists: bool = con
+        .exists(format!("users:{}:complete_name", &db_composite_key))
+        .unwrap_or(false);
+    if !exists {
+        return Err(StatusMessage {
+            message: "Usuario no encontrado o token inválido".to_string(),
+        });
+    }
 
     // guarda las 3 respuestas hasheadas con su índice
     for (index, answer) in answers.iter().enumerate() {
