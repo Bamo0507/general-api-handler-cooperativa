@@ -33,9 +33,9 @@ Guardar el `access_token` retornado.
 ```json
 {
   "questions": [
-    "¿Cuál fue el nombre de la primera escuela o colegio al que asististe?",
-    "¿En qué colonia o barrio viviste durante tu infancia?",
-    "¿Cuál era tu materia o clase favorita en la escuela?"
+    "¿Cuál fue el nombre de la primera escuela o colegio al que asististe?", //index 0
+    "¿En qué colonia o barrio viviste durante tu infancia?", //index 1
+    "¿Cuál era tu materia o clase favorita en la escuela?" //index 2    
   ]
 }
 ```

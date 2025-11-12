@@ -32,11 +32,13 @@ fn cleanup_test_user(username: &str) {
         format!("users:{}:complete_name", db_access_token),
         format!("users:{}:affiliate_key", db_access_token),
         format!("affiliate_keys:{}", affiliate_key),
+        format!("affiliate_key_to_db_access:{}", affiliate_key),
         format!("users:{}:payed_to_capital", db_access_token),
         format!("users:{}:owed_capital", db_access_token),
         format!("users:{}:is_directive", db_access_token),
         format!("users:{}:payments", db_access_token),
         format!("users:{}:loans", db_access_token),
+        format!("users:{}:fines", db_access_token),
         format!("users:{}:security_answer_0", db_access_token),
         format!("users:{}:security_answer_1", db_access_token),
         format!("users:{}:security_answer_2", db_access_token),
@@ -51,34 +53,42 @@ fn cleanup_test_user(username: &str) {
 }
 
 /// Helper function to seed security questions for test users
-/// Creates 5 test users with 3 security questions/answers each
+/// Creates test users with 3 security questions/answers each
 fn seed_security_questions() -> Vec<(String, String, [String; 3])> {
     let mut test_users = Vec::new();
-    for i in 1..=5 {
-        let username = format!("security_test_user_{}", i);
+    let test_id = format!("{:?}", std::thread::current().id());
+    
+    for i in 1..=3 { // Crear 3 usuarios
+        let username = format!("sec_test_{}_u{}", test_id, i);
         let password = "ElTestoPaga".to_string();
         let answers = [
             format!("test_answer_{}_0", i),
             format!("test_answer_{}_1", i),
             format!("test_answer_{}_2", i),
         ];
+        
+        // Limpiar primero
         cleanup_test_user(&username);
-        let creation_result = create_user_with_access_token(
+        
+        // Pequeño delay para asegurar limpieza en Redis
+        std::thread::sleep(std::time::Duration::from_millis(50));
+        
+        // Crear el usuario
+        if let Ok(token_info) = create_user_with_access_token(
             username.clone(),
             password.clone(),
             format!("Test User {}", i),
-        );
-        if let Ok(token_info) = creation_result {
-            let config_result = configure_all_security_answers(
+        ) {
+            // Pequeño delay antes de configurar respuestas
+            std::thread::sleep(std::time::Duration::from_millis(50));
+            
+            // Configurar respuestas de seguridad
+            if let Ok(_) = configure_all_security_answers(
                 token_info.access_token.clone(),
                 answers.clone(),
-            );
-            if let Err(e) = &config_result {
-                println!("Failed to configure security answers for {}: {:?}", username, e);
+            ) {
+                test_users.push((username, token_info.access_token, answers));
             }
-            test_users.push((username, token_info.access_token, answers));
-        } else {
-            println!("Failed to create user {}: {:?}", username, creation_result.err());
         }
     }
     test_users
@@ -247,7 +257,7 @@ fn test_validate_security_answer_correct() {
     let test_users = seed_security_questions();
     assert!(!test_users.is_empty(), "Should have seeded test users");
     
-    let (username, _access_token, answers) = test_users.first().unwrap();
+    let (username, _access_token, answers) = test_users.first().unwrap().clone();
     // Validate with correct answer from index 0
     let result = validate_security_answer(username.clone(), 0, answers[0].clone());
     assert!(result.is_ok(), "Should validate correct answer: {:?}", result.err());
@@ -257,7 +267,7 @@ fn test_validate_security_answer_correct() {
     assert!(!_db_composite_key.is_empty(), "db_composite_key should not be empty");
     
     // Cleanup
-    cleanup_test_user(username);
+    cleanup_test_user(&username);
 }
 
 /// Test for validating security answer - incorrect answer path
@@ -268,7 +278,7 @@ fn test_validate_security_answer_incorrect() {
     let test_users = seed_security_questions();
     assert!(!test_users.is_empty(), "Should have seeded test users");
     
-    let (username, _access_token, _answers) = test_users.first().unwrap();
+    let (username, _access_token, _answers) = test_users.first().unwrap().clone();
     let wrong_answer = "completely_wrong_answer";
     
     // Validate with incorrect answer
@@ -283,7 +293,7 @@ fn test_validate_security_answer_incorrect() {
     );
     
     // Cleanup
-    cleanup_test_user(username);
+    cleanup_test_user(&username);
 }
 
 /// Test for reset password - successful reset path
