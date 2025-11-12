@@ -28,6 +28,7 @@ chrono = "0.4.42"
 futures = "0.3.31"
 
 # for s3
+
 aws-sdk-s3 = "1.110.0"
 aws-config = { version = "1.1.7", features = ["behavior-version-latest"] }
 tokio = { version = "1", features = ["full"] }                             # Why I need tokio amazon, fuck u

@@ -20,6 +20,8 @@ EOF
 
 FROM debian:bullseye-slim AS final
 
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates
+
 COPY --from=build /bin/server /bin/
 
 EXPOSE 5086
