@@ -33,21 +33,21 @@ jobs:
           AWS_REGION=${{ secrets.AWS_REGION }}
           EOF
 
-      - name: build images
-        run: |
-          docker-compose -f building.yml build
+      #- name: build images
+      #  run: |
+      #    docker-compose -f building.yml build
 
-      - name: save image
-        run: |
-          mkdir images
-          docker save general-api-handler-cooperativa_backend:latest > ./images/image.tar
+      #- name: save image
+      #  run: |
+      #    mkdir images
+      #    docker save general-api-handler-cooperativa_backend:latest > ./images/image.tar
       
       - name: copy tars to VPS
         uses: trendyminds/github-actions-rsync@master
         with:
           RSYNC_OPTIONS: -avzr --delete --exclude node_modules --exclude '.git*'
           RSYNC_TARGET: /home/${{ secrets.SSH_USER }}
-          RSYNC_SOURCE: ./images/, deploy.yml
+          RSYNC_SOURCE: deploy.yml
         env:
           SSH_PRIVATE_KEY: ${{secrets.CSPI_KEY}}
           SSH_USERNAME: ${{secrets.SSH_USER}}
