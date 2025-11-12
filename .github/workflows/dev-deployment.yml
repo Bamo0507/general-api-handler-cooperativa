@@ -61,7 +61,7 @@ jobs:
         with:
           RSYNC_OPTIONS: -avzr --delete --exclude node_modules --exclude '.git*'
           RSYNC_TARGET: "/home/${{ secrets.SSH_USER }}/general_cspi/"
-          RSYNC_SOURCE: .
+          RSYNC_SOURCE: dbg_dir/
         env:
           SSH_PRIVATE_KEY: ${{secrets.CSPI_KEY}}
           SSH_USERNAME: ${{secrets.SSH_USER}}
