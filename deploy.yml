@@ -1,0 +1,11 @@
+services:
+  backend:
+    image: general-api-handler-cooperativa_backend:latest
+    ports:
+      - "${PORT}:${PORT}"
+    env_file:
+      - .env
+    volumes:
+        - type: bind
+          source: /etc/ssl/cloudflare.crt
+          target: /etc/ssl/cloudflare.crt

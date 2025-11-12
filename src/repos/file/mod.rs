@@ -4,17 +4,17 @@ use std::{fs::File, io::Write, sync::Arc};
 
 use actix_files::NamedFile;
 use actix_web::{
+    HttpResponse,
     http::header::{ContentDisposition, DispositionType},
     mime::Mime,
-    HttpResponse,
 };
-use aws_sdk_s3::{primitives::ByteStream, Client as S3Client};
+use aws_sdk_s3::{Client as S3Client, primitives::ByteStream};
 use tokio::fs::read;
 
 use crate::{
     models::{
-        file::{FileUploadInfo, UploadForm},
         StatusMessage,
+        file::{FileUploadInfo, UploadForm},
     },
     repos::{auth::utils::hashing_composite_key, file::utils::check_file_upload_credentials},
 };
@@ -99,13 +99,21 @@ pub async fn get_ticket_payment(
     })?;
 
     // byte stream from s3 bucket
-    let mut raw_file = s3_client
+    let mut raw_file = match s3_client
         .get_object()
         .bucket(bucket_name.as_str())
         .key(format!("payment-tickets/{ticket_name}.jpeg"))
         .send()
         .await
-        .unwrap();
+    {
+        Ok(file) => file,
+        Err(err) => {
+            eprintln!("{err:?}");
+            return Err(StatusMessage {
+                message: "couldn't get file".to_owned(),
+            });
+        }
+    };
 
     // we write bytes to the tmp_file (if they exist)
     while let Some(bytes) = raw_file.body.try_next().await.map_err(|_| StatusMessage {

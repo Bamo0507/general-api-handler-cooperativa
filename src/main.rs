@@ -1,11 +1,14 @@
 use actix_cors::Cors;
 use actix_web::{App, HttpServer};
-// use aws_sdk_s3::Client as S3Client;
+use aws_config::{BehaviorVersion, Region, SdkConfig};
+use aws_sdk_s3::Client as S3Client;
+use aws_smithy_http_client::{Builder, tls};
 use general_api::config::Env;
 // use general_api::endpoints::file_endpoints::{self, file_endpoints};
 use general_api::endpoints::{
     auth_endpoints::auth_config, graphql_endpoints::graphql_config, health_config,
 };
+use std::fs;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -18,26 +21,20 @@ async fn main() -> std::io::Result<()> {
     let host = config.host;
     // let bucket_name = config.bucket_name;
 
-    // println!("bucket name: {bucket_name}");
-
-    // Weird bugg in server
     println!("{}", config.redis_url);
-
     env_logger::init();
 
-    // aws client pool - COMENTADO POR AHORA PARA ENFOCARSE EN RECOVER-PASSWORD
-    // let s3_config = aws_config::load_from_env().await;
-    // let s3_client = S3Client::new(&s3_config);
+    // S3 client pool (ready for S3 endpoints)
+    let s3_config: SdkConfig = aws_config::load_from_env().await;
+    let s3_client = S3Client::new(&s3_config);
 
     HttpServer::new(move || {
-        //TODO: change the cors in production
         let cors = Cors::default()
             .allow_any_origin()
             .allow_any_method()
             .allow_any_header()
             .max_age(3600);
 
-        //TODO: add the auth config when capable
         App::new()
             .configure(graphql_config)
             // .configure(|config| {
