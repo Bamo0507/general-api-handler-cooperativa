@@ -43,7 +43,7 @@ jobs:
           docker save general-api-handler-cooperativa_backend:latest > ./images/image.tar
       
       - name: copy tars to VPS
-        uses: appleboy/scp-action@0.1.3
+        uses: appleboy/scp-action@v0.1.3
         with:
           host: ${{ secrets.SSH_USER }}
           username: ${{ secrets.SSH_HOST }}
@@ -51,6 +51,7 @@ jobs:
           source: "./images/*, deploy.yml"
           target: "/home/${{ secrets.SSH_USER }}"
           overwrite: true
+          timeout: 120s
           debug: true 
 
       - name: setting up key for remote shell from runner
