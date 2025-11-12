@@ -7,7 +7,7 @@ use serde_json::json;
 use crate::models::GeneralInfo;
 
 pub mod auth_endpoints;
-pub mod file_endpoints;
+// pub mod file_endpoints; // COMENTADO POR AHORA PARA ENFOCARSE EN RECOVER-PASSWORD
 pub mod graphql_endpoints;
 
 pub mod handlers;

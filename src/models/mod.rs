@@ -4,7 +4,7 @@ use juniper::{GraphQLInputObject, GraphQLObject};
 use serde::{Deserialize, Serialize};
 
 pub mod auth;
-pub mod file;
+// pub mod file; // COMENTADO POR AHORA PARA ENFOCARSE EN RECOVER-PASSWORD
 pub mod graphql;
 pub mod redis;
 

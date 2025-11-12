@@ -11,7 +11,7 @@ use juniper::{http::GraphQLRequest, GraphQLType, GraphQLTypeAsync};
 use r2d2::Pool;
 use redis::Client;
 
-use aws_sdk_s3::Client as S3Client;
+// use aws_sdk_s3::Client as S3Client; // COMENTADO POR AHORA PARA ENFOCARSE EN RECOVER-PASSWORD
 
 use super::configs::schema::{GeneralContext, GeneralSchema};
 
