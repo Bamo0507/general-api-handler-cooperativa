@@ -49,7 +49,7 @@ jobs:
           username: ${{ secrets.SSH_HOST }}
           key: ${{ secrets.CSPI_KEY }}
           source: "./images/*, deploy.yml"
-          target: "/home/${{ secrets.SSH_USER }}/general-api-handler-cooperativa"
+          target: "/home/${{ secrets.SSH_USER }}"
           overwrite: true
           debug: true 
 
@@ -63,7 +63,7 @@ jobs:
       - name: setting up .env on 
         run: |
           ssh -i ~/.keys/vps_key.pem -o StrictHostKeyChecking=no  ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
-            cd ~/general-api-handler-cooperativa
+            cd ~
 
             echo "PORT=${{ secrets.PORT }}
           BUCKET_NAME=${{ secrets.BUCKET_NAME }}
@@ -78,7 +78,7 @@ jobs:
       - name: copying needed files and run compose
         run: |
           ssh -i ~/.keys/vps_key.pem -o StrictHostKeyChecking=no  ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
-            cd ~/general-api-handler-cooperativa
+            cd ~
 
             sudo docker load < images/image.tar
             sudo docker compose -f deploy.yml down
