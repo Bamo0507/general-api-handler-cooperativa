@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
 
 source .env
-nix run nixpkgs#cargo run
+nix develop . --command cargo run

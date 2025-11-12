@@ -1,7 +1,7 @@
 use actix_web::web::Data;
-use juniper::{EmptyMutation, EmptySubscription, GraphQLType, GraphQLTypeAsync, RootNode};
+use juniper::{EmptySubscription, GraphQLType, GraphQLTypeAsync, RootNode};
 use r2d2::Pool;
-use redis::Client;
+use redis::Client as RedisClient;
 
 use crate::repos::graphql::quota::QuotaRepo;
 use crate::repos::graphql::{fine::FineRepo, loan::LoanRepo, payment::PaymentRepo};
@@ -9,7 +9,7 @@ use crate::repos::graphql::{fine::FineRepo, loan::LoanRepo, payment::PaymentRepo
 //Context Related
 #[derive(Clone)]
 pub struct GeneralContext {
-    pub pool: Data<Pool<Client>>,
+    pub pool: Data<Pool<RedisClient>>,
 }
 
 impl GeneralContext {

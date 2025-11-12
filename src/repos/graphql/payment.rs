@@ -1,6 +1,6 @@
 use crate::models::graphql::PaymentStatus;
 use crate::models::GraphQLMappable;
-use crate::repos::graphql::utils::get_multiple_models;
+use crate::repos::graphql::utils::get_multiple_models_by_pattern;
 use crate::{
     models::{
         graphql::{Affiliate, Payment, PaymentHistory},
@@ -9,17 +9,17 @@ use crate::{
     },
     repos::{auth::utils::hashing_composite_key, graphql::utils::get_multiple_models_by_id},
 };
-use actix_web::web;
+use actix_web::web::Data;
 use chrono::Utc;
 use r2d2::Pool;
 use redis::{from_redis_value, Client, Commands, JsonCommands};
 use regex::Regex;
 use serde_json::from_str;
+
 pub struct PaymentRepo {
-    pub pool: web::Data<Pool<Client>>,
+    pub pool: Data<Pool<Client>>,
 }
 
-//TODO: add error managment for redis
 impl PaymentRepo {
     /// giving the acess token, this returns the an Object of PaymentHistory of that "user"
     pub fn get_user_history(&self, access_token: String) -> Result<PaymentHistory, String> {
@@ -51,34 +51,32 @@ impl PaymentRepo {
             Some(access_token),
             None,
             self.pool.clone(),
-            "payments".to_owned(), // TODO: see a way to don't burn the keys
+            "payments".to_owned(),
         )
     }
 
     /// Obtiene todos los pagos de todos los socios
     pub fn get_all_payments(&self) -> Result<Vec<Payment>, String> {
         // usamos el helper que retorna tanto objetos como keys
-        let (payments, keys) = crate::repos::graphql::utils::get_multiple_models_by_pattern_with_keys::<Payment, RedisPayment>(
-            "users:*:payments:*".to_string(),
-            self.pool.clone(),
-        )?;
+        let (payments, keys) =
+            crate::repos::graphql::utils::get_multiple_models_by_pattern_with_keys::<
+                Payment,
+                RedisPayment,
+            >("users:*:payments:*".to_string(), self.pool.clone())?;
 
         // enriquecemos los pagos con el presented_by_name usando el helper genérico
         let pool_ref = self.pool.get_ref();
-        let enriched_payments = crate::repos::graphql::utils::enrich_with_presenter_names(
-            payments,
-            keys,
-            pool_ref,
-        );
+        let enriched_payments =
+            crate::repos::graphql::utils::enrich_with_presenter_names(payments, keys, pool_ref);
 
         Ok(enriched_payments)
     }
 
-    // TODO: implement payment creation
     pub fn create_payment(
         &self,
         access_token: String,
         name: String,
+        comprobante_path: String,
         total_amount: f64,
         ticket_number: String,
         account_number: String,
@@ -107,10 +105,8 @@ impl PaymentRepo {
             let date = Utc::now().date_naive().to_string();
 
             // convertimos PayedToInput a PayedTo para guardarlo en redis
-            let being_payed_output: Vec<crate::models::PayedTo> = being_payed
-                .into_iter()
-                .map(|input| input.into())
-                .collect();
+            let being_payed_output: Vec<crate::models::PayedTo> =
+                being_payed.into_iter().map(|input| input.into()).collect();
 
             let _: () = con
                 .json_set(
@@ -121,8 +117,8 @@ impl PaymentRepo {
                         total_amount,
                         ticket_number,
                         date_created: date,
-                        //TODO: add impl for bucket paths
-                        comprobante_bucket: String::new(),
+                        comprobante_bucket: comprobante_path, // I fucked up big time with the name of
+                        // this shitty, imma kms
                         account_number,
                         comments: None,
                         status: "ON_REVISION".to_owned(),

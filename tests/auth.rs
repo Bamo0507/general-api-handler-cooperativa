@@ -20,7 +20,7 @@ use redis::Commands;
 // Helper function para limpiar datos de usuario de prueba
 fn cleanup_test_user(username: &str) {
     let mut con = get_pool_connection().into_inner().get().unwrap();
-    
+
     // Generar las claves que usa este usuario específico
     let access_token = hashing_composite_key(&[&username.to_string(), &"ElTestoPaga".to_string()]);
     let db_access_token = hashing_composite_key(&[&access_token]);
@@ -89,27 +89,28 @@ fn seed_security_questions() -> Vec<(String, String, [String; 3])> {
 #[test]
 fn from_credentials_to_acess_token() {
     let _ = dotenv();
-    
+
     let username = "El_Mago_Pero_Del_Test";
     let password = "ElTestoPaga";
-    
+
     // Limpiar datos previos del usuario de prueba
     cleanup_test_user(username);
-    
+
     // Primero crear el usuario para el test
     let creation_result = create_user_with_access_token(
         username.to_string(),
         password.to_string(),
         "Test User Complete Name".to_string(),
     );
-    
-    assert!(creation_result.is_ok(), "Should create test user: {:?}", creation_result.err());
+
+    assert!(
+        creation_result.is_ok(),
+        "Should create test user: {:?}",
+        creation_result.err()
+    );
 
     // Ahora obtener el token de acceso
-    let access_token = get_user_access_token(
-        username.to_string(),
-        password.to_string(),
-    );
+    let access_token = get_user_access_token(username.to_string(), password.to_string());
 
     assert_eq!(
         access_token.unwrap().access_token.to_uppercase(),
@@ -117,7 +118,7 @@ fn from_credentials_to_acess_token() {
             .to_string()
             .to_uppercase()
     );
-    
+
     // Limpiar después del test
     cleanup_test_user(username);
 }
@@ -132,7 +133,6 @@ fn from_credentials_to_data() {
 
     // random string
     let mut random_string = Alphanumeric.sample_string(&mut rng(), 16);
-
 
     // Loop for getting new access token
     let mut access_token = String::new();
@@ -213,10 +213,12 @@ fn check_if_can_acess_data() {
     // Configurar los valores de capital para el test
     let mut con = get_pool_connection().into_inner().get().unwrap();
     let db_acess_token = hashing_composite_key(&[&access_token]);
-    
-    let _: () = con.set(format!("users:{}:owed_capital", db_acess_token), 10101.0)
+
+    let _: () = con
+        .set(format!("users:{}:owed_capital", db_acess_token), 10101.0)
         .expect("Should set owed_capital");
-    let _: () = con.set(format!("users:{}:payed_to_capital", db_acess_token), 1010.0)
+    let _: () = con
+        .set(format!("users:{}:payed_to_capital", db_acess_token), 1010.0)
         .expect("Should set payed_to_capital");
 
     assert_eq!(
@@ -232,7 +234,7 @@ fn check_if_can_acess_data() {
             .unwrap()
             .payed_to_capital
     );
-    
+
     // Limpiar después del test
     cleanup_test_user(&username);
 }
