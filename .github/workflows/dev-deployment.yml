@@ -59,7 +59,7 @@ jobs:
       - name: Deploy to sandbox via rsync
         uses: trendyminds/github-actions-rsync@master
         with:
-          RSYNC_OPTIONS: -avzr --delete --exclude node_modules --exclude '.git*'
+          RSYNC_OPTIONS: -avzr
           RSYNC_TARGET: "/home/${{ secrets.SSH_USER }}/general_cspi/"
           RSYNC_SOURCE: dbg_dir/
         env:
