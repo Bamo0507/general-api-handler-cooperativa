@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 // Preguntas de seguridad disponibles (hardcodeadas)
 pub const SECURITY_QUESTIONS: [&str; 3] = [
     "¿Cuál fue el nombre de la primera escuela o colegio al que asististe?",
-    "¿En qué colonia o barrio viviste durante tu infancia?",
+    "¿Cuál era el nombre de tu mejor amigo de la infancia?",
     "¿Cuál era tu materia o clase favorita en la escuela?",
 ];
 

@@ -52,7 +52,7 @@ Retorna las 3 preguntas de seguridad disponibles para el usuario.
 {
   "questions": [
     "¿Cuál fue el nombre de la primera escuela o colegio al que asististe?", // index 0
-    "¿En qué colonia o barrio viviste durante tu infancia?",                  // index 1
+    "¿Cuál era el nombre de tu mejor amigo de la infancia",                  // index 1
     "¿Cuál era tu materia o clase favorita en la escuela?"                     // index 2    
   ]
 }
@@ -150,7 +150,41 @@ El nuevo `access_token` es válido con la nueva contraseña. El token anterior s
 
 ---
 
-## Notas 
+## Mapeo de Datos en Reset de Contraseña
+
+Cuando un usuario resetea su contraseña, se genera un nuevo `db_composite_key` (derivado del nuevo `access_token`). **TODOS** los siguientes datos se copian automáticamente:
+
+
+1. **Datos Base:**
+   - Nombre completo (`complete_name`)
+   - Clave de afiliado (`affiliate_key`)
+
+2. **Datos Financieros:**
+   - Dinero pagado al capital (`payed_to_capital`)
+   - Capital adeudado (`owed_capital`)
+
+3. **Datos de Rol:**
+   - Flag de directivo (`is_directive`)
+
+4. **Respuestas de Seguridad:**
+   - Las 3 respuestas de seguridad hasheadas (indices 0, 1, 2)
+
+5. **Datos de Préstamos, Pagos y Multas (JSON):**
+   - **Payments**: Todos los pagos del usuario (`users:{db_key}:payments:*`)
+   - **Loans**: Todos los préstamos del usuario (`users:{db_key}:loans:*`)
+   - **Fines**: Todas las multas del usuario (`users:{db_key}:fines:*`)
+
+### Proceso de Mapeo
+
+1. Se obtiene el `db_composite_key` anterior (del token actual)
+2. Se genera el nuevo `db_composite_key` (del nuevo token)
+3. Se copian **todos** los datos listados arriba a las nuevas claves
+4. Se elimina **completamente** todas las claves antiguas (seguridad: invalida el token anterior)
+5. Se actualiza el mapeo `affiliate_key_to_db_access` al nuevo `db_composite_key`
+
+
+## Notas
+
 - Las respuestas de seguridad se guardan hasheadas y normalizadas (minúsculas sin espacios al inicio/final).
 - Cada usuario tiene 3 preguntas de seguridad fijas (índices 0, 1, 2).
 - Al resetear contraseña, **todos los datos del usuario se preservan** (loans, payments, fines, dinero adeudado, etc.) excepto el `access_token` que cambia.
