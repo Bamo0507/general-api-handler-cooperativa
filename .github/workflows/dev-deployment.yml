@@ -43,7 +43,7 @@ jobs:
           docker save general-api-handler-cooperativa_backend:latest > ./images/image.tar
       
       - name: copy tars to VPS
-        uses: appleboy/scp-action@v0.1.3
+        uses: appleboy/scp-action@master
         with:
           host: ${{ secrets.SSH_USER }}
           username: ${{ secrets.SSH_HOST }}
