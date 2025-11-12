@@ -6,7 +6,7 @@ services:
     env_file:
       - .env
     volumes:
-      - crt:/etc/ssl
+      - /etc/ssl/cloudflare.crt:/etc/ssl/cloudflare.crt
 
 volumes:
-  crt:
+  /etc/ssl/cloudflare.crt:
