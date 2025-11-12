@@ -25,7 +25,7 @@ jobs:
       - name: create .env for remote
         run: |
           cat > .env <<EOF
-          HOST=${{ secrets.PORT }}
+          HOST=${{ secrets.HOST }}
           PORT=${{ secrets.PORT }}
           REDIS_URL=${{ secrets.REDIS_URL }}
           BUCKET_NAME=${{ secrets.BUCKET_NAME }}
