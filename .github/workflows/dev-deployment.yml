@@ -18,9 +18,10 @@ jobs:
       #- name: setup for docker building tools
       #  uses: docker/setup-buildx-action@v3
 
-      - name: install utilities
-        run: |
-          sudo apt-get install docker-compose
+      #- name: install utilities
+      #  run: |
+      #    sudo apt-get install docker-compose
+        
       - name: create .env for remote
         run: |
           cat > .env <<EOF
