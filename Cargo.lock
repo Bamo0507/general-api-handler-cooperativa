@@ -1573,6 +1573,7 @@ dependencies = [
  "actix-web",
  "aws-config",
  "aws-sdk-s3",
+ "aws-smithy-http-client",
  "chrono",
  "dotenv",
  "env_logger",

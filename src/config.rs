@@ -13,6 +13,18 @@ pub struct Env {
 
     #[envconfig(from = "BUCKET_NAME")]
     pub bucket_name: String,
+
+    #[envconfig(from = "AWS_ACCESS_KEY_ID")]
+    pub aws_access_key_id: String,
+
+    #[envconfig(from = "AWS_SECRET_ACCESS_KEY")]
+    pub aws_secret_access_key: String,
+
+    #[envconfig(from = "AWS_REGION")]
+    pub aws_region: String,
+
+    #[envconfig(from = "TLS_ON")]
+    pub tls_on: usize,
 }
 
 impl Env {
