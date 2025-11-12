@@ -49,7 +49,7 @@ jobs:
           username: ${{ secrets.SSH_HOST }}
           key: ${{ secrets.CSPI_KEY }}
           source: "./images/*, deploy.yml"
-          target: "/home/${{ secrets.VPS_USER }}/general-api-handler-cooperativa"
+          target: "/home/${{ secrets.SSH_USER }}/general-api-handler-cooperativa"
           overwrite: true
           debug: true 
 
