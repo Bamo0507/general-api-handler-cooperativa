@@ -51,7 +51,7 @@ jobs:
           username: ${{ secrets.SSH_HOST }}
           key: ${{ secrets.CSPI_KEY }}
           source: deploy.yml
-          target: "/home/ubuntu"
+          target: "/home/ubuntu/"
           overwrite: true
           debug: true 
           timeout: 120s
