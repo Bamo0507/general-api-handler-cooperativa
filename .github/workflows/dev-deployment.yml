@@ -32,6 +32,7 @@ jobs:
           AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_REGION=${{ secrets.AWS_REGION }}
+          TLS_ON=0
           EOF
 
       - name: build images
@@ -77,6 +78,7 @@ jobs:
           AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_REGION=${{ secrets.AWS_REGION }}
           HOST=${{ secrets.HOST }}
+          TLS_ON=0
           REDIS_URL=${{ secrets.REDIS_URL }}" | cat > .env
 
           EOF
