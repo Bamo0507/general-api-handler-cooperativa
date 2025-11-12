@@ -52,7 +52,6 @@ jobs:
           key: ${{ secrets.CSPI_KEY }}
           source: deploy.yml
           target: "/home/${{ secrets.SSH_USER }}/"
-          port: "22"
           overwrite: true
           debug: true 
           timeout: 120s
