@@ -86,8 +86,8 @@ jobs:
           ssh -i ~/.keys/vps_key.pem -o StrictHostKeyChecking=no  ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
             cd ~/general_cspi
 
-            sudo docker load < image.tar
-            sudo docker compose -f deploy.yml down
-            sudo docker compose -f deploy.yml up --build -d
+            docker load < image.tar
+            docker-compose -f deploy.yml down
+            docker-compose -f deploy.yml up --build -d
           EOF
 

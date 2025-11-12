@@ -2,6 +2,6 @@ services:
   backend:
     image: general-api-handler-cooperativa_backend:latest
     ports:
-      - "${BACKEND_PORT}:${BACKEND_PORT}"
+      - "${PORT}:${PORT}"
     env_file:
       - .env
