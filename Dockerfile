@@ -5,6 +5,8 @@ ARG APP_NAME
 WORKDIR /app
 
 
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates
+
 # THx docker docks :D
 #For taking advatange of rust cache
 RUN --mount=type=bind,source=src,target=src \
