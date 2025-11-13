@@ -21,8 +21,7 @@ pub struct FineRepo {
 
 impl FineRepo {
     pub fn get_user_fines(&self, access_token: String) -> Result<Vec<Fine>, String> {
-        // primero obtenemos el db_access_token (user_hash) desde el affiliate_key
-        let db_access_token = get_db_access_token_with_affiliate_key(access_token, self.pool.clone())?;
+        let db_access_token = hashing_composite_key(&[&access_token]);
         
         // usamos la versión _with_keys para poder enriquecer con presented_by_name
         let (fines, keys) = crate::repos::graphql::utils::get_multiple_models_by_id_with_keys::<Fine, RedisFine>(
