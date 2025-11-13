@@ -27,14 +27,13 @@ dotenv = "0.15.0"
 chrono = "0.4.42"
 futures = "0.3.31"
 
-# for s3
-
-aws-sdk-s3 = "1.110.0"
-aws-config = { version = "1.1.7", features = ["behavior-version-latest"] }
-tokio = { version = "1", features = ["full"] }                             # Why I need tokio amazon, fuck u
-actix-multipart = "0.7.2"
-actix-files = "0.6.8"
-aws-smithy-http-client = "1.1.4"
+# for s3 - S3 support (disabled: path too long on Windows for aws-lc-sys build)
+# aws-sdk-s3 = "1.110.0"
+# aws-config = { version = "1.1.7", features = ["behavior-version-latest"] }
+# tokio = { version = "1", features = ["full"] }
+# actix-multipart = "0.7.2"
+# actix-files = "0.6.8"
+# aws-smithy-http-client = "1.1.4"
 
 [dev-dependencies]
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
