@@ -12,10 +12,9 @@ pub fn create_test_context() -> GeneralContext {
         .expect("No se pudo crear el pool de Redis");
     //TODO: see a way to inject the s3 client in the context
 
-    //GeneralContext {
-    //    pool: Data::new(pool),
-    //};
-    todo!()
+    GeneralContext {
+        pool: Data::new(pool),
+    }
 }
 
 /// Guarda claves creadas por tests y las borra automáticamente al hacer `drop`
