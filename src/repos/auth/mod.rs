@@ -74,6 +74,13 @@ pub fn create_user_with_access_token(
                 .expect("ACCESS TOKEN CREATION: Couldn't create field");
 
             let _: () = con
+                .set(
+                    format!("access_token_to_db_access:{}", &access_token),
+                    &db_composite_key,
+                )
+                .expect("ACCESS TOKEN CREATION: Couldn't create field");
+
+            let _: () = con
                 .set(format!("users:{}:payed_to_capital", &db_composite_key), 0.0)
                 .expect("ACCESS TOKEN CREATION: Couldn't create field");
 
